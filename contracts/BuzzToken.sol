@@ -8,14 +8,18 @@ contract BuzzToken is ERC20 {
     error BuzzToken_Unauthorised();
 
     address public vault;
+    address private deployedFrom;
     uint8 private constant _decimals = 18;
     bool public bexListed;
 
     constructor(
         string memory name,
         string memory symbol,
+        uint256 _totalSupply,
         address _vault
     ) ERC20(name, symbol) {
+        _mint(msg.sender, _totalSupply);
+        deployedFrom = msg.sender;
         vault = _vault;
         bexListed = false;
     }
@@ -42,7 +46,7 @@ contract BuzzToken is ERC20 {
     }
 
     function _validateTransfer(address sender) internal view returns (bool) {
-        if (bexListed || sender == vault) {
+        if (bexListed || sender == vault || sender == deployedFrom) {
             return true;
         }
         return true;

@@ -24,7 +24,7 @@ contract BuzzTokenFactory is Ownable {
     ) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         address token = address(
-            new BuzzToken(name, symbol, totalSupplyOfTokens, vault)
+            new BuzzToken(name, symbol, totalSupplyOfTokens)
         );
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

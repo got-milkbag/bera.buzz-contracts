@@ -10,6 +10,8 @@ import "./interfaces/IBuzzVault.sol";
 contract BuzzTokenFactory is Ownable {
     error BuzzToken_TokenCreationDisabled();
 
+    event TokenCreated(address token);
+
     address public vault;
     bool public allowTokenCreation;
     uint256 public constant totalSupplyOfTokens = 1000000000000000000000000000;
@@ -29,6 +31,8 @@ contract BuzzTokenFactory is Ownable {
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
+
+        emit TokenCreated(token);
         return address(token);
     }
 

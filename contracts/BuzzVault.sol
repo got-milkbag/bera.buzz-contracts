@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./libraries/Math.sol";
 
 contract BuzzVault is ReentrancyGuard {
     error BuzzVault_InvalidAmount();
@@ -25,7 +26,8 @@ contract BuzzVault is ReentrancyGuard {
 
     struct TokenInfo {
         uint256 tokenBalance;
-        uint256 beraBalance;
+        uint256 beraBalance; // aka reserve balance
+        uint256 totalSupply;
         bool bexListed;
     }
 
@@ -38,11 +40,17 @@ contract BuzzVault is ReentrancyGuard {
     function registerToken(address token, uint256 tokenBalance) public {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (
-            tokenInfo[token].tokenBalance == 0 &&
-            tokenInfo[token].beraBalance == 0
+            tokenInfo[token].tokenBalance != 0 &&
+            tokenInfo[token].beraBalance != 0
         ) revert BuzzVault_TokenExists();
         IERC20(token).transferFrom(msg.sender, address(this), tokenBalance);
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, false);
+        // Assumption: Token has fixed supply upon deployment
+        tokenInfo[token] = TokenInfo(
+            tokenBalance,
+            0,
+            IERC20(token).totalSupply(),
+            false
+        );
     }
 
     function buy(
@@ -66,10 +74,11 @@ contract BuzzVault is ReentrancyGuard {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
         // TOD: check if bera amount to be sold is available
-        uint256 tokenAmount = _getAmountFromCurve(
+        uint256 tokenAmount = _getTokenAmountOnCurve(
             netBeraAmount,
             info.beraBalance,
-            info.tokenBalance
+            info.tokenBalance,
+            info.totalSupply
         );
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
         // Update balances
@@ -99,10 +108,11 @@ contract BuzzVault is ReentrancyGuard {
             revert BuzzVault_UnknownToken();
 
         // TOD: check if bera amount to be bought is available
-        uint256 beraAmount = _getAmountFromCurve(
+        uint256 beraAmount = _getBeraAmountOnCurve(
             tokenAmount,
             info.tokenBalance,
-            info.beraBalance
+            info.beraBalance,
+            info.totalSupply
         );
 
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
@@ -141,30 +151,54 @@ contract BuzzVault is ReentrancyGuard {
 
         if (isBuyOrder) {
             return
-                _getAmountFromCurve(
+                _getTokenAmountOnCurve(
                     amount,
+                    info.tokenBalance,
                     info.beraBalance,
-                    info.tokenBalance
+                    info.totalSupply
                 );
         } else {
             return
-                _getAmountFromCurve(
+                _getBeraAmountOnCurve(
                     amount,
                     info.tokenBalance,
-                    info.beraBalance
+                    info.beraBalance,
+                    info.totalSupply
                 );
         }
     }
 
-    function _getAmountFromCurve(
-        uint256 amountIn,
-        uint256 reserveIn,
-        uint256 reserveOut
+    // use when buying tokens - returns the token amount that will be bought
+    function _getTokenAmountOnCurve(
+        uint256 beraAmountIn,
+        uint256 tokenBalance,
+        uint256 beraBalance,
+        uint256 totalSupply
     ) internal pure returns (uint256) {
-        if (amountIn == 0) revert BuzzVault_InvalidAmount();
-        if (reserveIn == 0 || reserveOut == 0)
-            revert BuzzVault_InvalidReserves();
-        return (amountIn * reserveOut) / (reserveIn + amountIn);
+        if (beraAmountIn == 0) revert BuzzVault_InvalidAmount();
+
+        uint256 newSupply = Math.floorSqrt(
+            2 * 1e18 * ((beraAmountIn) + beraBalance)
+        );
+
+        uint256 amountOut = newSupply - (totalSupply - tokenBalance);
+        if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
+
+        return (amountOut);
+    }
+
+    // use when selling tokens - returns the bera amount that will be sent to the user
+    function _getBeraAmountOnCurve(
+        uint256 tokenAmountIn,
+        uint256 tokenBalance,
+        uint256 beraBalance,
+        uint256 totalSupply
+    ) internal pure returns (uint256) {
+        if (tokenAmountIn == 0) revert BuzzVault_InvalidAmount();
+        uint256 newTokenSupply = tokenBalance - tokenAmountIn;
+
+        // Should be the same as: (1/2 * (totalSupply**2 - newTokenSupply**2);
+        return beraBalance - (newTokenSupply ** 2 / (2 * 1e18));
     }
 
     function _transferFee(address payable recipient, uint256 amount) internal {

@@ -25,14 +25,76 @@ describe("BuzzVault Tests", () => {
     // Admin: Set Vault as the factory's vault & enable token creation
     await factory.connect(ownerSigner).setVault(vault.address);
     await factory.connect(ownerSigner).setAllowTokenCreation(true);
+
+    // Create a token
+    const tx = await factory.createToken("TEST", "TEST");
+    const receipt = await tx.wait();
+    const tokenCreatedEvent = receipt.events?.find(
+      (x: any) => x.event === "TokenCreated"
+    );
+
+    // Get token contract
+    token = await ethers.getContractAt(
+      "BuzzToken",
+      tokenCreatedEvent?.args?.token
+    );
   });
   describe("constructor", () => {
     it("should set the factory address", async () => {
       expect(await vault.factory()).to.be.equal(factory.address);
     });
   });
-  describe("createVestingSchedule", () => {
+  describe("registerToken", () => {
     beforeEach(async () => {});
-    it("should revert if the arrays have different lengths", async () => {});
+    it("should register token transferring totalSupply", async () => {
+      // Create a token
+      const tx = await factory.createToken("TEST", "TEST");
+      const receipt = await tx.wait();
+      const tokenCreatedEvent = receipt.events?.find(
+        (x: any) => x.event === "TokenCreated"
+      );
+
+      // Get token contract
+      token = await ethers.getContractAt(
+        "BuzzToken",
+        tokenCreatedEvent?.args?.token
+      );
+      const tokenInfo = await vault.tokenInfo(token.address);
+      expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
+      //expect(tokenInfo.beraBalance).to.be.equal(0);
+      expect(tokenInfo.bexListed).to.be.equal(false);
+
+      expect(tokenInfo.tokenBalance).to.be.equal(
+        await token.balanceOf(vault.address)
+      );
+    });
+    it("should revert if caller is not factory", async () => {
+      await expect(
+        vault
+          .connect(user1Signer)
+          .registerToken(factory.address, ethers.utils.parseEther("100"))
+      ).to.be.revertedWithCustomError(vault, "BuzzVault_Unauthorized");
+    });
+  });
+  describe("buy", () => {
+    beforeEach(async () => {
+      // Create a token
+      const tx = await factory.createToken("TEST", "TEST");
+      const receipt = await tx.wait();
+      const tokenCreatedEvent = receipt.events?.find(
+        (x: any) => x.event === "TokenCreated"
+      );
+
+      // Get token contract
+      token = await ethers.getContractAt(
+        "BuzzToken",
+        tokenCreatedEvent?.args?.token
+      );
+    });
+    it("should ", async () => {
+      console.log(
+        await vault.quote(token.address, ethers.utils.parseEther("0.01"), true)
+      );
+    });
   });
 });

@@ -9,25 +9,22 @@ import "./interfaces/IBuzzVault.sol";
 
 contract BuzzTokenFactory is Ownable {
     error BuzzToken_TokenCreationDisabled();
+    error BuzzToken_InvalidParams();
 
     event TokenCreated(address token);
 
-    address public vault;
     bool public allowTokenCreation;
     uint256 public constant totalSupplyOfTokens = 1000000000000000000000000000;
 
+    mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
     constructor() {}
 
-    function createToken(
-        string memory name,
-        string memory symbol
-    ) public returns (address) {
+    function createToken(string memory name, string memory symbol, address vault) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
-        address token = address(
-            new BuzzToken(name, symbol, totalSupplyOfTokens)
-        );
+        if (vaults[vault] == false) revert BuzzToken_InvalidParams();
+        address token = address(new BuzzToken(name, symbol, totalSupplyOfTokens));
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
@@ -36,8 +33,9 @@ contract BuzzTokenFactory is Ownable {
         return address(token);
     }
 
-    function setVault(address _vault) public onlyOwner {
-        vault = _vault;
+    function setVault(address _vault, bool enable) public onlyOwner {
+        if (_vault == address(0)) revert BuzzToken_InvalidParams();
+        vaults[_vault] = enable;
     }
 
     function setAllowTokenCreation(bool _allowTokenCreation) public onlyOwner {

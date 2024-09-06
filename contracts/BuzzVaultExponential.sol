@@ -17,6 +17,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
         uint256 tokenAmount = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
+
         // TODO: check if bera amount to be sold is availableO
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
 
@@ -77,10 +78,10 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Exponential price calculation (tokens = beraBalance + beraAmountIn)^2 / tokenBalance
         uint256 newBeraBalance = beraBalance + beraAmountIn;
-        uint256 tokenAmount = (newBeraBalance ** 2) / tokenBalance;
-
-        if (tokenAmount + tokenBalance > totalSupply) revert BuzzVault_InvalidReserves();
-        return (tokenAmount);
+        uint256 tokenAmountOut = (newBeraBalance ** 2) / tokenBalance;
+        uint256 newSupply = tokenBalance - tokenAmountOut;
+        if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
+        return (tokenAmountOut);
     }
 
     // Exponential curve logic for calculating Bera amount when selling

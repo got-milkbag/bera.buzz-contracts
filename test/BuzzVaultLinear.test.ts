@@ -3,7 +3,7 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {Contract} from "ethers";
 
-describe("BuzzVault Tests", () => {
+describe("BuzzVaultLinear Tests", () => {
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
@@ -60,6 +60,7 @@ describe("BuzzVault Tests", () => {
         beforeEach(async () => {});
         it("should ", async () => {
             console.log(await vault.quote(token.address, ethers.utils.parseEther("0.01"), true));
+            console.log(await vault.quote(token.address, ethers.utils.parseEther("1"), true));
         });
     });
 });

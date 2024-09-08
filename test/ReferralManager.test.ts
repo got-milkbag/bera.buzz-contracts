@@ -17,6 +17,7 @@ describe("BuzzVault Tests", () => {
     let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
+    let tx: any;
 
     const directRefFeeBps = 1500;
     const indirectRefFeeBps = 100;
@@ -71,7 +72,7 @@ describe("BuzzVault Tests", () => {
     });
     describe("setReferral", () => {
         beforeEach(async () => {
-            const tx = await vault.buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -88,6 +89,46 @@ describe("BuzzVault Tests", () => {
                 referralManager,
                 "ReferralManager_Unauthorised"
             );
+        });
+        it("should not update the referral if one is already set", async () => {
+            expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
+            await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
+                value: ethers.utils.parseEther("0.01"),
+            });
+            expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
+        });
+        it("should not set the referral if it's the same as msg.sender", async () => {
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+                value: ethers.utils.parseEther("0.01"),
+            });
+            expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
+        });
+        it("should increase the referralCount counter", async () => {
+            const referrerInfo = await referralManager.referrerInfo(user1Signer.address);
+            expect(referrerInfo[2]).to.be.equal(1);
+        });
+        it("should emit a ReferralSet event", async () => {
+            await expect(tx).to.emit(referralManager, "ReferralSet");
+        });
+        describe("setReferral - indirect referral", () => {
+            beforeEach(async () => {
+                tx = await vault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                    value: ethers.utils.parseEther("0.01"),
+                });
+            });
+            it("should set the indirect referral", async () => {
+                expect(await referralManager.indirectReferral(user2Signer.address)).to.be.equal(user1Signer.address);
+            });
+            it("should set the direct referral", async () => {
+                expect(await referralManager.referredBy(user2Signer.address)).to.be.equal(ownerSigner.address);
+            });
+            it("should increase the indirectReferrer counter", async () => {
+                const referrerInfo = await referralManager.referrerInfo(user1Signer.address);
+                expect(referrerInfo[3]).to.be.equal(1);
+            });
+            it("should emit an IndirectReferralSet event", async () => {
+                await expect(tx).to.emit(referralManager, "IndirectReferralSet");
+            });
         });
     });
 });

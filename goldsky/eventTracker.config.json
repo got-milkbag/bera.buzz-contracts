@@ -1,0 +1,17 @@
+{
+  "version": "1",
+  "name": "eventTracker",
+  "abis": {
+    "eventTracker": {
+      "path": "./eventTracker.abi.json"
+    }
+  },
+  "instances": [
+    {
+      "abi": "eventTracker",
+      "address": "0x105D97c65d6c1fFC3d2882867B66ea028cE1Eb95",
+      "startBlock": 4049283,
+      "chain": "berachain-bartio"
+    }
+  ]
+}

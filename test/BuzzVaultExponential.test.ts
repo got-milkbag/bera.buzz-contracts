@@ -1,31 +1,66 @@
 import {expect} from "chai";
 import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {Contract} from "ethers";
 
 describe("BuzzVaultExponential Tests", () => {
+    const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
     let token: Contract;
+    let referralManager: Contract;
+    let eventTracker: Contract;
+    let expVault: Contract;
+
+    const directRefFeeBps = 1500; // 15% of protocol fee
+    const indirectRefFeeBps = 100; // fixed 1%
+    const payoutThreshold = 0;
+    let validUntil: number;
 
     beforeEach(async () => {
+        validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
+
         [ownerSigner, user1Signer, user2Signer] = await ethers.getSigners();
+
+        // Deploy ReferralManager
+        const ReferralManager = await ethers.getContractFactory("ReferralManager");
+        referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
+
+        // Deploy EventTracker
+        const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
+        eventTracker = await EventTracker.connect(ownerSigner).deploy([]);
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy();
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address);
 
-        // Deploy Vault
-        const Vault = await ethers.getContractFactory("BuzzVaultExponential");
-        vault = await Vault.connect(ownerSigner).deploy(factory.address, ethers.constants.AddressZero);
+        // Deploy Linear Vault
+        const Vault = await ethers.getContractFactory("BuzzVaultLinear");
+        vault = await Vault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
+
+        // Deploy Exponential Vault
+        const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
+        expVault = await ExpVault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
+
+        // Admin: Set Vault in the ReferralManager
+        await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
+        await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
+
+        // Admin: Set event setter contracts in EventTracker
+        await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
+        await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
+        await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
         await factory.connect(ownerSigner).setVault(vault.address, true);
-        await factory.connect(ownerSigner).setAllowTokenCreation(true);
+        await factory.connect(ownerSigner).setVault(expVault.address, true);
 
+        await factory.connect(ownerSigner).setAllowTokenCreation(true);
         // Create a token
         const tx = await factory.createToken("TEST", "TEST", vault.address);
         const receipt = await tx.wait();

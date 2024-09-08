@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzVault.sol";
+import "./interfaces/IBuzzEventTracker.sol";
 
 contract BuzzTokenFactory is Ownable {
     error BuzzToken_TokenCreationDisabled();
@@ -13,13 +14,16 @@ contract BuzzTokenFactory is Ownable {
 
     event TokenCreated(address token);
 
+    IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
     uint256 public constant totalSupplyOfTokens = 1000000000000000000000000000;
 
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor() {}
+    constructor(address _eventTracker) {
+        eventTracker = IBuzzEventTracker(_eventTracker);
+    }
 
     function createToken(string memory name, string memory symbol, address vault) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
@@ -29,6 +33,7 @@ contract BuzzTokenFactory is Ownable {
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
 
+        eventTracker.emitTokenCreated(token, name, symbol, vault);
         emit TokenCreated(token);
         return address(token);
     }

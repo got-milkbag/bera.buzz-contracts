@@ -4,9 +4,9 @@ pragma solidity ^0.8.19;
 import "./BuzzVault.sol";
 
 contract BuzzVaultLinear is BuzzVault {
-    constructor(address _factory, address _referralManager) BuzzVault(_factory, _referralManager) {}
+    constructor(address _factory, address _referralManager, address eventTracker) BuzzVault(_factory, _referralManager, eventTracker) {}
 
-    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override {
+    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override returns (uint256) {
         uint256 beraAmount = msg.value;
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
         uint256 beraAmountAfFee = 0;
@@ -26,9 +26,16 @@ contract BuzzVaultLinear is BuzzVault {
         _transferFee(feeRecipient, beraAmountPrFee);
 
         IERC20(token).transfer(msg.sender, tokenAmount);
+        return tokenAmount;
     }
 
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal override {
+    function _sell(
+        address token,
+        uint256 tokenAmount,
+        uint256 minBera,
+        address affiliate,
+        TokenInfo storage info
+    ) internal override returns (uint256) {
         // TODO: check if bera amount to be bought is available
         uint256 beraAmount = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
 
@@ -50,6 +57,7 @@ contract BuzzVaultLinear is BuzzVault {
 
         _transferFee(feeRecipient, beraAmountPrFee);
         _transferFee(payable(msg.sender), netBeraAmount);
+        return beraAmount;
     }
 
     // TODO - Improve implementation

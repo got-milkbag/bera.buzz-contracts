@@ -17,6 +17,8 @@ describe("BuzzVault Tests", () => {
     let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
+    let eventTracker: Contract;
+    let expVault: Contract;
     let tx: any;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
@@ -33,20 +35,36 @@ describe("BuzzVault Tests", () => {
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
 
+        // Deploy EventTracker
+        const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
+        eventTracker = await EventTracker.connect(ownerSigner).deploy([]);
+
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy();
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address);
 
-        // Deploy Vault
+        // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(factory.address, referralManager.address);
+        vault = await Vault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
 
-        // Admin: Set Vault as the factory's vault & enable token creation
-        await factory.connect(ownerSigner).setVault(vault.address, true);
-        await factory.connect(ownerSigner).setAllowTokenCreation(true);
+        // Deploy Exponential Vault
+        const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
+        expVault = await ExpVault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
+        await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
+
+        // Admin: Set event setter contracts in EventTracker
+        await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
+        await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
+        await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
+
+        // Admin: Set Vault as the factory's vault & enable token creation
+        await factory.connect(ownerSigner).setVault(vault.address, true);
+        await factory.connect(ownerSigner).setVault(expVault.address, true);
+
+        await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
         const tx = await factory.createToken("TEST", "TEST", vault.address);

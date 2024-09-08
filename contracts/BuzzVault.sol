@@ -5,6 +5,7 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./libraries/Math.sol";
 import "./interfaces/IReferralManager.sol";
+import "./interfaces/IBuzzEventTracker.sol";
 
 abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_InvalidAmount();
@@ -21,6 +22,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     address public factory;
     address payable public feeRecipient;
     IReferralManager public referralManager;
+    IBuzzEventTracker public eventTracker;
 
     struct TokenInfo {
         uint256 tokenBalance;
@@ -31,9 +33,10 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     mapping(address => TokenInfo) public tokenInfo;
 
-    constructor(address _factory, address _referralManager) {
+    constructor(address _factory, address _referralManager, address _eventTracker) {
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
+        eventTracker = IBuzzEventTracker(_eventTracker);
     }
 
     function registerToken(address token, uint256 tokenBalance) public {
@@ -52,7 +55,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        _buy(token, minTokens, affiliate, info);
+        uint256 amountBought = _buy(token, minTokens, affiliate, info);
+        eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
     }
 
     function sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate) public nonReentrant {
@@ -63,12 +67,13 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        _sell(token, tokenAmount, minBera, affiliate, info);
+        uint256 amountSold = _sell(token, tokenAmount, minBera, affiliate, info);
+        eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, false);
     }
 
-    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual;
+    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
 
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual;
+    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
 
     function quote(address token, uint256 amount, bool isBuyOrder) public view virtual returns (uint256);
 

@@ -4,7 +4,12 @@ pragma solidity ^0.8.19;
 import "./BuzzVault.sol";
 
 contract BuzzVaultLinear is BuzzVault {
-    constructor(address _factory, address _referralManager, address eventTracker) BuzzVault(_factory, _referralManager, eventTracker) {}
+    constructor(
+        address payable _feeRecipient,
+        address _factory,
+        address _referralManager,
+        address eventTracker
+    ) BuzzVault(_feeRecipient, _factory, _referralManager, eventTracker) {}
 
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override returns (uint256) {
         uint256 beraAmount = msg.value;

@@ -33,7 +33,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     mapping(address => TokenInfo) public tokenInfo;
 
-    constructor(address _factory, address _referralManager, address _eventTracker) {
+    constructor(address payable _feeRecipient, address _factory, address _referralManager, address _eventTracker) {
+        feeRecipient = _feeRecipient;
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
         eventTracker = IBuzzEventTracker(_eventTracker);

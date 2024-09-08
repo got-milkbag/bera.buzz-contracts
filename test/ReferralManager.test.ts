@@ -7,6 +7,7 @@ import {Contract} from "ethers";
 
 describe("BuzzVault Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+    let feeRecipient: string;
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
@@ -30,6 +31,7 @@ describe("BuzzVault Tests", () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
         [ownerSigner, user1Signer, user2Signer, user3Signer] = await ethers.getSigners();
+        feeRecipient = ownerSigner.address;
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -45,11 +47,11 @@ describe("BuzzVault Tests", () => {
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
+        vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(factory.address, referralManager.address, eventTracker.address);
+        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);

@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./libraries/Math.sol";
+import "./interfaces/IReferralManager.sol";
 
 abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_InvalidAmount();
@@ -18,8 +19,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant protocolFeeBps = 100; // 100 -> 1%
 
     address public factory;
-    address public referralManager;
     address payable public feeRecipient;
+    IReferralManager public referralManager;
 
     struct TokenInfo {
         uint256 tokenBalance;
@@ -32,7 +33,7 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     constructor(address _factory, address _referralManager) {
         factory = _factory;
-        referralManager = _referralManager;
+        referralManager = IReferralManager(_referralManager);
     }
 
     function registerToken(address token, uint256 tokenBalance) public {
@@ -49,6 +50,8 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
+        if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
+
         _buy(token, minTokens, affiliate, info);
     }
 
@@ -57,6 +60,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
+
+        if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         _sell(token, tokenAmount, minBera, affiliate, info);
     }
@@ -76,6 +81,18 @@ abstract contract BuzzVault is ReentrancyGuard {
     //     // Bera per token = (Reserve of Bera * 1e18) / Reserve of Token
     //     return (info.beraBalance * 1e18) / info.tokenBalance; // Returns with 18 decimal places precision
     // }
+
+    function _setReferral(address referrer, address user) internal {
+        referralManager.setReferral(referrer, user);
+    }
+
+    function _getBpsToDeductForReferrals(address user) internal view returns (uint256) {
+        return referralManager.getReferreralBpsFor(user);
+    }
+
+    function _forwardReferralFee(address user, uint256 amount) internal {
+        referralManager.receiveReferral{value: amount}(user);
+    }
 
     function _transferFee(address payable recipient, uint256 amount) internal {
         (bool success, ) = recipient.call{value: amount}("");

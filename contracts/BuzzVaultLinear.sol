@@ -16,8 +16,8 @@ contract BuzzVaultLinear is BuzzVault {
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
-        // TODO: check if bera amount to be sold is available
-        uint256 tokenAmount = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
+        // TOD: check if bera amount to be sold is available
+        uint256 tokenAmount = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
         // Update balances
         info.beraBalance += netBeraAmount;
@@ -74,15 +74,14 @@ contract BuzzVaultLinear is BuzzVault {
     ) internal pure returns (uint256) {
         if (beraAmountIn == 0) revert BuzzVault_InvalidAmount();
 
-        uint256 newSupply = Math.floorSqrt(2 * 1e18 * ((beraAmountIn) + beraBalance));
-
+        uint256 newSupply = Math.floorSqrt(2 * 1e18 * (beraAmountIn + beraBalance));
         uint256 amountOut = newSupply - (totalSupply - tokenBalance);
         if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
 
         return (amountOut);
     }
 
-    // use when selling tokens - returns the bera amount that will be sent to the user
+    // use when selling tokens - returns the bera amount that will be sent to the user, without accounting for fees
     function _calculateSellPrice(
         uint256 tokenAmountIn,
         uint256 tokenBalance,
@@ -90,7 +89,7 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 totalSupply
     ) internal pure returns (uint256) {
         if (tokenAmountIn == 0) revert BuzzVault_InvalidAmount();
-        uint256 newTokenSupply = tokenBalance - tokenAmountIn;
+        uint256 newTokenSupply = totalSupply - tokenBalance - tokenAmountIn;
 
         // Should be the same as: (1/2 * (totalSupply**2 - newTokenSupply**2);
         return beraBalance - (newTokenSupply ** 2 / (2 * 1e18));

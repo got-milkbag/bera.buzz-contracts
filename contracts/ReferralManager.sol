@@ -91,16 +91,17 @@ contract ReferralManager is Ownable, ReentrancyGuard {
             revert ReferralManager_InvalidParams();
         }
 
-        uint256 directRefBps = MAX_FEE_BPS - directRefFeeBps;
         if (indirectReferral[user] != address(0)) {
-            directRefBps -= indirectRefFeeBps;
             uint256 indirectReferralAmount = (amount * indirectRefFeeBps) / MAX_FEE_BPS;
             referrerInfo[indirectReferral[user]].rewardToPayOut += indirectReferralAmount;
             emit ReferralRewardReceived(indirectReferral[user], indirectReferralAmount);
+            uint256 directReferralAmount = amount - indirectReferralAmount;
+            referrerInfo[referrer].rewardToPayOut += directReferralAmount;
+            emit ReferralRewardReceived(referrer, directReferralAmount);
+        } else {
+            referrerInfo[referrer].rewardToPayOut += amount;
+            emit ReferralRewardReceived(referrer, amount);
         }
-        uint256 directReferralAmount = (amount * directRefBps) / MAX_FEE_BPS;
-        referrerInfo[referrer].rewardToPayOut += directReferralAmount;
-        emit ReferralRewardReceived(referrer, directReferralAmount);
     }
 
     // User functions
@@ -108,7 +109,7 @@ contract ReferralManager is Ownable, ReentrancyGuard {
     function claimReferralReward() public nonReentrant {
         ReferrerInfo storage info = referrerInfo[msg.sender];
         uint256 reward = info.rewardToPayOut;
-        if (reward < payoutThreshold) revert ReferralManager_PayoutBelowThreshold();
+        if ((reward < payoutThreshold) || (reward == 0)) revert ReferralManager_PayoutBelowThreshold();
 
         info.rewardToPayOut = info.rewardToPayOut - reward;
         info.rewardPaidOut += reward;

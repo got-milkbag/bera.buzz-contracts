@@ -4,5 +4,12 @@ pragma solidity ^0.8.19;
 interface IBuzzEventTracker {
     function emitTrade(address user, address token, uint256 tokenAmount, uint256 beraAmount, bool isBuyOrder) external;
 
-    function emitTokenCreated(address token, string memory name, string memory symbol, address vault) external;
+    function emitTokenCreated(
+        address token,
+        string memory name,
+        string memory symbol,
+        string memory description,
+        string memory image,
+        address vault
+    ) external;
 }

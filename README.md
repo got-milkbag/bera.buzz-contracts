@@ -10,8 +10,12 @@ Create a `.env` file in the root directory of your project with the following va
 
 The following contracts have been deployed on the **Berachain Testnet**:
 
-- **ReferralManager** deployed to: `0x033C4671b1AB0C73DAC7b0B4c7be7f7d3442f40f`
-- **EventTracker** deployed to: `0x105D97c65d6c1fFC3d2882867B66ea028cE1Eb95`
-- **Factory** deployed to: `0xcbce766CE9bde22486859dD2Ea148b531650CF21`
-- **Linear Vault** deployed to: `0xE4Cf842a0923Df98b766C00C06016F8C6849145A`
-- **Exponential Vault** deployed to: `0x421c689901129FeBc786A5F74FDfBBAdE05353f2`
+- **ReferralManager** deployed to: `0xF38Dd53f7106f80FA03161ddC8f43Dc682bb4dCD`
+- **EventTracker** deployed to: `0x0e98D5F388Bc9df3aC65F0Ade5DB8350D1669d29`
+- **Factory** deployed to: `0x1Dbb70CEDa3bfe4d5f570e13dEBb3422454D9610`
+- **Linear Vault** deployed to: `0xEFEa1924bDB957bBB59b1662d4ea31Af9C8eE52c`
+- **Exponential Vault** deployed to: `0x2eea12220d1D9E4DA3402D75aad90d10da714029`
+
+## Graphql URL
+
+- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm0ia22vlgcsn01vuhewk2f6g/subgraphs/eventTracker-berachain-bartio/1/gn`

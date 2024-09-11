@@ -9,8 +9,8 @@
   "instances": [
     {
       "abi": "eventTracker",
-      "address": "0x105D97c65d6c1fFC3d2882867B66ea028cE1Eb95",
-      "startBlock": 4049283,
+      "address": "0x0e98D5F388Bc9df3aC65F0Ade5DB8350D1669d29",
+      "startBlock": 4142079,
       "chain": "berachain-bartio"
     }
   ]

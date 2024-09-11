@@ -25,15 +25,21 @@ contract BuzzTokenFactory is Ownable {
         eventTracker = IBuzzEventTracker(_eventTracker);
     }
 
-    function createToken(string memory name, string memory symbol, address vault) public returns (address) {
+    function createToken(
+        string memory name,
+        string memory symbol,
+        string memory description,
+        string memory image,
+        address vault
+    ) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (vaults[vault] == false) revert BuzzToken_InvalidParams();
-        address token = address(new BuzzToken(name, symbol, totalSupplyOfTokens));
+        address token = address(new BuzzToken(name, symbol, description, image, totalSupplyOfTokens));
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
 
-        eventTracker.emitTokenCreated(token, name, symbol, vault);
+        eventTracker.emitTokenCreated(token, name, symbol, description, image, vault);
         emit TokenCreated(token);
         return address(token);
     }

@@ -69,7 +69,7 @@ describe("BuzzVault Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", vault.address);
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address);
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 

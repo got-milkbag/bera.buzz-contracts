@@ -57,6 +57,18 @@
       },
       {
         "indexed": false,
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "indexed": false,
+        "internalType": "string",
+        "name": "image",
+        "type": "string"
+      },
+      {
+        "indexed": false,
         "internalType": "address",
         "name": "vault",
         "type": "address"
@@ -123,6 +135,16 @@
       {
         "internalType": "string",
         "name": "symbol",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "description",
+        "type": "string"
+      },
+      {
+        "internalType": "string",
+        "name": "image",
         "type": "string"
       },
       {

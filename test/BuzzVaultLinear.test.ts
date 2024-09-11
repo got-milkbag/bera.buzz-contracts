@@ -2,7 +2,18 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import {Contract} from "ethers";
+import {BigNumber, Contract} from "ethers";
+
+// Function to calculate the price per token in ETH
+function calculateTokenPrice(etherSpent: BigNumber, tokensReceived: BigNumber) {
+    // Calculate the price per token (ETH)
+    const pricePerTokenBN = etherSpent.mul(ethers.BigNumber.from("10").pow(18)).div(tokensReceived);
+
+    // Convert the result back to Ether format (as string with 18 decimals)
+    const pricePerTokenInEther = ethers.utils.formatEther(pricePerTokenBN);
+
+    return pricePerTokenInEther;
+}
 
 describe("BuzzVaultLinear Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -11,6 +22,7 @@ describe("BuzzVaultLinear Tests", () => {
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
+    let feeRecipientSigner: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
     let token: Contract;
@@ -26,8 +38,8 @@ describe("BuzzVaultLinear Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer] = await ethers.getSigners();
-        feeRecipient = ownerSigner.address;
+        [ownerSigner, user1Signer, user2Signer, feeRecipientSigner] = await ethers.getSigners();
+        feeRecipient = feeRecipientSigner.address;
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -65,7 +77,7 @@ describe("BuzzVaultLinear Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", vault.address);
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address);
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 
@@ -105,9 +117,59 @@ describe("BuzzVaultLinear Tests", () => {
     });
     describe("buy", () => {
         beforeEach(async () => {});
-        it("should ", async () => {
-            console.log(await vault.quote(token.address, ethers.utils.parseEther("0.01"), true));
-            console.log(await vault.quote(token.address, ethers.utils.parseEther("1"), true));
+        it("should revert if msg.value is zero", async () => {
+            await expect(
+                vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidAmount");
+        });
+        it("should revert if token doesn't exist", async () => {
+            await expect(
+                vault.buy(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
+        });
+        it("should set a referral if one is provided", async () => {
+            await vault
+                .connect(user1Signer)
+                .buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: ethers.utils.parseEther("0.1")});
+            expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ownerSigner.address);
+        });
+        it("should emit a trade event", async () => {
+            await expect(
+                vault
+                    .connect(user1Signer)
+                    .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+            ).to.emit(eventTracker, "trade");
+        });
+        it("should transfer the 1% of msg.value to feeRecipient", async () => {
+            const feeRecipientBalanceBefore = await ethers.provider.getBalance(feeRecipient);
+            const msgValue = ethers.utils.parseEther("0.1");
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            const feeRecipientBalanceAfter = await ethers.provider.getBalance(feeRecipient);
+            expect(feeRecipientBalanceAfter.sub(feeRecipientBalanceBefore)).to.be.equal(msgValue.div(100)); // fee is 1%
+        });
+        // Add more tests
+        it("should increase the BeraAmount and decrease the tokenBalance after the buy", async () => {
+            const tokenInfoBefore = await vault.tokenInfo(token.address);
+            const msgValue = ethers.utils.parseEther("0.01");
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            const tokenInfoAfter = await vault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            const msgValueAfterFee = msgValue.sub(msgValue.div(100));
+
+            // check balances
+            expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
+            expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
+
+            // calculate sale price
+            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
+
+            const amountOut = await vault.quote(token.address, msgValue, true);
+            const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);
+            console.log("Price per token in Bera: ", pricePerTokenQuote);
+            const amountOut1 = await vault.quote(token.address, 1, true);
+            const pricePerTokenQuote1 = calculateTokenPrice(msgValue, amountOut1);
+            console.log("Price per token in Bera: ", pricePerTokenQuote1);
         });
     });
 });

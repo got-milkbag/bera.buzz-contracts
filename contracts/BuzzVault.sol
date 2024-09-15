@@ -6,6 +6,7 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./libraries/Math.sol";
 import "./interfaces/IReferralManager.sol";
 import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IBexPriceDecoder.sol";
 
 abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_InvalidAmount();
@@ -23,6 +24,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     address payable public feeRecipient;
     IReferralManager public referralManager;
     IBuzzEventTracker public eventTracker;
+    IBexPriceDecoder public priceDecoder;
 
     struct TokenInfo {
         uint256 tokenBalance;
@@ -33,11 +35,12 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     mapping(address => TokenInfo) public tokenInfo;
 
-    constructor(address payable _feeRecipient, address _factory, address _referralManager, address _eventTracker) {
+    constructor(address payable _feeRecipient, address _factory, address _referralManager, address _eventTracker, address _priceDecoder) {
         feeRecipient = _feeRecipient;
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
         eventTracker = IBuzzEventTracker(_eventTracker);
+        priceDecoder = IBexPriceDecoder(_priceDecoder);
     }
 
     function registerToken(address token, uint256 tokenBalance) public {
@@ -77,6 +80,28 @@ abstract contract BuzzVault is ReentrancyGuard {
     function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
 
     function quote(address token, uint256 amount, bool isBuyOrder) public view virtual returns (uint256);
+
+    function getMarketcapFor(address token) public view returns (uint256) {
+        TokenInfo memory info = tokenInfo[token];
+        if (info.totalSupply == 0) revert BuzzVault_UnknownToken();
+
+        uint256 beraPrice = priceDecoder.getPrice();
+        uint256 circulatingSupply = info.totalSupply - info.tokenBalance;
+
+        // Ensure that the token has non-zero reserves before performing the calculation
+        if (info.beraBalance == 0 || info.tokenBalance == 0) revert BuzzVault_InvalidReserves();
+
+        // Calculate the price of one token in terms of Bera (with 18 decimal precision)
+        uint256 tokenPriceInBera = (info.beraBalance * 1e18) / info.tokenBalance;
+
+        // Calculate the token price in USD: (tokenPriceInBera * beraPrice) / 1e18
+        uint256 tokenPriceInUSD = (tokenPriceInBera * beraPrice) / 1e18;
+
+        // Calculate the market capitalization in USD: circulatingSupply * tokenPriceInUSD
+        uint256 marketCapInUSD = (circulatingSupply * tokenPriceInUSD) / 1e18;
+
+        return marketCapInUSD;
+    }
 
     // // Get the last price of the token in terms of Bera
     // function getLastPrice(address token) public view returns (uint256) {

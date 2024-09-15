@@ -8,8 +8,9 @@ contract BuzzVaultExponential is BuzzVault {
         address payable _feeRecipient,
         address _factory,
         address _referralManager,
-        address eventTracker
-    ) BuzzVault(_feeRecipient, _factory, _referralManager, eventTracker) {}
+        address _eventTracker,
+        address _priceDecoder
+    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder) {}
 
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override returns (uint256) {
         uint256 beraAmount = msg.value;

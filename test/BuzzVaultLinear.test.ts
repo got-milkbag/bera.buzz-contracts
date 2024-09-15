@@ -29,6 +29,9 @@ describe("BuzzVaultLinear Tests", () => {
     let referralManager: Contract;
     let eventTracker: Contract;
     let expVault: Contract;
+    let bexLpToken: Contract;
+    let crocQuery: Contract;
+    let bexPriceDecoder: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -40,6 +43,18 @@ describe("BuzzVaultLinear Tests", () => {
 
         [ownerSigner, user1Signer, user2Signer, feeRecipientSigner] = await ethers.getSigners();
         feeRecipient = feeRecipientSigner.address;
+
+        // Deploy mock BexLpToken
+        const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
+        bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
+
+        //Deploy mock ICrocQuery
+        const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
+        crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -55,11 +70,23 @@ describe("BuzzVaultLinear Tests", () => {
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+        vault = await Vault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
@@ -150,7 +177,7 @@ describe("BuzzVaultLinear Tests", () => {
         // Add more tests
         it("should increase the BeraAmount and decrease the tokenBalance after the buy", async () => {
             const tokenInfoBefore = await vault.tokenInfo(token.address);
-            const msgValue = ethers.utils.parseEther("0.01");
+            const msgValue = ethers.utils.parseEther("1");
             await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
             const tokenInfoAfter = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
@@ -163,6 +190,11 @@ describe("BuzzVaultLinear Tests", () => {
             // calculate sale price
             const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in Bera: ", pricePerToken);
+
+            // get market cap
+            console.log("user tokens", userTokenBalance.toString());
+            const marketCap = await vault.getMarketcapFor(token.address);
+            console.log("Market cap in Bera: ", marketCap.toString(), await bexPriceDecoder.getPrice());
 
             const amountOut = await vault.quote(token.address, msgValue, true);
             const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);

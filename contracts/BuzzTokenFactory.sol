@@ -34,13 +34,12 @@ contract BuzzTokenFactory is Ownable {
     ) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (vaults[vault] == false) revert BuzzToken_InvalidParams();
-        address token = address(new BuzzToken(name, symbol, description, image, totalSupplyOfTokens));
-        IERC20(token).approve(vault, totalSupplyOfTokens);
-        IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
-        isDeployed[token] = true;
+
+        address token = _deployToken(name, symbol, description, image, vault);
 
         eventTracker.emitTokenCreated(token, name, symbol, description, image, vault);
         emit TokenCreated(token);
+
         return address(token);
     }
 
@@ -51,5 +50,35 @@ contract BuzzTokenFactory is Ownable {
 
     function setAllowTokenCreation(bool _allowTokenCreation) public onlyOwner {
         allowTokenCreation = _allowTokenCreation;
+    }
+
+    function _deployToken(
+        string memory name,
+        string memory symbol,
+        string memory description,
+        string memory image,
+        address vault,
+        bytes32 salt
+    ) internal returns (address token) {
+        bytes memory bytecode =
+            abi.encodePacked(
+                type(BuzzToken).creationCode, 
+                abi.encode(name, symbol, description, image, totalSupplyOfTokens)
+            );
+
+        assembly {
+            token := create2(
+                0, 
+                add(bytecode, 0x20), 
+                mload(bytecode), 
+                salt
+            )
+        }
+
+        if (token == address(0)) revert DeploymentFailed();
+
+        IERC20(token).approve(vault, totalSupplyOfTokens);
+        IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
+        isDeployed[token] = true;
     }
 }

@@ -147,7 +147,7 @@ describe("BuzzVaultLinear Tests", () => {
         it("should revert if msg.value is zero", async () => {
             await expect(
                 vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
-            ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidAmount");
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_QuoteAmountZero");
         });
         it("should revert if token doesn't exist", async () => {
             await expect(
@@ -183,29 +183,41 @@ describe("BuzzVaultLinear Tests", () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
 
-            let pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            console.log("Price per token in Bera: ", pricePerToken);
-            console.log("Bera balance before: ", userTokenBalance);
-            // get market cap
-            let marketCap = await vault.getMarketCapFor(token.address);
-            console.log("Market cap: ", marketCap);
+            // const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            // console.log("Price per token in Bera: ", pricePerToken);
+
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
-            console.log("buy again");
-            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
-            console.log("user's new balance: ", await token.balanceOf(user1Signer.address));
-            // calculate sale price
-            pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            console.log("Price per token in Bera: ", pricePerToken);
+        });
+    });
+    describe("sell", () => {
+        beforeEach(async () => {
+            await vault
+                .connect(user1Signer)
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")});
+        });
+        it("should revert if token doesn't exist", async () => {
+            await expect(
+                vault.sell(ownerSigner.address, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero)
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
+        });
+        it("should emit a trade event", async () => {
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(vault.address, userTokenBalance);
+            await expect(vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
+                eventTracker,
+                "trade"
+            );
+        });
+        it("should increase the tokenBalance", async () => {
+            const tokenInfoBefore = await vault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(vault.address, userTokenBalance);
+            await vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero);
+            const tokenInfoAfter = await vault.tokenInfo(token.address);
 
-            // get market cap
-            marketCap = await vault.getMarketCapFor(token.address);
-            console.log("Market cap: ", marketCap);
-            // sell tokens
-            const sellAmount = await token.balanceOf(user1Signer.address);
-            await token.connect(user1Signer).approve(vault.address, sellAmount);
-            await vault.connect(user1Signer).sell(token.address, sellAmount, 0, ethers.constants.AddressZero);
+            expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].add(userTokenBalance));
         });
     });
 });

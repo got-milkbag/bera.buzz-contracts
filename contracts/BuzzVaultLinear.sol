@@ -2,9 +2,18 @@
 pragma solidity ^0.8.19;
 
 import "./BuzzVault.sol";
-import "hardhat/console.sol";
 
+/// @title BuzzVaultLinear contract
+/// @notice A contract implementing a linear bonding curve with a fixed slope
 contract BuzzVaultLinear is BuzzVault {
+    /**
+     * @notice Constructor for a new BuzzVaultLinear contract
+     * @param _feeRecipient The address that receives the protocol fee
+     * @param _factory The factory contract that can register tokens
+     * @param _referralManager The referral manager contract
+     * @param _eventTracker The event tracker contract
+     * @param _priceDecoder The price decoder contract
+     */
     constructor(
         address payable _feeRecipient,
         address _factory,
@@ -13,6 +22,13 @@ contract BuzzVaultLinear is BuzzVault {
         address _priceDecoder
     ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder) {}
 
+    /**
+     * @notice Buy tokens from the bonding curve with Bera
+     * @param token The token address
+     * @param minTokens The minimum amount of tokens to buy
+     * @param affiliate The affiliate address
+     * @param info The token info struct
+     */
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override returns (uint256) {
         uint256 beraAmount = msg.value;
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
@@ -39,6 +55,14 @@ contract BuzzVaultLinear is BuzzVault {
         return tokenAmount;
     }
 
+    /**
+     * @notice Sell tokens to the bonding curve for Bera
+     * @param token The token address
+     * @param tokenAmount The amount of tokens to sell
+     * @param minBera The minimum amount of Bera to receive
+     * @param affiliate The affiliate address
+     * @param info The token info struct
+     */
     function _sell(
         address token,
         uint256 tokenAmount,
@@ -73,7 +97,13 @@ contract BuzzVaultLinear is BuzzVault {
         return beraAmount;
     }
 
-    // TODO - Improve implementation
+    /**
+     * @notice Quote the amount of tokens that will be bought or sold at the current curve
+     * @param token The token address
+     * @param amount The amount of tokens or Bera
+     * @param isBuyOrder True if buying tokens, false if selling tokens
+     * @return The amount of tokens or Bera that will be bought or sold
+     */
     function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
@@ -86,14 +116,23 @@ contract BuzzVaultLinear is BuzzVault {
         }
     }
 
-    // use when buying tokens - returns the token amount that will be bought
+    /**
+     * @notice Calculate the price to buy tokens
+     * @dev Does not account for protocol or referral fees
+     * @param beraAmountIn The amount of Bera to buy tokens with
+     * @param tokenBalance The balance of tokens in the vault
+     * @param beraBalance The balance of Bera in the vault
+     * @param totalSupply The total supply of tokens
+     * @return The amount of tokens that will be bought
+     * @return The price per token, scalend by 1e18
+     */
     function _calculateBuyPrice(
         uint256 beraAmountIn,
         uint256 tokenBalance,
         uint256 beraBalance,
         uint256 totalSupply
     ) internal pure returns (uint256, uint256) {
-        if (beraAmountIn == 0) revert BuzzVault_InvalidAmount();
+        if (beraAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 newSupply = Math.floorSqrt(2 * 1e24 * (beraAmountIn + beraBalance));
         uint256 amountOut = newSupply - (totalSupply - tokenBalance);
@@ -103,14 +142,23 @@ contract BuzzVaultLinear is BuzzVault {
         return (amountOut, (beraAmountIn * 1e18) / amountOut);
     }
 
-    // use when selling tokens - returns the bera amount that will be sent to the user, without accounting for fees
+    /**
+     * @notice Calculate the price to sell tokens
+     * @dev Does not account for protocol or referral fees
+     * @param tokenAmountIn The amount of tokens to sell
+     * @param tokenBalance The balance of tokens in the vault
+     * @param beraBalance The balance of Bera in the vault
+     * @param totalSupply The total supply of tokens
+     * @return The amount of Bera that will be received
+     * @return The price per token, scaled by 1e18
+     */
     function _calculateSellPrice(
         uint256 tokenAmountIn,
         uint256 tokenBalance,
         uint256 beraBalance,
         uint256 totalSupply
     ) internal pure returns (uint256, uint256) {
-        if (tokenAmountIn == 0) revert BuzzVault_InvalidAmount();
+        if (tokenAmountIn == 0) revert BuzzVault_QuoteAmountZero();
         uint256 newTokenSupply = totalSupply - tokenBalance - tokenAmountIn;
 
         uint256 amountOut = beraBalance - (newTokenSupply ** 2 / (2 * 1e24));

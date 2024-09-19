@@ -24,7 +24,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
-        uint256 tokenAmount = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
+        (uint256 tokenAmount, ) = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
 
         // TODO: check if bera amount to be sold is available
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
@@ -49,7 +49,7 @@ contract BuzzVaultExponential is BuzzVault {
         TokenInfo storage info
     ) internal override returns (uint256) {
         // TODO: check if bera amount to be bought is available
-        uint256 beraAmount = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        (uint256 beraAmount, ) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
 
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
         uint256 beraAmountAfFee = 0;
@@ -73,7 +73,7 @@ contract BuzzVaultExponential is BuzzVault {
         return beraAmount;
     }
 
-    function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256) {
+    function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -91,7 +91,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 beraBalance,
         uint256 tokenBalance,
         uint256 totalSupply
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256) {
         if (beraAmountIn == 0) revert BuzzVault_InvalidAmount();
 
         // Exponential price calculation (tokens = beraBalance + beraAmountIn)^2 / tokenBalance
@@ -99,7 +99,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 tokenAmountOut = (newBeraBalance ** 2) / tokenBalance;
         uint256 newSupply = tokenBalance - tokenAmountOut;
         if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
-        return (tokenAmountOut);
+        return (tokenAmountOut, 0);
     }
 
     // Exponential curve logic for calculating Bera amount when selling
@@ -108,13 +108,13 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 tokenBalance,
         uint256 beraBalance,
         uint256 totalSupply
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256) {
         if (tokenAmountIn == 0) revert BuzzVault_InvalidAmount();
 
         // Calculate sell price using inverse exponential curve
         uint256 newTokenBalance = tokenBalance + tokenAmountIn;
         uint256 beraAmount = beraBalance - (newTokenBalance ** 2 / tokenBalance);
 
-        return beraAmount;
+        return (beraAmount, 0);
     }
 }

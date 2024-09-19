@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./BuzzVault.sol";
+import "hardhat/console.sol";
 
 contract BuzzVaultLinear is BuzzVault {
     constructor(
@@ -25,11 +26,12 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
         // TOD: check if bera amount to be sold is available
-        uint256 tokenAmount = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        (uint256 tokenAmount, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
         // Update balances
         info.beraBalance += netBeraAmount;
         info.tokenBalance -= tokenAmount;
+        info.lastPrice = beraPerToken;
 
         _transferFee(feeRecipient, beraAmountPrFee);
 
@@ -45,7 +47,7 @@ contract BuzzVaultLinear is BuzzVault {
         TokenInfo storage info
     ) internal override returns (uint256) {
         // TODO: check if bera amount to be bought is available
-        uint256 beraAmount = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        (uint256 beraAmount, uint256 beraPerToken) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
 
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
         uint256 beraAmountAfFee = 0;
@@ -64,6 +66,7 @@ contract BuzzVaultLinear is BuzzVault {
         // Update balances
         info.beraBalance -= beraAmount;
         info.tokenBalance += tokenAmount;
+        info.lastPrice = beraPerToken;
 
         _transferFee(feeRecipient, beraAmountPrFee);
         _transferFee(payable(msg.sender), netBeraAmount);
@@ -71,7 +74,7 @@ contract BuzzVaultLinear is BuzzVault {
     }
 
     // TODO - Improve implementation
-    function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256) {
+    function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -89,14 +92,15 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 tokenBalance,
         uint256 beraBalance,
         uint256 totalSupply
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256) {
         if (beraAmountIn == 0) revert BuzzVault_InvalidAmount();
 
-        uint256 newSupply = Math.floorSqrt(2 * 1e18 * (beraAmountIn + beraBalance));
+        uint256 newSupply = Math.floorSqrt(2 * 1e24 * (beraAmountIn + beraBalance));
         uint256 amountOut = newSupply - (totalSupply - tokenBalance);
         if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
 
-        return (amountOut);
+        // Get scaled price
+        return (amountOut, (beraAmountIn * 1e18) / amountOut);
     }
 
     // use when selling tokens - returns the bera amount that will be sent to the user, without accounting for fees
@@ -105,11 +109,11 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 tokenBalance,
         uint256 beraBalance,
         uint256 totalSupply
-    ) internal pure returns (uint256) {
+    ) internal pure returns (uint256, uint256) {
         if (tokenAmountIn == 0) revert BuzzVault_InvalidAmount();
         uint256 newTokenSupply = totalSupply - tokenBalance - tokenAmountIn;
 
-        // Should be the same as: (1/2 * (totalSupply**2 - newTokenSupply**2);
-        return beraBalance - (newTokenSupply ** 2 / (2 * 1e18));
+        uint256 amountOut = beraBalance - (newTokenSupply ** 2 / (2 * 1e24));
+        return (amountOut, ((amountOut * 1e18) / tokenAmountIn));
     }
 }

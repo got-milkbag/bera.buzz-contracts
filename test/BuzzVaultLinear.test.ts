@@ -177,31 +177,35 @@ describe("BuzzVaultLinear Tests", () => {
         // Add more tests
         it("should increase the BeraAmount and decrease the tokenBalance after the buy", async () => {
             const tokenInfoBefore = await vault.tokenInfo(token.address);
-            const msgValue = ethers.utils.parseEther("1");
+            const msgValue = ethers.utils.parseEther("0.01");
             await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
             const tokenInfoAfter = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
 
+            let pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
+            console.log("Bera balance before: ", userTokenBalance);
+            // get market cap
+            let marketCap = await vault.getMarketCapFor(token.address);
+            console.log("Market cap: ", marketCap);
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
-
+            console.log("buy again");
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            console.log("user's new balance: ", await token.balanceOf(user1Signer.address));
             // calculate sale price
-            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in Bera: ", pricePerToken);
 
             // get market cap
-            console.log("user tokens", userTokenBalance.toString());
-            const marketCap = await vault.getMarketcapFor(token.address);
-            console.log("Market cap in Bera: ", marketCap.toString(), await bexPriceDecoder.getPrice());
-
-            const amountOut = await vault.quote(token.address, msgValue, true);
-            const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);
-            console.log("Price per token in Bera: ", pricePerTokenQuote);
-            const amountOut1 = await vault.quote(token.address, 1, true);
-            const pricePerTokenQuote1 = calculateTokenPrice(msgValue, amountOut1);
-            console.log("Price per token in Bera: ", pricePerTokenQuote1);
+            marketCap = await vault.getMarketCapFor(token.address);
+            console.log("Market cap: ", marketCap);
+            // sell tokens
+            const sellAmount = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(vault.address, sellAmount);
+            await vault.connect(user1Signer).sell(token.address, sellAmount, 0, ethers.constants.AddressZero);
         });
     });
 });

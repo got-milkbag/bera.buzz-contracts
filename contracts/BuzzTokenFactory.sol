@@ -11,6 +11,7 @@ import "./interfaces/IBuzzEventTracker.sol";
 contract BuzzTokenFactory is Ownable {
     error BuzzToken_TokenCreationDisabled();
     error BuzzToken_InvalidParams();
+    error BuzzToken_DeploymentFailed();
 
     event TokenCreated(address token);
 
@@ -75,7 +76,7 @@ contract BuzzTokenFactory is Ownable {
             )
         }
 
-        if (token == address(0)) revert DeploymentFailed();
+        if (token == address(0)) revert BuzzToken_DeploymentFailed();
 
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

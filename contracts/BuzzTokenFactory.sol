@@ -1,19 +1,22 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzVault.sol";
 import "./interfaces/IBuzzEventTracker.sol";
 
-contract BuzzTokenFactory is Ownable {
+contract BuzzTokenFactory is AccessControl {
     error BuzzToken_TokenCreationDisabled();
     error BuzzToken_InvalidParams();
     error BuzzToken_DeploymentFailed();
 
     event TokenCreated(address token);
+
+    /// @dev access control owner role.
+    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
 
     IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
@@ -22,8 +25,9 @@ contract BuzzTokenFactory is Ownable {
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor(address _eventTracker) {
+    constructor(address _eventTracker, address _owner) {
         eventTracker = IBuzzEventTracker(_eventTracker);
+        _grantRole(OWNER_ROLE, _owner);
     }
 
     function createToken(
@@ -44,12 +48,12 @@ contract BuzzTokenFactory is Ownable {
         return address(token);
     }
 
-    function setVault(address _vault, bool enable) public onlyOwner {
+    function setVault(address _vault, bool enable) public onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_InvalidParams();
         vaults[_vault] = enable;
     }
 
-    function setAllowTokenCreation(bool _allowTokenCreation) public onlyOwner {
+    function setAllowTokenCreation(bool _allowTokenCreation) public onlyRole(OWNER_ROLE) {
         allowTokenCreation = _allowTokenCreation;
     }
 

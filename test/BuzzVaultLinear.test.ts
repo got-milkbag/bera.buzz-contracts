@@ -165,6 +165,7 @@ describe("BuzzVaultLinear Tests", () => {
             const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in Bera: ", pricePerToken);
             console.log("Token address after salt linear:", token.address);
+            console.log("Factory address linear:", factory.address);
 
             const amountOut = await vault.quote(token.address, msgValue, true);
             const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);

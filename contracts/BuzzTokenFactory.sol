@@ -35,12 +35,13 @@ contract BuzzTokenFactory is AccessControl {
         string memory symbol,
         string memory description,
         string memory image,
-        address vault
+        address vault,
+        bytes32 salt
     ) public returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (vaults[vault] == false) revert BuzzToken_InvalidParams();
 
-        address token = _deployToken(name, symbol, description, image, vault);
+        address token = _deployToken(name, symbol, description, image, vault, salt);
 
         eventTracker.emitTokenCreated(token, name, symbol, description, image, vault);
         emit TokenCreated(token);

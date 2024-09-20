@@ -3,6 +3,7 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {BigNumber, Contract} from "ethers";
+import { formatBytes32String } from "ethers/lib/utils";
 
 // Function to calculate the price per token in ETH
 function calculateTokenPrice(etherSpent: BigNumber, tokensReceived: BigNumber) {
@@ -51,7 +52,7 @@ describe("BuzzVaultLinear Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address);
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address);
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
@@ -77,7 +78,7 @@ describe("BuzzVaultLinear Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address);
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"));
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 

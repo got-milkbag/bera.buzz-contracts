@@ -135,6 +135,7 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Token balance after second buy:", vaultTokenBalanceAfterSecondBuy.toString());
             console.log("User2 BERA balance after second buy:", user2BalanceAfterSecondBuy.toString());
             console.log("Vault token info after second buy:", tokenInfoAfterSecondBuy);
+            console.log("Token address after salt exponential:", token.address);
 
             expect(vaultTokenBalanceAfterSecondBuy).to.be.below(vaultTokenBalanceAfterFirstBuy);
 

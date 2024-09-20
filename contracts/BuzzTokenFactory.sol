@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {CREATE3} from "solmate/src/utils/CREATE3.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzVault.sol";
@@ -11,7 +12,6 @@ import "./interfaces/IBuzzEventTracker.sol";
 contract BuzzTokenFactory is AccessControl {
     error BuzzToken_TokenCreationDisabled();
     error BuzzToken_InvalidParams();
-    error BuzzToken_DeploymentFailed();
 
     event TokenCreated(address token);
 
@@ -69,19 +69,10 @@ contract BuzzTokenFactory is AccessControl {
         bytes memory bytecode =
             abi.encodePacked(
                 type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, totalSupplyOfTokens)
+                abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
             );
 
-        assembly {
-            token := create2(
-                0, 
-                add(bytecode, 0x20), 
-                mload(bytecode), 
-                salt
-            )
-        }
-
-        if (token == address(0)) revert BuzzToken_DeploymentFailed();
+        token = CREATE3.deploy(salt, bytecode, 0);
 
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

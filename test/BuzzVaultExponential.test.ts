@@ -135,14 +135,16 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Token balance after second buy:", vaultTokenBalanceAfterSecondBuy.toString());
             console.log("User2 BERA balance after second buy:", user2BalanceAfterSecondBuy.toString());
             console.log("Vault token info after second buy:", tokenInfoAfterSecondBuy);
-            console.log("Token address after salt exponential:", token.address);
-            console.log("Factory address exponential:", factory.address);
 
             expect(vaultTokenBalanceAfterSecondBuy).to.be.below(vaultTokenBalanceAfterFirstBuy);
 
             // Assertions on balances, vault state, etc.
             expect(tokenInfoAfterSecondBuy.tokenBalance).to.be.below(tokenInfoAfterFirstBuy.tokenBalance);
             expect(tokenInfoAfterSecondBuy.beraBalance).to.be.above(tokenInfoAfterFirstBuy.beraBalance);
+
+            console.log("Token address after salt exponential:", token.address);
+            console.log("Factory address exponential:", factory.address);
+            console.log("Owner address exponential:", ownerSigner.address);
         });
     });
 });

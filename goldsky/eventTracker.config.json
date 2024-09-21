@@ -4,6 +4,9 @@
   "abis": {
     "eventTracker": {
       "path": "./eventTracker.abi.json"
+    },
+    "vault": {
+      "path": "./vault.abi.json"
     }
   },
   "instances": [
@@ -11,7 +14,23 @@
       "abi": "eventTracker",
       "address": "0x0e98D5F388Bc9df3aC65F0Ade5DB8350D1669d29",
       "startBlock": 4142079,
-      "chain": "berachain-bartio"
+      "chain": "berachain-bartio",
+      "enrich": {
+        "trade(address,address,uint256,uint256,bool,address)": {
+          "calls": {
+            "marketcap": {
+              "name": "getMarketCapFor",
+              "params": "event.params.token"
+            }
+          },
+          "entities": {
+            "MarketCap": {
+              "token address": "event.params.token.toHexString()",
+              "marketcap uint256": "calls.marketcap"
+            }
+          }
+        }
+      }
     }
   ]
 }

@@ -39,7 +39,7 @@ contract BuzzTokenFactory is Ownable {
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
 
-        eventTracker.emitTokenCreated(token, name, symbol, description, image, vault);
+        eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
         emit TokenCreated(token);
         return address(token);
     }

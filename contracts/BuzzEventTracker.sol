@@ -9,7 +9,7 @@ contract BuzzEventTracker is Ownable {
 
     // Amounts emitted
     event trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, bool isBuyOrder, address vault);
-    event tokenCreated(address token, string name, string symbol, string description, string image, address vault);
+    event tokenCreated(address token, string name, string symbol, string description, string image, address deployer, address vault);
 
     constructor(address[] memory _eventSetters) {
         for (uint256 i = 0; i < _eventSetters.length; i++) {
@@ -28,10 +28,11 @@ contract BuzzEventTracker is Ownable {
         string memory symbol,
         string memory description,
         string memory image,
+        address deployer,
         address vault
     ) public {
         if (!eventSetters[msg.sender]) revert BuzzEventTracker_Unauthorized();
-        emit tokenCreated(token, name, symbol, description, image, vault);
+        emit tokenCreated(token, name, symbol, description, image, deployer, vault);
     }
 
     function setEventSetter(address _contract, bool enable) public onlyOwner {

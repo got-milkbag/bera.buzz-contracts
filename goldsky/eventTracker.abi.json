@@ -70,6 +70,12 @@
       {
         "indexed": false,
         "internalType": "address",
+        "name": "deployer",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "address",
         "name": "vault",
         "type": "address"
       }
@@ -146,6 +152,11 @@
         "internalType": "string",
         "name": "image",
         "type": "string"
+      },
+      {
+        "internalType": "address",
+        "name": "deployer",
+        "type": "address"
       },
       {
         "internalType": "address",

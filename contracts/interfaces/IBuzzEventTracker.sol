@@ -10,6 +10,7 @@ interface IBuzzEventTracker {
         string memory symbol,
         string memory description,
         string memory image,
+        address deployer,
         address vault
     ) external;
 }

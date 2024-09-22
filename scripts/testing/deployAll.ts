@@ -25,6 +25,7 @@ async function main() {
     // Deploy BexPriceDecoder
     const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
     const bexPriceDecoder = await BexPriceDecoder.deploy(wberaHoneyLpToken, crocQueryAddress);
+    console.log("BexPriceDecoder deployed to:", bexPriceDecoder.address);
 
     // Deploy ReferralManager
     const ReferralManager = await ethers.getContractFactory("ReferralManager");

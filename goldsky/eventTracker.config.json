@@ -20,7 +20,9 @@
           "calls": {
             "marketcap": {
               "name": "getMarketCapFor",
-              "params": "event.params.token"
+              "params": "event.params.token",
+              "abi": "vault",
+              "source": "event.params.vault"
             }
           },
           "entities": {

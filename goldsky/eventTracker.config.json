@@ -9,9 +9,29 @@
   "instances": [
     {
       "abi": "eventTracker",
-      "address": "0x0e98D5F388Bc9df3aC65F0Ade5DB8350D1669d29",
-      "startBlock": 4142079,
-      "chain": "berachain-bartio"
+      "address": "0x27Dea27FB6845F9b69425A380331F3ef2Ec2fa81",
+      "startBlock": 4627185,
+      "chain": "berachain-bartio",
+      "enrich": {
+        "handlers": {
+          "trade(indexed address,indexed address,uint256,uint256,bool,address)": {
+            "calls": {
+              "marketcap": {
+                "name": "getMarketCapFor",
+                "params": "event.params.token",
+                "source": "event.params.vault",
+                "required": true
+              }
+            },
+            "entities": {
+              "MarketCap": {
+                "token address": "event.params.token.toHexString()",
+                "marketcap uint256": "calls.marketcap"
+              }
+            }
+          }
+        }
+      }
     }
   ]
 }

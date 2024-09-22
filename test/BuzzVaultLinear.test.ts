@@ -29,6 +29,9 @@ describe("BuzzVaultLinear Tests", () => {
     let referralManager: Contract;
     let eventTracker: Contract;
     let expVault: Contract;
+    let bexLpToken: Contract;
+    let crocQuery: Contract;
+    let bexPriceDecoder: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -40,6 +43,18 @@ describe("BuzzVaultLinear Tests", () => {
 
         [ownerSigner, user1Signer, user2Signer, feeRecipientSigner] = await ethers.getSigners();
         feeRecipient = feeRecipientSigner.address;
+
+        // Deploy mock BexLpToken
+        const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
+        bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
+
+        //Deploy mock ICrocQuery
+        const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
+        crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -55,11 +70,23 @@ describe("BuzzVaultLinear Tests", () => {
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+        vault = await Vault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
@@ -120,7 +147,7 @@ describe("BuzzVaultLinear Tests", () => {
         it("should revert if msg.value is zero", async () => {
             await expect(
                 vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
-            ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidAmount");
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_QuoteAmountZero");
         });
         it("should revert if token doesn't exist", async () => {
             await expect(
@@ -156,20 +183,41 @@ describe("BuzzVaultLinear Tests", () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
 
+            // const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            // console.log("Price per token in Bera: ", pricePerToken);
+
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
+        });
+    });
+    describe("sell", () => {
+        beforeEach(async () => {
+            await vault
+                .connect(user1Signer)
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")});
+        });
+        it("should revert if token doesn't exist", async () => {
+            await expect(
+                vault.sell(ownerSigner.address, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero)
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
+        });
+        it("should emit a trade event", async () => {
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(vault.address, userTokenBalance);
+            await expect(vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
+                eventTracker,
+                "trade"
+            );
+        });
+        it("should increase the tokenBalance", async () => {
+            const tokenInfoBefore = await vault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(vault.address, userTokenBalance);
+            await vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero);
+            const tokenInfoAfter = await vault.tokenInfo(token.address);
 
-            // calculate sale price
-            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            console.log("Price per token in Bera: ", pricePerToken);
-
-            const amountOut = await vault.quote(token.address, msgValue, true);
-            const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);
-            console.log("Price per token in Bera: ", pricePerTokenQuote);
-            const amountOut1 = await vault.quote(token.address, 1, true);
-            const pricePerTokenQuote1 = calculateTokenPrice(msgValue, amountOut1);
-            console.log("Price per token in Bera: ", pricePerTokenQuote1);
+            expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].add(userTokenBalance));
         });
     });
 });

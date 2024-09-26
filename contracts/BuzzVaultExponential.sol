@@ -107,13 +107,17 @@ contract BuzzVaultExponential is BuzzVault {
      */
     function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
         TokenInfo storage info = tokenInfo[token];
-        if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
+        uint256 tokenBalance = info.tokenBalance;
+        uint256 beraBalance = info.beraBalance;
+        uint256 totalSupply = info.totalSupply;
+
+        if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
 
         if (isBuyOrder) {
-            return _calculateBuyPrice(amount, info.beraBalance, info.tokenBalance, info.totalSupply);
+            return _calculateBuyPrice(amount, beraBalance, tokenBalance, totalSupply);
         } else {
-            return _calculateSellPrice(amount, info.tokenBalance, info.beraBalance, info.totalSupply);
+            return _calculateSellPrice(amount, tokenBalance, beraBalance, totalSupply);
         }
     }
 

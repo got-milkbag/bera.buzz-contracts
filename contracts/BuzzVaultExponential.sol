@@ -87,11 +87,11 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
         if (beraAmount < minBera || beraAmount == 0) revert BuzzVault_SlippageExceeded();
 
-        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
-
         // Update balances
         info.beraBalance -= beraAmount;
         info.tokenBalance += tokenAmount;
+
+        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
         _transferFee(feeRecipient, beraAmountPrFee);
         _transferFee(payable(msg.sender), netBeraAmount);

@@ -102,7 +102,9 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
-        if (address(this).balance < msg.value) revert BuzzVault_InvalidReserves();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokens) revert BuzzVault_InvalidReserves();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 

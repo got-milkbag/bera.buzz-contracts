@@ -36,7 +36,6 @@ contract BuzzVaultLinear is BuzzVault {
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);
             beraAmountAfFee = (beraAmount * bps) / 10000;
-            _forwardReferralFee(msg.sender, beraAmountAfFee);
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
@@ -49,6 +48,8 @@ contract BuzzVaultLinear is BuzzVault {
         info.lastPrice = beraPerToken;
 
         _transferFee(feeRecipient, beraAmountPrFee);
+
+        if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
         IERC20(token).transfer(msg.sender, tokenAmount);
         return tokenAmount;
@@ -69,30 +70,33 @@ contract BuzzVaultLinear is BuzzVault {
         address affiliate,
         TokenInfo storage info
     ) internal override returns (uint256) {
-        // TODO: check if bera amount to be bought is available
         (uint256 beraAmount, uint256 beraPerToken) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        if (address(this).balance < beraAmount) revert BuzzVault_InvalidReserves();
+        if (beraAmount < minBera || beraAmount == 0) revert BuzzVault_SlippageExceeded();
 
         uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
         uint256 beraAmountAfFee = 0;
+
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);
             beraAmountAfFee = (beraAmount * bps) / 10000;
-            _forwardReferralFee(msg.sender, beraAmountAfFee);
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
-
-        if (beraAmount < minBera || beraAmount == 0) revert BuzzVault_SlippageExceeded();
-
-        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
 
         // Update balances
         info.beraBalance -= beraAmount;
         info.tokenBalance += tokenAmount;
         info.lastPrice = beraPerToken;
 
+        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
+
         _transferFee(feeRecipient, beraAmountPrFee);
+
+        if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
+
         _transferFee(payable(msg.sender), netBeraAmount);
+
         return beraAmount;
     }
 
@@ -105,13 +109,18 @@ contract BuzzVaultLinear is BuzzVault {
      */
     function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
         TokenInfo storage info = tokenInfo[token];
-        if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
 
+        uint256 tokenBalance = info.tokenBalance;
+        uint256 beraBalance = info.beraBalance;
+        if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
+        
+        uint256 totalSupply = info.totalSupply;
+
         if (isBuyOrder) {
-            return _calculateBuyPrice(amount, info.tokenBalance, info.beraBalance, info.totalSupply);
+            return _calculateBuyPrice(amount, tokenBalance, beraBalance, totalSupply);
         } else {
-            return _calculateSellPrice(amount, info.tokenBalance, info.beraBalance, info.totalSupply);
+            return _calculateSellPrice(amount, tokenBalance, beraBalance, totalSupply);
         }
     }
 

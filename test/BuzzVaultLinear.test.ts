@@ -154,6 +154,11 @@ describe("BuzzVaultLinear Tests", () => {
                 vault.buy(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
         });
+        it("should revert if reserves are invalid", async () => {
+            await expect(
+                vault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+            ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidReserves");
+        });
         it("should set a referral if one is provided", async () => {
             await vault
                 .connect(user1Signer)

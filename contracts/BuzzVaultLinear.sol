@@ -41,7 +41,6 @@ contract BuzzVaultLinear is BuzzVault {
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
-        // TOD: check if bera amount to be sold is available
         (uint256 tokenAmount, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
         // Update balances

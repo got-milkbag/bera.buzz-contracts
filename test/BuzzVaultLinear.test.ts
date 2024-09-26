@@ -207,6 +207,12 @@ describe("BuzzVaultLinear Tests", () => {
                 vault.sell(ownerSigner.address, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero)
             ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
         });
+        it("should revert if user balance is invalid", async () => {
+            await expect(vault.sell(token.address, ethers.utils.parseEther("10000000000000000000000"), 0, ethers.constants.AddressZero)).to.be.revertedWithCustomError(
+                vault,
+                "BuzzVault_InvalidUserBalance"
+            );
+        });
         it("should emit a trade event", async () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);

@@ -15,6 +15,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
     error BuzzVault_InvalidReserves();
+    /// @notice Error code emitted when user balance is invalid
+    error BuzzVault_InvalidUserBalance();
     /// @notice Error code emitted when the token is not listed in Bex
     error BuzzVault_BexListed();
     /// @notice Error code emitted when the token is tracked in the curve
@@ -124,6 +126,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
+
+        if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 

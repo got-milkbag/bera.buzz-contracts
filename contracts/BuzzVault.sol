@@ -136,15 +136,18 @@ abstract contract BuzzVault is ReentrancyGuard {
     function getMarketCapFor(address token) public view returns (uint256) {
         TokenInfo storage info = tokenInfo[token];
 
+        // Avoid further storage reads
+        uint256 tokenBalance = info.tokenBalance;
+
         // Ensure token is valid
-        if (info.tokenBalance == 0 && info.beraBalance == 0) {
+        if (tokenBalance == 0 && info.beraBalance == 0) {
             revert BuzzVault_UnknownToken();
         }
 
         // Get the Bera/USD price (assumed 18 decimals)
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
-        uint256 circulatingSupply = info.totalSupply - info.tokenBalance;
+        uint256 circulatingSupply = info.totalSupply - tokenBalance;
         return (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
     }
 

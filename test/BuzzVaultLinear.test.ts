@@ -144,6 +144,43 @@ describe("BuzzVaultLinear Tests", () => {
     });
     describe("buy", () => {
         beforeEach(async () => {});
+        it("should handle multiple buys in succession", async () => {
+            const initialVaultTokenBalance = await token.balanceOf(vault.address);
+            const initialUser1Balance = await ethers.provider.getBalance(user1Signer.address);
+            const initialUser2Balance = await ethers.provider.getBalance(user2Signer.address);
+
+            // Buy 1: user1 buys a small amount of tokens
+            await vault
+                .connect(user1Signer)
+                .buy(token.address, ethers.utils.parseEther("0.0000000001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+            const vaultTokenBalanceAfterFirstBuy = await token.balanceOf(vault.address);
+            const user1BalanceAfterFirstBuy = await ethers.provider.getBalance(user1Signer.address);
+            const tokenInfoAfterFirstBuy = await vault.tokenInfo(token.address);
+
+            console.log("Token balance after first buy:", vaultTokenBalanceAfterFirstBuy.toString());
+            console.log("User1 BERA balance after first buy:", user1BalanceAfterFirstBuy.toString());
+            console.log("Vault token info after first buy:", tokenInfoAfterFirstBuy);
+
+            expect(vaultTokenBalanceAfterFirstBuy).to.be.below(initialVaultTokenBalance);
+
+            // Buy 2: user2 buys using same BERA amount
+            await vault
+                .connect(user2Signer)
+                .buy(token.address, ethers.utils.parseEther("0.0000000001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+            const vaultTokenBalanceAfterSecondBuy = await token.balanceOf(vault.address);
+            const user2BalanceAfterSecondBuy = await ethers.provider.getBalance(user2Signer.address);
+            const tokenInfoAfterSecondBuy = await vault.tokenInfo(token.address);
+
+            console.log("Token balance after second buy:", vaultTokenBalanceAfterSecondBuy.toString());
+            console.log("User2 BERA balance after second buy:", user2BalanceAfterSecondBuy.toString());
+            console.log("Vault token info after second buy:", tokenInfoAfterSecondBuy);
+
+            expect(vaultTokenBalanceAfterSecondBuy).to.be.below(vaultTokenBalanceAfterFirstBuy);
+
+            // Assertions on balances, vault state, etc.
+            expect(tokenInfoAfterSecondBuy.tokenBalance).to.be.below(tokenInfoAfterFirstBuy.tokenBalance);
+            expect(tokenInfoAfterSecondBuy.beraBalance).to.be.above(tokenInfoAfterFirstBuy.beraBalance);
+        });
         it("should revert if msg.value is zero", async () => {
             await expect(
                 vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
@@ -188,8 +225,8 @@ describe("BuzzVaultLinear Tests", () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
 
-            // const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            // console.log("Price per token in Bera: ", pricePerToken);
+            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
 
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));

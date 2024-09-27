@@ -2,7 +2,18 @@ import {expect} from "chai";
 import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import {Contract} from "ethers";
+import {BigNumber, Contract} from "ethers";
+
+// Function to calculate the price per token in ETH
+function calculateTokenPrice(etherSpent: BigNumber, tokensReceived: BigNumber) {
+    // Calculate the price per token (ETH)
+    const pricePerTokenBN = etherSpent.mul(ethers.BigNumber.from("10").pow(18)).div(tokensReceived);
+
+    // Convert the result back to Ether format (as string with 18 decimals)
+    const pricePerTokenInEther = ethers.utils.formatEther(pricePerTokenBN);
+
+    return pricePerTokenInEther;
+}
 
 describe("BuzzVaultExponential Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -216,8 +227,8 @@ describe("BuzzVaultExponential Tests", () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
 
-            // const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            // console.log("Price per token in Bera: ", pricePerToken);
+            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
 
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));

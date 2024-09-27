@@ -39,7 +39,7 @@ async function main() {
 
     // Deploy factory
     const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-    const factory = await Factory.deploy(eventTracker.address);
+    const factory = await Factory.deploy(eventTracker.address, deployerAddress);
     console.log("Factory deployed to:", factory.address);
 
     // Deploy Linear Vault

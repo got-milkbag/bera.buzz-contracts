@@ -15,6 +15,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
     error BuzzVault_InvalidReserves();
+    /// @notice Error code emitted when user balance is invalid
+    error BuzzVault_InvalidUserBalance();
     /// @notice Error code emitted when the token is not listed in Bex
     error BuzzVault_BexListed();
     /// @notice Error code emitted when the token is tracked in the curve
@@ -27,9 +29,13 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_Unauthorized();
     /// @notice Error code emitted when the token already exists
     error BuzzVault_TokenExists();
+    /// @notice Error code emitted when min ERC20 amount not respected
+    error BuzzVault_InvalidMinTokenAmount();
 
     /// @notice The protocol fee in basis points
     uint256 public constant protocolFeeBps = 100; // 100 -> 1%
+    /// @notice The min ERC20 amount for bonding curve swaps
+    uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
 
     /// @notice The factory contract that can register tokens
     address public factory;
@@ -103,6 +109,11 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
+        if (minTokens < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokens) revert BuzzVault_InvalidReserves();
+
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
@@ -122,6 +133,10 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
+        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+
+        if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
+
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountSold = _sell(token, tokenAmount, minBera, affiliate, info);
@@ -136,15 +151,18 @@ abstract contract BuzzVault is ReentrancyGuard {
     function getMarketCapFor(address token) public view returns (uint256) {
         TokenInfo storage info = tokenInfo[token];
 
+        // Avoid further storage reads
+        uint256 tokenBalance = info.tokenBalance;
+
         // Ensure token is valid
-        if (info.tokenBalance == 0 && info.beraBalance == 0) {
+        if (tokenBalance == 0 && info.beraBalance == 0) {
             revert BuzzVault_UnknownToken();
         }
 
         // Get the Bera/USD price (assumed 18 decimals)
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
-        uint256 circulatingSupply = info.totalSupply - info.tokenBalance;
+        uint256 circulatingSupply = info.totalSupply - tokenBalance;
         return (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
     }
 

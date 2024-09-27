@@ -41,6 +41,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
         (uint256 tokenAmount, ) = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
+        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
 
         // Update balances

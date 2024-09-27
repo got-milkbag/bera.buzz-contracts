@@ -41,6 +41,7 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
         (uint256 tokenAmount, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmount < minTokens) revert BuzzVault_SlippageExceeded();
         // Update balances
         info.beraBalance += netBeraAmount;

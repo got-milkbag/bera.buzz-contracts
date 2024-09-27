@@ -29,9 +29,13 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_Unauthorized();
     /// @notice Error code emitted when the token already exists
     error BuzzVault_TokenExists();
+    /// @notice Error code emitted when min ERC20 amount not respected
+    error BuzzVault_InvalidMinTokenAmount();
 
     /// @notice The protocol fee in basis points
     uint256 public constant protocolFeeBps = 100; // 100 -> 1%
+    /// @notice The min ERC20 amount for bonding curve swaps
+    uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
 
     /// @notice The factory contract that can register tokens
     address public factory;
@@ -105,6 +109,8 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
+        if (minTokens < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+
         uint256 contractBalance = IERC20(token).balanceOf(address(this));
         if (contractBalance < minTokens) revert BuzzVault_InvalidReserves();
 
@@ -126,6 +132,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
+
+        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
         if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 

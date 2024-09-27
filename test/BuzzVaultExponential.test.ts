@@ -32,6 +32,7 @@ describe("BuzzVaultExponential Tests", () => {
     let bexLpToken: Contract;
     let crocQuery: Contract;
     let bexPriceDecoder: Contract;
+    let create3Factory: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -43,6 +44,10 @@ describe("BuzzVaultExponential Tests", () => {
 
         [ownerSigner, user1Signer, user2Signer] = await ethers.getSigners();
         feeRecipient = ownerSigner.address;
+
+        // Deploy create3factory
+        const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
+        create3Factory = await Create3Factory.connect(ownerSigner).deploy();
 
         // Deploy mock BexLpToken
         const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
@@ -66,7 +71,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address);
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");

@@ -33,6 +33,7 @@ describe("BuzzVaultLinear Tests", () => {
     let bexLpToken: Contract;
     let crocQuery: Contract;
     let bexPriceDecoder: Contract;
+    let create3Factory: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -44,6 +45,10 @@ describe("BuzzVaultLinear Tests", () => {
 
         [ownerSigner, user1Signer, user2Signer, feeRecipientSigner] = await ethers.getSigners();
         feeRecipient = feeRecipientSigner.address;
+
+        // Deploy mock create3factory
+        const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
+        create3Factory = await Create3Factory.connect(ownerSigner).deploy();
 
         // Deploy mock BexLpToken
         const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
@@ -67,7 +72,7 @@ describe("BuzzVaultLinear Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address);
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
@@ -282,21 +287,6 @@ describe("BuzzVaultLinear Tests", () => {
             await vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero);
             const tokenInfoAfter = await vault.tokenInfo(token.address);
 
-            // calculate sale price
-            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
-            console.log("Price per token in Bera: ", pricePerToken);
-
-            const amountOut = await vault.quote(token.address, msgValue, true);
-            const pricePerTokenQuote = calculateTokenPrice(msgValue, amountOut);
-            console.log("Price per token in Bera: ", pricePerTokenQuote);
-            const amountOut1 = await vault.quote(token.address, 1, true);
-            const pricePerTokenQuote1 = calculateTokenPrice(msgValue, amountOut1);
-            console.log("Price per token in Bera: ", pricePerTokenQuote1);
-
-            console.log("Token address after salt linear:", token.address);
-            console.log("Factory address linear:", factory.address);
-            console.log("Owner address linear:", ownerSigner.address);
-          
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].add(userTokenBalance));
         });
     });

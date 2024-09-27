@@ -6,6 +6,7 @@ const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
 const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
 const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
+const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
 // protocol fee is hardcoded in vaults
 
 // ReferralManager config
@@ -39,7 +40,7 @@ async function main() {
 
     // Deploy factory
     const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-    const factory = await Factory.deploy(eventTracker.address, deployerAddress);
+    const factory = await Factory.deploy(eventTracker.address, deployerAddress, create3Address);
     console.log("Factory deployed to:", factory.address);
 
     // Deploy Linear Vault

@@ -17,7 +17,7 @@ contract BuzzTokenFactory is AccessControl {
 
     /// @dev access control owner role.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-    address public constant CREATE3_ADDRESS = 0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1;
+    address public immutable createDeployer;
 
     IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
@@ -26,9 +26,10 @@ contract BuzzTokenFactory is AccessControl {
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor(address _eventTracker, address _owner) {
+    constructor(address _eventTracker, address _owner, address _createDeployer) {
         eventTracker = IBuzzEventTracker(_eventTracker);
         _grantRole(OWNER_ROLE, _owner);
+        createDeployer = _createDeployer;
     }
 
     function createToken(
@@ -73,7 +74,7 @@ contract BuzzTokenFactory is AccessControl {
                 abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
             );
 
-        token = ICREATE3Factory(CREATE3_ADDRESS).deploy(salt, bytecode);
+        token = ICREATE3Factory(createDeployer).deploy(salt, bytecode);
 
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

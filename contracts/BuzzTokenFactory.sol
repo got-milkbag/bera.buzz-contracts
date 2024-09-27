@@ -43,7 +43,7 @@ contract BuzzTokenFactory is AccessControl {
 
         address token = _deployToken(name, symbol, description, image, vault, salt);
 
-        eventTracker.emitTokenCreated(token, name, symbol, description, image, vault);
+        eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
         emit TokenCreated(token);
 
         return address(token);

@@ -18,6 +18,9 @@ describe("BuzzVaultExponential Tests", () => {
     let referralManager: Contract;
     let eventTracker: Contract;
     let expVault: Contract;
+    let bexLpToken: Contract;
+    let crocQuery: Contract;
+    let bexPriceDecoder: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -29,6 +32,18 @@ describe("BuzzVaultExponential Tests", () => {
 
         [ownerSigner, user1Signer, user2Signer] = await ethers.getSigners();
         feeRecipient = ownerSigner.address;
+
+        // Deploy mock BexLpToken
+        const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
+        bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
+
+        //Deploy mock ICrocQuery
+        const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
+        crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -44,12 +59,23 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+        vault = await Vault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
-
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address
+        );
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);

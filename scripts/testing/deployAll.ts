@@ -1,9 +1,11 @@
 import {ethers} from "hardhat";
 const hre = require("hardhat");
 
-//CONFIG
+//CONFIG - bArtio
 const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
+const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
+const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
 // protocol fee is hardcoded in vaults
 
 // ReferralManager config
@@ -19,6 +21,11 @@ async function main() {
     const [deployer] = await ethers.getSigners();
     const deployerAddress = await deployer.getAddress();
     console.log(`Deployer's address (owner): `, deployerAddress);
+
+    // Deploy BexPriceDecoder
+    const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+    const bexPriceDecoder = await BexPriceDecoder.deploy(wberaHoneyLpToken, crocQueryAddress);
+    console.log("BexPriceDecoder deployed to:", bexPriceDecoder.address);
 
     // Deploy ReferralManager
     const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -37,12 +44,12 @@ async function main() {
 
     // Deploy Linear Vault
     const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-    const vault = await Vault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+    const vault = await Vault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
     console.log("Linear Vault deployed to:", vault.address);
 
     // Deploy Exponential Vault
     const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-    const expVault = await ExpVault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address);
+    const expVault = await ExpVault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
     console.log("Exponential Vault deployed to:", expVault.address);
 
     // Admin: Set Vault in the ReferralManager

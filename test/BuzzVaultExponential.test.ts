@@ -3,6 +3,7 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {Contract} from "ethers";
+import { formatBytes32String } from "ethers/lib/utils";
 
 describe("BuzzVaultExponential Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -54,7 +55,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address);
+        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address);
 
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
@@ -90,7 +91,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address);
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"));
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 
@@ -166,6 +167,10 @@ describe("BuzzVaultExponential Tests", () => {
             // Assertions on balances, vault state, etc.
             expect(tokenInfoAfterSecondBuy.tokenBalance).to.be.below(tokenInfoAfterFirstBuy.tokenBalance);
             expect(tokenInfoAfterSecondBuy.beraBalance).to.be.above(tokenInfoAfterFirstBuy.beraBalance);
+
+            console.log("Token address after salt exponential:", token.address);
+            console.log("Factory address exponential:", factory.address);
+            console.log("Owner address exponential:", ownerSigner.address);
         });
     });
 });

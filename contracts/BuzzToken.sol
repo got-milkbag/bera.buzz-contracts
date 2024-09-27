@@ -13,9 +13,10 @@ contract BuzzToken is ERC20 {
         string memory symbol,
         string memory _description,
         string memory _image,
-        uint256 _totalSupply
+        uint256 _totalSupply,
+        address mintTo
     ) ERC20(name, symbol) {
-        _mint(msg.sender, _totalSupply);
+        _mint(mintTo, _totalSupply);
         description = _description;
         image = _image;
     }

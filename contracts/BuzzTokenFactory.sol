@@ -3,7 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {CREATE3} from "solmate/src/utils/CREATE3.sol";
+import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzVault.sol";
@@ -17,6 +17,7 @@ contract BuzzTokenFactory is AccessControl {
 
     /// @dev access control owner role.
     bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
+    address public constant CREATE3_ADDRESS = 0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1;
 
     IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
@@ -72,7 +73,7 @@ contract BuzzTokenFactory is AccessControl {
                 abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
             );
 
-        token = CREATE3.deploy(salt, bytecode, 0);
+        token = ICREATE3Factory(CREATE3_ADDRESS).deploy(salt, bytecode);
 
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

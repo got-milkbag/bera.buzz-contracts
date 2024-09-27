@@ -10,12 +10,12 @@ Create a `.env` file in the root directory of your project with the following va
 
 The following contracts have been deployed on the **Berachain Testnet**:
 
-- **BexPriceDecoder** deployed to: `0xf25bDD4b47a5EAF8AAA7DDc792b2C07402f365f0`
-- **ReferralManager** deployed to: `0xeD0021F51f9797cf07cE55790e8982c2cC123d4f`
-- **EventTracker** deployed to: `0xE394411B1fD404112a510c8a80126c5e089aF236`
-- **Factory** deployed to: `0xc6Bd5256E59aD5d375b3a290F6FC00Cd582a6a13`
-- **Linear Vault** deployed to: `0x7bfEBDcEd04B2e2Fe880ff76a6BcAA0C5E1a699D`
-- **Exponential Vault** deployed to: `0x9F0e0d7373Ae926BA0a2b411F3b656CFf93EaC0a`
+- **BexPriceDecoder** deployed to: `0xAFFf96BFFe4786EBaF501CFCB640808cecD2E679`
+- **ReferralManager** deployed to: `0x8726A3F88f8fF34831b28dEDCc36DC6fae171e71`
+- **EventTracker** deployed to: `0xa817806f6e5Ce443e134A5631043e53A78F51a7f`
+- **Factory** deployed to: `0xc70A03cfa01E77CDd9762fBF834c2D0AD60fCC3D`
+- **Linear Vault** deployed to: `0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae`
+- **Exponential Vault** deployed to: `0x8a8BF2feF202127A9B957c0F376d25A68344Be2b`
 
 ## Graphql URL
 

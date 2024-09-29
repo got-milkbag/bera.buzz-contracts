@@ -24,7 +24,11 @@ const config: HardhatUserConfig = {
     },
     networks: {
         hardhat: {
-            chainId: 31337,
+            // chainId: 31337,
+            forking: {
+                url: process.env.BARTIO_RPC_URL || "",
+                blockNumber: 4940400,
+            },
         },
         berachainTestnet: {
             chainId: 80084,

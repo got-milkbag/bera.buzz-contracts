@@ -10,13 +10,17 @@ async function main() {
     const [deployer] = await ethers.getSigners();
 
     console.log(
-        "Deploying contracts with the account:",
+        "Creating tokens with the account:",
         deployer.address
     );
 
-    const tokenFactoryAddr = "0xc70A03cfa01E77CDd9762fBF834c2D0AD60fCC3D"
+    const tokenFactoryAddr = "0x650B73A529ad84dbD07f69D9d930Db58Fc3688eD";
+
+    // change every deployment, note deployer is temp proxy and not msg.sender
+    const salt = "0x2000000000000000000000000017e481daa1e92c233b6a774260d53b6f5e25d3";
+
     const tokenFactoryContract = new ethers.Contract(tokenFactoryAddr, CREATE_TOKEN_ABI, deployer);
-    const tx = await tokenFactoryContract.createToken("Test Token", "TT", "Test Token Description", "https://test.com", "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae", "0xa0000000000000000000000000245104a51489e68665a1189eef3f040b253fca");
+    const tx = await tokenFactoryContract.createToken("Test Token", "TT", "Test Token Description", "https://test.com", "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae", salt);
     console.log(tx);
 }
 

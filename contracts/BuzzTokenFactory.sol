@@ -16,8 +16,8 @@ contract BuzzTokenFactory is AccessControl {
     event TokenCreated(address token);
 
     /// @dev access control owner role.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-    address public immutable createDeployer;
+    bytes32 public immutable OWNER_ROLE;
+    address public immutable CREATE_DEPLOYER;
 
     IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
@@ -28,8 +28,9 @@ contract BuzzTokenFactory is AccessControl {
 
     constructor(address _eventTracker, address _owner, address _createDeployer) {
         eventTracker = IBuzzEventTracker(_eventTracker);
+        OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
-        createDeployer = _createDeployer;
+        CREATE_DEPLOYER = _createDeployer;
     }
 
     function createToken(
@@ -39,7 +40,7 @@ contract BuzzTokenFactory is AccessControl {
         string memory image,
         address vault,
         bytes32 salt
-    ) public returns (address) {
+    ) external returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (vaults[vault] == false) revert BuzzToken_InvalidParams();
 
@@ -51,12 +52,12 @@ contract BuzzTokenFactory is AccessControl {
         return address(token);
     }
 
-    function setVault(address _vault, bool enable) public onlyRole(OWNER_ROLE) {
+    function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_InvalidParams();
         vaults[_vault] = enable;
     }
 
-    function setAllowTokenCreation(bool _allowTokenCreation) public onlyRole(OWNER_ROLE) {
+    function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
         allowTokenCreation = _allowTokenCreation;
     }
 
@@ -74,7 +75,7 @@ contract BuzzTokenFactory is AccessControl {
                 abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
             );
 
-        token = ICREATE3Factory(createDeployer).deploy(salt, bytecode);
+        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
         IERC20(token).approve(vault, totalSupplyOfTokens);
         IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);

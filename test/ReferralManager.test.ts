@@ -174,30 +174,30 @@ describe("BuzzVault Tests", () => {
             });
         });
     });
-    describe("getReferreralBpsFor", () => {
+    describe("getReferralBpsFor", () => {
         beforeEach(async () => {
             tx = await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
         it("should return the directFee", async () => {
-            expect(await referralManager.getReferreralBpsFor(ownerSigner.address)).to.be.equal(directRefFeeBps);
+            expect(await referralManager.getReferralBpsFor(ownerSigner.address)).to.be.equal(directRefFeeBps);
         });
         it("should return 0 if past the validUntil date", async () => {
             await helpers.time.increase(ONE_YEAR_IN_SECS);
-            expect(await referralManager.getReferreralBpsFor(ownerSigner.address)).to.be.equal(0);
+            expect(await referralManager.getReferralBpsFor(ownerSigner.address)).to.be.equal(0);
         });
         it("should return 0 if the user doesn't have any referrals", async () => {
-            expect(await referralManager.getReferreralBpsFor(user1Signer.address)).to.be.equal(0);
+            expect(await referralManager.getReferralBpsFor(user1Signer.address)).to.be.equal(0);
         });
-        describe("getReferreralBpsFor - indirect referral", () => {
+        describe("getReferralBpsFor - indirect referral", () => {
             beforeEach(async () => {
                 await vault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
             it("should return the directFee + indirect fee", async () => {
-                expect(await referralManager.getReferreralBpsFor(user2Signer.address)).to.be.equal(directRefFeeBps + indirectRefFeeBps);
+                expect(await referralManager.getReferralBpsFor(user2Signer.address)).to.be.equal(directRefFeeBps + indirectRefFeeBps);
             });
         });
     });

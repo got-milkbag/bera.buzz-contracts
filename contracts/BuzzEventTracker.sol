@@ -5,19 +5,27 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BuzzEventTracker is Ownable {
     error BuzzEventTracker_Unauthorized();
-    mapping(address => bool) public eventSetters;
+    error BuzzEventTracker_AddressZero();
 
     // Amounts emitted
     event trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, bool isBuyOrder, address vault);
     event tokenCreated(address token, string name, string symbol, string description, string image, address deployer, address vault);
 
+    mapping(address => bool) public eventSetters;
+
     constructor(address[] memory _eventSetters) {
-        for (uint256 i = 0; i < _eventSetters.length; i++) {
+        for (uint256 i = 0; i < _eventSetters.length; ++i) {
             eventSetters[_eventSetters[i]] = true;
         }
     }
 
-    function emitTrade(address user, address token, uint256 tokenAmount, uint256 beraAmount, bool isBuyOrder) public {
+    function emitTrade(
+        address user, 
+        address token, 
+        uint256 tokenAmount, 
+        uint256 beraAmount, 
+        bool isBuyOrder
+    ) external {
         if (!eventSetters[msg.sender]) revert BuzzEventTracker_Unauthorized();
         emit trade(user, token, tokenAmount, beraAmount, isBuyOrder, msg.sender);
     }
@@ -30,13 +38,13 @@ contract BuzzEventTracker is Ownable {
         string memory image,
         address deployer,
         address vault
-    ) public {
+    ) external {
         if (!eventSetters[msg.sender]) revert BuzzEventTracker_Unauthorized();
         emit tokenCreated(token, name, symbol, description, image, deployer, vault);
     }
 
-    function setEventSetter(address _contract, bool enable) public onlyOwner {
-        if (_contract == address(0)) revert();
+    function setEventSetter(address _contract, bool enable) external onlyOwner {
+        if (_contract == address(0)) revert BuzzEventTracker_AddressZero();
         eventSetters[_contract] = enable;
     }
 }

@@ -23,6 +23,30 @@ contract BuzzVaultLinear is BuzzVault {
     ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder) {}
 
     /**
+     * @notice Quote the amount of tokens that will be bought or sold at the current curve
+     * @param token The token address
+     * @param amount The amount of tokens or Bera
+     * @param isBuyOrder True if buying tokens, false if selling tokens
+     * @return The amount of tokens or Bera that will be bought or sold
+     */
+    function quote(address token, uint256 amount, bool isBuyOrder) external view override returns (uint256, uint256) {
+        TokenInfo storage info = tokenInfo[token];
+        if (info.bexListed) revert BuzzVault_BexListed();
+
+        uint256 tokenBalance = info.tokenBalance;
+        uint256 beraBalance = info.beraBalance;
+        if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
+        
+        uint256 totalSupply = info.totalSupply;
+
+        if (isBuyOrder) {
+            return _calculateBuyPrice(amount, tokenBalance, beraBalance, totalSupply);
+        } else {
+            return _calculateSellPrice(amount, tokenBalance, beraBalance, totalSupply);
+        }
+    }
+
+    /**
      * @notice Buy tokens from the bonding curve with Bera
      * @param token The token address
      * @param minTokens The minimum amount of tokens to buy
@@ -31,7 +55,7 @@ contract BuzzVaultLinear is BuzzVault {
      */
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal override returns (uint256) {
         uint256 beraAmount = msg.value;
-        uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
+        uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee = 0;
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);
@@ -75,7 +99,7 @@ contract BuzzVaultLinear is BuzzVault {
         if (address(this).balance < beraAmount) revert BuzzVault_InvalidReserves();
         if (beraAmount < minBera || beraAmount == 0) revert BuzzVault_SlippageExceeded();
 
-        uint256 beraAmountPrFee = (beraAmount * protocolFeeBps) / 10000;
+        uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee = 0;
 
         if (affiliate != address(0)) {
@@ -99,30 +123,6 @@ contract BuzzVaultLinear is BuzzVault {
         _transferFee(payable(msg.sender), netBeraAmount);
 
         return beraAmount;
-    }
-
-    /**
-     * @notice Quote the amount of tokens that will be bought or sold at the current curve
-     * @param token The token address
-     * @param amount The amount of tokens or Bera
-     * @param isBuyOrder True if buying tokens, false if selling tokens
-     * @return The amount of tokens or Bera that will be bought or sold
-     */
-    function quote(address token, uint256 amount, bool isBuyOrder) public view override returns (uint256, uint256) {
-        TokenInfo storage info = tokenInfo[token];
-        if (info.bexListed) revert BuzzVault_BexListed();
-
-        uint256 tokenBalance = info.tokenBalance;
-        uint256 beraBalance = info.beraBalance;
-        if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
-        
-        uint256 totalSupply = info.totalSupply;
-
-        if (isBuyOrder) {
-            return _calculateBuyPrice(amount, tokenBalance, beraBalance, totalSupply);
-        } else {
-            return _calculateSellPrice(amount, tokenBalance, beraBalance, totalSupply);
-        }
     }
 
     /**

@@ -16,12 +16,12 @@ contract BuzzTokenFactory is AccessControl {
     event TokenCreated(address token);
 
     /// @dev access control owner role.
+    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1000000000000000000000000000;
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 
     IBuzzEventTracker public eventTracker;
     bool public allowTokenCreation;
-    uint256 public constant totalSupplyOfTokens = 1000000000000000000000000000;
 
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
@@ -58,6 +58,7 @@ contract BuzzTokenFactory is AccessControl {
     }
 
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
+        if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_InvalidParams();
         allowTokenCreation = _allowTokenCreation;
     }
 
@@ -72,13 +73,14 @@ contract BuzzTokenFactory is AccessControl {
         bytes memory bytecode =
             abi.encodePacked(
                 type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
+                abi.encode(name, symbol, description, image, TOTAL_SUPPLY_OF_TOKENS, address(this))
             );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).approve(vault, totalSupplyOfTokens);
-        IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
         isDeployed[token] = true;
+
+        IERC20(token).approve(vault, TOTAL_SUPPLY_OF_TOKENS);
+        IBuzzVault(vault).registerToken(token, TOTAL_SUPPLY_OF_TOKENS);
     }
 }

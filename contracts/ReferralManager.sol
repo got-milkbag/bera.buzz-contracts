@@ -5,9 +5,17 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract ReferralManager is Ownable, ReentrancyGuard {
+    /// @notice Error emitted when the caller is not authorized
     error ReferralManager_Unauthorised();
-    error ReferralManager_InvalidParams();
+    /// @notice Error emitted when the payout is zero
+    error ReferralManager_ZeroPayout();
+    /// @notice Error emitted when the address is zero
+    error ReferralManager_AddressZero();
+    /// @notice Error emitted when the referral has expired
+    error ReferralManager_ReferralExpired();
+    /// @notice Error emitted when the referral has expired
     error ReferralManager_RewardTransferFailed();
+    /// @notice Error emitted when the payout is below the threshold
     error ReferralManager_PayoutBelowThreshold();
 
     event ReferralSet(address indexed referrer, address indexed user);
@@ -52,14 +60,16 @@ contract ReferralManager is Ownable, ReentrancyGuard {
         address referrer = referredBy[user];
         uint256 amount = msg.value;
 
-        if ((validUntil < block.timestamp) || (referrer == address(0)) || (amount == 0)) {
-            revert ReferralManager_InvalidParams();
-        }
+        if (validUntil < block.timestamp) revert ReferralManager_ReferralExpired();
+        if (referrer == address(0)) revert ReferralManager_AddressZero();
+        if (amount == 0) revert ReferralManager_ZeroPayout();
+
 
         if (indirectReferral[user] != address(0)) {
             uint256 indirectReferralAmount = (amount * indirectRefFeeBps) / MAX_FEE_BPS;
             referrerInfo[indirectReferral[user]].rewardToPayOut += indirectReferralAmount;
             emit ReferralRewardReceived(indirectReferral[user], indirectReferralAmount);
+
             uint256 directReferralAmount = amount - indirectReferralAmount;
             referrerInfo[referrer].rewardToPayOut += directReferralAmount;
             emit ReferralRewardReceived(referrer, directReferralAmount);
@@ -81,6 +91,7 @@ contract ReferralManager is Ownable, ReentrancyGuard {
 
         emit ReferralSet(referrer, user);
         address indirectReferrer = referredBy[referrer];
+
         if (indirectReferrer != address(0)) {
             indirectReferral[user] = indirectReferrer;
             referrerInfo[indirectReferrer].indirectReferralCount += 1;
@@ -90,17 +101,16 @@ contract ReferralManager is Ownable, ReentrancyGuard {
 
     /// @notice Callable by the vault with the address of the referred user
     /// @param user The address of the referred user
-    /// @return The total referral bps that the calling contract should deduct from the protocol fee and pass to the Referral Manager via receiveReferral
-    function getReferralBpsFor(address user) external view returns (uint256) {
+    /// @return totalReferralBps The total referral bps that the calling contract should deduct from the protocol fee and pass to the Referral Manager via receiveReferral
+    function getReferralBpsFor(address user) external view returns (uint256 totalReferralBps) {
         if ((validUntil < block.timestamp) || (referredBy[user] == address(0))) {
             return 0;
         }
 
-        uint256 totalReferralBps = directRefFeeBps;
+        totalReferralBps = directRefFeeBps;
         if (indirectReferral[user] != address(0)) {
             totalReferralBps += indirectRefFeeBps;
         }
-        return totalReferralBps;
     }
 
     // User functions
@@ -108,7 +118,8 @@ contract ReferralManager is Ownable, ReentrancyGuard {
     function claimReferralReward() external nonReentrant {
         ReferrerInfo storage info = referrerInfo[msg.sender];
         uint256 reward = info.rewardToPayOut;
-        if ((reward < payoutThreshold) || (reward == 0)) revert ReferralManager_PayoutBelowThreshold();
+        if (reward < payoutThreshold) revert ReferralManager_PayoutBelowThreshold();
+        if (reward == 0) revert ReferralManager_ZeroPayout();
 
         // @dev come back here
         info.rewardToPayOut = info.rewardToPayOut - reward;

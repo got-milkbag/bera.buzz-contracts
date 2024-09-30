@@ -4,7 +4,9 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 
 contract BuzzEventTracker is Ownable {
+    /// @notice Error code emitted when the caller is not authorized
     error BuzzEventTracker_Unauthorized();
+    /// @notice Error code emitted when the address is zero
     error BuzzEventTracker_AddressZero();
 
     // Amounts emitted

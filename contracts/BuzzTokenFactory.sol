@@ -10,13 +10,20 @@ import "./interfaces/IBuzzVault.sol";
 import "./interfaces/IBuzzEventTracker.sol";
 
 contract BuzzTokenFactory is AccessControl {
+    /// @notice Error code emitted when token creation is disabled
     error BuzzToken_TokenCreationDisabled();
-    error BuzzToken_InvalidParams();
+    /// @notice Error code emitted when the same bool is passed
+    error BuzzToken_SameBool();
+    /// @notice Error code emitted when the vault is not registered
+    error BuzzToken_VaultNotRegistered();
+    /// @notice Error code emitted when the address is zero
+    error BuzzToken_AddressZero();
 
     event TokenCreated(address token);
 
     /// @dev access control owner role.
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1000000000000000000000000000;
+
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 
@@ -42,7 +49,7 @@ contract BuzzTokenFactory is AccessControl {
         bytes32 salt
     ) external returns (address) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
-        if (vaults[vault] == false) revert BuzzToken_InvalidParams();
+        if (vaults[vault] == false) revert BuzzToken_VaultNotRegistered();
 
         address token = _deployToken(name, symbol, description, image, vault, salt);
 
@@ -53,12 +60,12 @@ contract BuzzTokenFactory is AccessControl {
     }
 
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
-        if (_vault == address(0)) revert BuzzToken_InvalidParams();
+        if (_vault == address(0)) revert BuzzToken_AddressZero();
         vaults[_vault] = enable;
     }
 
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
-        if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_InvalidParams();
+        if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
     }
 

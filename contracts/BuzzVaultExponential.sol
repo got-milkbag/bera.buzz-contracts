@@ -100,7 +100,8 @@ contract BuzzVaultExponential is BuzzVault {
     ) internal override returns (uint256) {
         (uint256 beraAmount, ) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance);
         if (address(this).balance < beraAmount) revert BuzzVault_InvalidReserves();
-        if (beraAmount < minBera || beraAmount == 0) revert BuzzVault_SlippageExceeded();
+        if (beraAmount < minBera) revert BuzzVault_SlippageExceeded();
+        if (beraAmount == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee = 0;

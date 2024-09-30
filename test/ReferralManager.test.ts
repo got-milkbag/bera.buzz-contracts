@@ -143,7 +143,7 @@ describe("BuzzVault Tests", () => {
                 vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_InvalidParams");
+            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
         });
         it("should increase the referralCount counter", async () => {
@@ -219,7 +219,7 @@ describe("BuzzVault Tests", () => {
                 referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_InvalidParams");
+            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
         });
         it("should allocate the received fee to the user", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
@@ -271,7 +271,7 @@ describe("BuzzVault Tests", () => {
         it("should revert if reward is zero", async () => {
             await expect(referralManager.connect(user2Signer).claimReferralReward()).to.be.revertedWithCustomError(
                 referralManager,
-                "ReferralManager_PayoutBelowThreshold"
+                "ReferralManager_ZeroPayout"
             );
         });
         it("should payout any reward", async () => {

@@ -68,11 +68,10 @@ contract BuzzTokenFactory is AccessControl {
         address vault,
         bytes32 salt
     ) internal returns (address token) {
-        bytes memory bytecode =
-            abi.encodePacked(
-                type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
-            );
+        bytes memory bytecode = abi.encodePacked(
+            type(BuzzToken).creationCode,
+            abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
+        );
 
         token = ICREATE3Factory(createDeployer).deploy(salt, bytecode);
 

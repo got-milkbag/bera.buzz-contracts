@@ -110,6 +110,7 @@ contract ReferralManager is Ownable, ReentrancyGuard {
         uint256 reward = info.rewardToPayOut;
         if ((reward < payoutThreshold) || (reward == 0)) revert ReferralManager_PayoutBelowThreshold();
 
+        // @dev come back here
         info.rewardToPayOut = info.rewardToPayOut - reward;
         info.rewardPaidOut += reward;
 

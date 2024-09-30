@@ -168,7 +168,6 @@ abstract contract BuzzVault is ReentrancyGuard {
     function getMarketCapFor(address token) external view returns (uint256) {
         TokenInfo storage info = tokenInfo[token];
 
-        // Avoid further storage reads
         uint256 tokenBalance = info.tokenBalance;
 
         // Ensure token is valid

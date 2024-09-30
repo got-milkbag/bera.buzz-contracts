@@ -22,7 +22,7 @@ contract BuzzToken is ERC20 {
         image = _image;
     }
 
-    function decimals() public pure override returns (uint8) {
-        return DECIMALS;
+    function decimals() public pure override returns (uint8 _decimals) {
+        _decimals = DECIMALS;
     }
 }

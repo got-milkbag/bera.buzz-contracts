@@ -34,13 +34,13 @@ contract BexPriceDecoder is Ownable {
         quoteToken = lpToken.quoteToken();
     }
 
-    function getPrice() external view returns (uint256) {
+    function getPrice() external view returns (uint256 price) {
         uint128 sqrtPriceX64 = crocQuery.queryPrice(baseToken, quoteToken, poolIdx);
-        return _getPriceFromSqrtPriceX64(sqrtPriceX64);
+        price = _getPriceFromSqrtPriceX64(sqrtPriceX64);
     }
 
     /// @notice Tokens should have 18 decimals
-    function _getPriceFromSqrtPriceX64(uint160 sqrtPriceX64) internal pure returns (uint256) {
-        return sqrtPriceX64.decodeSqrtPriceX64();
+    function _getPriceFromSqrtPriceX64(uint160 sqrtPriceX64) internal pure returns (uint256 price) {
+        price = sqrtPriceX64.decodeSqrtPriceX64();
     }
 }

@@ -47,16 +47,14 @@ contract BuzzTokenFactory is AccessControl {
         string calldata image,
         address vault,
         bytes32 salt
-    ) external returns (address) {
+    ) external returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (vaults[vault] == false) revert BuzzToken_VaultNotRegistered();
 
-        address token = _deployToken(name, symbol, description, image, vault, salt);
+        token = _deployToken(name, symbol, description, image, vault, salt);
 
         eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
         emit TokenCreated(token);
-
-        return address(token);
     }
 
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
@@ -82,10 +80,9 @@ contract BuzzTokenFactory is AccessControl {
                 type(BuzzToken).creationCode, 
                 abi.encode(name, symbol, description, image, TOTAL_SUPPLY_OF_TOKENS, address(this))
             );
-
-        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
-
+        
         isDeployed[token] = true;
+        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
         IERC20(token).approve(vault, TOTAL_SUPPLY_OF_TOKENS);
         IBuzzVault(vault).registerToken(token, TOTAL_SUPPLY_OF_TOKENS);

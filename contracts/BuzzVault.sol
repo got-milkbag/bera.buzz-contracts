@@ -163,9 +163,9 @@ abstract contract BuzzVault is ReentrancyGuard {
     /**
      * @notice Returns the market cap of a token denominated in USD (from a USD-pegged stablecoin)
      * @param token The token address
-     * @return The market cap of the token
+     * @return marketCap The market cap of the token
      */
-    function getMarketCapFor(address token) external view returns (uint256) {
+    function getMarketCapFor(address token) external view returns (uint256 marketCap) {
         TokenInfo storage info = tokenInfo[token];
 
         uint256 tokenBalance = info.tokenBalance;
@@ -179,14 +179,14 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         uint256 circulatingSupply = info.totalSupply - tokenBalance;
-        return (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
+        marketCap = (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
     }
 
-    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256, uint256);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256 amountOut, uint256 pricePerToken);
 
-    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
+    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
+    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256 beraAmount);
 
     /**
      * @notice Transfers bera to a recipient, checking if the transfer was successful
@@ -219,9 +219,9 @@ abstract contract BuzzVault is ReentrancyGuard {
     /**
      * @notice Returns the basis points from ReferralManager to deduct for referrals
      * @param user The user address
-     * @return The basis points to deduct
+     * @return bps The basis points to deduct
      */
-    function _getBpsToDeductForReferrals(address user) internal view returns (uint256) {
-        return referralManager.getReferralBpsFor(user);
+    function _getBpsToDeductForReferrals(address user) internal view returns (uint256 bps) {
+        bps = referralManager.getReferralBpsFor(user);
     }
 }

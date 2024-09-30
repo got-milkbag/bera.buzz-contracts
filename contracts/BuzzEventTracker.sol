@@ -16,7 +16,7 @@ contract BuzzEventTracker is Ownable {
     mapping(address => bool) public eventSetters;
 
     constructor(address[] memory _eventSetters) {
-        for (uint256 i = 0; i < _eventSetters.length; ++i) {
+        for (uint256 i; i < _eventSetters.length; ++i) {
             eventSetters[_eventSetters[i]] = true;
         }
     }

@@ -34,10 +34,10 @@ contract BuzzTokenFactory is AccessControl {
     }
 
     function createToken(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory image,
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata image,
         address vault,
         bytes32 salt
     ) external returns (address) {
@@ -63,10 +63,10 @@ contract BuzzTokenFactory is AccessControl {
     }
 
     function _deployToken(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory image,
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata image,
         address vault,
         bytes32 salt
     ) internal returns (address token) {

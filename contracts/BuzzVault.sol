@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "./libraries/Math.sol";
 import "./interfaces/IReferralManager.sol";
 import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBexPriceDecoder.sol";
@@ -39,16 +40,16 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
 
-    /// @notice The factory contract that can register tokens
-    address public factory;
     /// @notice The address that receives the protocol fee
-    address payable public feeRecipient;
+    address payable public immutable feeRecipient;
+    /// @notice The factory contract that can register tokens
+    address public immutable factory;
     /// @notice The referral manager contract
-    IReferralManager public referralManager;
+    IReferralManager public immutable referralManager;
     /// @notice The event tracker contract
-    IBuzzEventTracker public eventTracker;
+    IBuzzEventTracker public immutable eventTracker;
     /// @notice The price decoder contract
-    IBexPriceDecoder public priceDecoder;
+    IBexPriceDecoder public immutable priceDecoder;
 
     /**
      * @notice Data about a token in the bonding curve

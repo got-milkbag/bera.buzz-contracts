@@ -25,12 +25,12 @@ contract BuzzTokenFactory is AccessControl {
     event TokenCreated(address token);
 
     /// @dev access control owner role.
-    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1000000000000000000000000000;
+    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
 
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 
-    IBuzzEventTracker public eventTracker;
+    IBuzzEventTracker public immutable eventTracker;
     bool public allowTokenCreation;
 
     mapping(address => bool) public vaults;
@@ -52,7 +52,7 @@ contract BuzzTokenFactory is AccessControl {
         bytes32 salt
     ) external returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
-        if (vaults[vault] == false) revert BuzzToken_VaultNotRegistered();
+        if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
 
         token = _deployToken(name, symbol, description, image, vault, salt);
 
@@ -78,16 +78,18 @@ contract BuzzTokenFactory is AccessControl {
         address vault,
         bytes32 salt
     ) internal returns (address token) {
+        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
+
         bytes memory bytecode =
             abi.encodePacked(
                 type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, TOTAL_SUPPLY_OF_TOKENS, address(this))
+                abi.encode(name, symbol, description, image, totalSupply, address(this))
             );
         
         isDeployed[token] = true;
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).safeApprove(vault, TOTAL_SUPPLY_OF_TOKENS);
-        IBuzzVault(vault).registerToken(token, TOTAL_SUPPLY_OF_TOKENS);
+        IERC20(token).safeApprove(vault, totalSupply);
+        IBuzzVault(vault).registerToken(token, totalSupply);
     }
 }

@@ -229,7 +229,7 @@ describe("BuzzVaultExponential Tests", () => {
                 vault
                     .connect(user1Signer)
                     .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
-            ).to.emit(eventTracker, "trade");
+            ).to.emit(eventTracker, "Trade");
         });
         it("should transfer the 1% of msg.value to feeRecipient", async () => {
             const feeRecipientBalanceBefore = await ethers.provider.getBalance(feeRecipient);
@@ -283,7 +283,7 @@ describe("BuzzVaultExponential Tests", () => {
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);
             await expect(vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
                 eventTracker,
-                "trade"
+                "Trade"
             );
         });
         it("should increase the tokenBalance", async () => {

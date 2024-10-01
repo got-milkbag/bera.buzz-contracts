@@ -10,7 +10,7 @@ import "@openzeppelin/contracts/access/Ownable.sol";
 contract BexPriceDecoder is Ownable {
     using FixedPoint64 for uint160;
 
-    ICrocQuery public crocQuery;
+    ICrocQuery public immutable crocQuery;
     ILPToken public lpToken;
 
     uint256 private poolIdx;
@@ -21,17 +21,17 @@ contract BexPriceDecoder is Ownable {
         lpToken = _lpToken;
         crocQuery = _crocQuery;
 
-        poolIdx = lpToken.poolType();
-        baseToken = lpToken.baseToken();
-        quoteToken = lpToken.quoteToken();
+        poolIdx = _lpToken.poolType();
+        baseToken = _lpToken.baseToken();
+        quoteToken = _lpToken.quoteToken();
     }
 
     function setLpToken(ILPToken _lpToken) external onlyOwner {
         lpToken = _lpToken;
 
-        poolIdx = lpToken.poolType();
-        baseToken = lpToken.baseToken();
-        quoteToken = lpToken.quoteToken();
+        poolIdx = _lpToken.poolType();
+        baseToken = _lpToken.baseToken();
+        quoteToken = _lpToken.quoteToken();
     }
 
     function getPrice() external view returns (uint256 price) {

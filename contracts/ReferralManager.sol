@@ -56,7 +56,7 @@ contract ReferralManager is Ownable, ReentrancyGuard {
 
     /// @notice Callable by the vault with the address of the referred user
     function receiveReferral(address user) external payable nonReentrant {
-        if (whitelistedVaults[msg.sender] == false) revert ReferralManager_Unauthorised();
+        if (!whitelistedVaults[msg.sender]) revert ReferralManager_Unauthorised();
         address referrer = referredBy[user];
         uint256 amount = msg.value;
 
@@ -80,7 +80,7 @@ contract ReferralManager is Ownable, ReentrancyGuard {
     }
 
     function setReferral(address referrer, address user) external nonReentrant {
-        if (whitelistedVaults[msg.sender] == false) revert ReferralManager_Unauthorised();
+        if (!whitelistedVaults[msg.sender]) revert ReferralManager_Unauthorised();
 
         if ((referredBy[user] != address(0)) || (referrer == user) || (referrer == address(0))) {
             return;

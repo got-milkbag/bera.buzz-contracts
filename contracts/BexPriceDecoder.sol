@@ -11,6 +11,8 @@ import "./interfaces/bex/ILPToken.sol";
 contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     using FixedPoint64 for uint160;
 
+    event LpTokenSet(address indexed baseToken, address indexed quoteToken, uint256 poolIdx);
+
     ICrocQuery public immutable crocQuery;
     ILPToken public lpToken;
 
@@ -33,6 +35,8 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         poolIdx = _lpToken.poolType();
         baseToken = _lpToken.baseToken();
         quoteToken = _lpToken.quoteToken();
+
+        emit LpTokenSet(baseToken, quoteToken, poolIdx);
     }
 
     function getPrice() external view returns (uint256 price) {

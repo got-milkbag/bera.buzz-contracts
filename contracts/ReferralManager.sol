@@ -24,6 +24,11 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     event IndirectReferralSet(address indexed referrer, address indexed user, address indexed indirectReferrer);
     event ReferralRewardReceived(address indexed referrer, uint256 reward);
     event ReferralPaidOut(address indexed referrer, uint256 reward);
+    event DirectRefFeeBpsSet(uint256 directRefFeeBps);
+    event IndirectRefFeeBpsSet(uint256 indirectRefFeeBps);
+    event ReferralDeadlineSet(uint256 validUntil);
+    event PayoutThresholdSet(uint256 payoutThreshold);
+    event WhitelistedVaultSet(address indexed vault, bool status);
 
     uint256 public constant MAX_FEE_BPS = 10000;
 
@@ -90,10 +95,9 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
         referredBy[user] = referrer;
         referrerInfo[referrer].referralCount += 1;
-
         emit ReferralSet(referrer, user);
-        address indirectReferrer = referredBy[referrer];
 
+        address indirectReferrer = referredBy[referrer];
         if (indirectReferrer != address(0)) {
             indirectReferral[user] = indirectReferrer;
             referrerInfo[indirectReferrer].indirectReferralCount += 1;
@@ -129,6 +133,7 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
         (bool success, ) = msg.sender.call{value: reward}("");
         if (!success) revert ReferralManager_RewardTransferFailed();
+        
         emit ReferralPaidOut(msg.sender, reward);
     }
 
@@ -136,21 +141,26 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
     function setDirectRefFeeBps(uint256 _directRefFeeBps) external onlyOwner {
         directRefFeeBps = _directRefFeeBps;
+        emit DirectRefFeeBpsSet(directRefFeeBps);
     }
 
     function setIndirectRefFeeBps(uint256 _indirectRefFeeBps) external onlyOwner {
         indirectRefFeeBps = _indirectRefFeeBps;
+        emit IndirectRefFeeBpsSet(indirectRefFeeBps);
     }
 
     function setValidUntil(uint256 _validUntil) external onlyOwner {
         validUntil = _validUntil;
+        emit ReferralDeadlineSet(validUntil);
     }
 
     function setPayoutThreshold(uint256 _payoutThreshold) external onlyOwner {
         payoutThreshold = _payoutThreshold;
+        emit PayoutThresholdSet(payoutThreshold);
     }
 
     function setWhitelistedVault(address vault, bool enable) external onlyOwner {
         whitelistedVaults[vault] = enable;
+        emit WhitelistedVaultSet(vault, enable);
     }
 }

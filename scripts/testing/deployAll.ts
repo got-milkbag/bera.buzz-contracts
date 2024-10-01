@@ -1,5 +1,6 @@
 import {ethers} from "hardhat";
 const hre = require("hardhat");
+import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTokenFactory__factory";
 
 //CONFIG - bArtio
 const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -16,6 +17,11 @@ const payoutThreshold = 0;
 const validUntil = Math.floor(Date.now() / 1000) + ONE_YEAR_IN_SECS;
 
 // The deployer is also the owner
+
+const DEPLOY_ABI = [
+    "function deploy (bytes32 salt, bytes memory creationCode) public returns (address deployed)",
+    "function getDeployed (address deployer, bytes32 salt) public view returns (address deployed)",
+];
 
 async function main() {
     //Deployers address
@@ -38,19 +44,46 @@ async function main() {
     const eventTracker = await EventTracker.deploy([]);
     console.log("EventTracker deployed to:", eventTracker.address);
 
-    // Deploy factory
-    const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-    const factory = await Factory.deploy(eventTracker.address, deployerAddress, create3Address);
-    console.log("Factory deployed to:", factory.address);
+    // Deploy factory without Create3
+    // const Factory = await ethers.getContractFactory("BuzzTokenFactory");
+    // const factory = await Factory.deploy(eventTracker.address, deployerAddress, create3Address);
+    // console.log("Factory deployed to:", factory.address);
+
+    // Deploy Factory via Create3
+    const abi = TokenFactory.BuzzTokenFactory__factory.abi;
+    const factoryBytecode = TokenFactory.BuzzTokenFactory__factory.bytecode;
+    const factory = new ethers.ContractFactory(abi, factoryBytecode);
+    const creationCode = factory.bytecode;
+    // change salt for each new deployment
+    const salt = "0x2000000000000000000000000017e481daa1e92c233b6a774260d53b6f5e25c4";
+    const packedBytecode = ethers.utils.solidityPack(
+        ["bytes", "bytes"],
+        [
+            creationCode,
+            ethers.utils.defaultAbiCoder.encode(["address", "address", "address"], [eventTracker.address, deployerAddress, create3Address]),
+        ]
+    );
+    const create3FactoryContract = new ethers.Contract(create3Address, DEPLOY_ABI, deployer);
+    const tx = await create3FactoryContract.deploy(salt, packedBytecode);
+    const deployedAddress = await create3FactoryContract.getDeployed(deployer.address, salt);
+    console.log("Factory deployed to:", deployedAddress);
+    await tx.wait();
+    const factoryInstance = await ethers.getContractAt("BuzzTokenFactory", deployedAddress);
 
     // Deploy Linear Vault
     const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-    const vault = await Vault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
+    const vault = await Vault.deploy(feeRecipient, factoryInstance.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
     console.log("Linear Vault deployed to:", vault.address);
 
     // Deploy Exponential Vault
     const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-    const expVault = await ExpVault.deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
+    const expVault = await ExpVault.deploy(
+        feeRecipient,
+        factoryInstance.address,
+        referralManager.address,
+        eventTracker.address,
+        bexPriceDecoder.address
+    );
     console.log("Exponential Vault deployed to:", expVault.address);
 
     // Admin: Set Vault in the ReferralManager
@@ -60,13 +93,13 @@ async function main() {
     // Admin: Set event setter contracts in EventTracker
     await eventTracker.setEventSetter(vault.address, true);
     await eventTracker.setEventSetter(expVault.address, true);
-    await eventTracker.setEventSetter(factory.address, true);
+    await eventTracker.setEventSetter(factoryInstance.address, true);
 
     // Admin: Set Vault as the factory's vault & enable token creation
-    await factory.setVault(vault.address, true);
-    await factory.setVault(expVault.address, true);
+    await factoryInstance.setVault(vault.address, true);
+    await factoryInstance.setVault(expVault.address, true);
 
-    await factory.setAllowTokenCreation(true);
+    await factoryInstance.setAllowTokenCreation(true);
 }
 
 // We recommend this pattern to be able to use async/await everywhere

@@ -6,10 +6,10 @@ interface IBuzzEventTracker {
 
     function emitTokenCreated(
         address token,
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory image,
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata image,
         address deployer,
         address vault
     ) external;

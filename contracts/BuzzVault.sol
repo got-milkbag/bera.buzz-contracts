@@ -3,14 +3,18 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./libraries/Math.sol";
-import "./interfaces/IReferralManager.sol";
-import "./interfaces/IBuzzEventTracker.sol";
+
 import "./interfaces/IBexPriceDecoder.sol";
+import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IReferralManager.sol";
 
 /// @title BuzzVault contract
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
+    using SafeERC20 for IERC20;
+    
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
@@ -33,20 +37,20 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_InvalidMinTokenAmount();
 
     /// @notice The protocol fee in basis points
-    uint256 public constant protocolFeeBps = 100; // 100 -> 1%
+    uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
 
-    /// @notice The factory contract that can register tokens
-    address public factory;
     /// @notice The address that receives the protocol fee
-    address payable public feeRecipient;
+    address payable public immutable feeRecipient;
+    /// @notice The factory contract that can register tokens
+    address public immutable factory;
     /// @notice The referral manager contract
-    IReferralManager public referralManager;
+    IReferralManager public immutable referralManager;
     /// @notice The event tracker contract
-    IBuzzEventTracker public eventTracker;
+    IBuzzEventTracker public immutable eventTracker;
     /// @notice The price decoder contract
-    IBexPriceDecoder public priceDecoder;
+    IBexPriceDecoder public immutable priceDecoder;
 
     /**
      * @notice Data about a token in the bonding curve
@@ -75,7 +79,13 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
      */
-    constructor(address payable _feeRecipient, address _factory, address _referralManager, address _eventTracker, address _priceDecoder) {
+    constructor(
+        address payable _feeRecipient, 
+        address _factory, 
+        address _referralManager, 
+        address _eventTracker, 
+        address _priceDecoder
+    ) {
         feeRecipient = _feeRecipient;
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
@@ -84,26 +94,16 @@ abstract contract BuzzVault is ReentrancyGuard {
     }
 
     /**
-     * @notice Register a token in the vault
-     * @dev Only the factory can register tokens
-     * @param token The token address
-     * @param tokenBalance The token balance
-     */
-    function registerToken(address token, uint256 tokenBalance) public {
-        if (msg.sender != factory) revert BuzzVault_Unauthorized();
-        if (tokenInfo[token].tokenBalance != 0 && tokenInfo[token].beraBalance != 0) revert BuzzVault_TokenExists();
-        IERC20(token).transferFrom(msg.sender, address(this), tokenBalance);
-        // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), 0, false);
-    }
-
-    /**
      * @notice Buy tokens from the vault with Bera
      * @param token The token address
      * @param minTokens The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buy(address token, uint256 minTokens, address affiliate) public payable nonReentrant {
+    function buy(
+        address token, 
+        uint256 minTokens, 
+        address affiliate
+    ) external payable nonReentrant {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         TokenInfo storage info = tokenInfo[token];
@@ -127,7 +127,12 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param minBera The minimum amount of Bera to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate) public nonReentrant {
+    function sell(
+        address token, 
+        uint256 tokenAmount, 
+        uint256 minBera, 
+        address affiliate
+    ) external nonReentrant {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
 
         TokenInfo storage info = tokenInfo[token];
@@ -143,15 +148,30 @@ abstract contract BuzzVault is ReentrancyGuard {
         eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, false);
     }
 
+        /**
+     * @notice Register a token in the vault
+     * @dev Only the factory can register tokens
+     * @param token The token address
+     * @param tokenBalance The token balance
+     */
+    function registerToken(address token, uint256 tokenBalance) external {
+        if (msg.sender != factory) revert BuzzVault_Unauthorized();
+        if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
+
+        // Assumption: Token has fixed supply upon deployment
+        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), 0, false);
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
+    }
+
     /**
      * @notice Returns the market cap of a token denominated in USD (from a USD-pegged stablecoin)
      * @param token The token address
-     * @return The market cap of the token
+     * @return marketCap The market cap of the token
      */
-    function getMarketCapFor(address token) public view returns (uint256) {
+    function getMarketCapFor(address token) external view returns (uint256 marketCap) {
         TokenInfo storage info = tokenInfo[token];
 
-        // Avoid further storage reads
         uint256 tokenBalance = info.tokenBalance;
 
         // Ensure token is valid
@@ -163,14 +183,24 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         uint256 circulatingSupply = info.totalSupply - tokenBalance;
-        return (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
+        marketCap = (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
     }
 
-    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256 amountOut, uint256 pricePerToken);
 
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256);
+    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
-    function quote(address token, uint256 amount, bool isBuyOrder) public view virtual returns (uint256, uint256);
+    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256 beraAmount);
+
+    /**
+     * @notice Transfers bera to a recipient, checking if the transfer was successful
+     * @param recipient The recipient address
+     * @param amount The amount to transfer
+     */
+    function _transferFee(address payable recipient, uint256 amount) internal {
+        (bool success, ) = recipient.call{value: amount}("");
+        if (!success) revert BuzzVault_FeeTransferFailed();
+    }
 
     /**
      * @notice Regisers the referral for a user in ReferralManager
@@ -179,15 +209,6 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function _setReferral(address referrer, address user) internal {
         referralManager.setReferral(referrer, user);
-    }
-
-    /**
-     * @notice Returns the basis points from ReferralManager to deduct for referrals
-     * @param user The user address
-     * @return The basis points to deduct
-     */
-    function _getBpsToDeductForReferrals(address user) internal view returns (uint256) {
-        return referralManager.getReferreralBpsFor(user);
     }
 
     /**
@@ -200,12 +221,11 @@ abstract contract BuzzVault is ReentrancyGuard {
     }
 
     /**
-     * @notice Transfers bera to a recipient, checking if the transfer was successful
-     * @param recipient The recipient address
-     * @param amount The amount to transfer
+     * @notice Returns the basis points from ReferralManager to deduct for referrals
+     * @param user The user address
+     * @return bps The basis points to deduct
      */
-    function _transferFee(address payable recipient, uint256 amount) internal {
-        (bool success, ) = recipient.call{value: amount}("");
-        if (!success) revert BuzzVault_FeeTransferFailed();
+    function _getBpsToDeductForReferrals(address user) internal view returns (uint256 bps) {
+        bps = referralManager.getReferralBpsFor(user);
     }
 }

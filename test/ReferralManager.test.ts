@@ -143,7 +143,7 @@ describe("BuzzVault Tests", () => {
                 vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_InvalidParams");
+            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
         });
         it("should increase the referralCount counter", async () => {
@@ -174,30 +174,30 @@ describe("BuzzVault Tests", () => {
             });
         });
     });
-    describe("getReferreralBpsFor", () => {
+    describe("getReferralBpsFor", () => {
         beforeEach(async () => {
             tx = await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
         it("should return the directFee", async () => {
-            expect(await referralManager.getReferreralBpsFor(ownerSigner.address)).to.be.equal(directRefFeeBps);
+            expect(await referralManager.getReferralBpsFor(ownerSigner.address)).to.be.equal(directRefFeeBps);
         });
         it("should return 0 if past the validUntil date", async () => {
             await helpers.time.increase(ONE_YEAR_IN_SECS);
-            expect(await referralManager.getReferreralBpsFor(ownerSigner.address)).to.be.equal(0);
+            expect(await referralManager.getReferralBpsFor(ownerSigner.address)).to.be.equal(0);
         });
         it("should return 0 if the user doesn't have any referrals", async () => {
-            expect(await referralManager.getReferreralBpsFor(user1Signer.address)).to.be.equal(0);
+            expect(await referralManager.getReferralBpsFor(user1Signer.address)).to.be.equal(0);
         });
-        describe("getReferreralBpsFor - indirect referral", () => {
+        describe("getReferralBpsFor - indirect referral", () => {
             beforeEach(async () => {
                 await vault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
             it("should return the directFee + indirect fee", async () => {
-                expect(await referralManager.getReferreralBpsFor(user2Signer.address)).to.be.equal(directRefFeeBps + indirectRefFeeBps);
+                expect(await referralManager.getReferralBpsFor(user2Signer.address)).to.be.equal(directRefFeeBps + indirectRefFeeBps);
             });
         });
     });
@@ -219,7 +219,7 @@ describe("BuzzVault Tests", () => {
                 referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_InvalidParams");
+            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
         });
         it("should allocate the received fee to the user", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
@@ -271,7 +271,7 @@ describe("BuzzVault Tests", () => {
         it("should revert if reward is zero", async () => {
             await expect(referralManager.connect(user2Signer).claimReferralReward()).to.be.revertedWithCustomError(
                 referralManager,
-                "ReferralManager_PayoutBelowThreshold"
+                "ReferralManager_ZeroPayout"
             );
         });
         it("should payout any reward", async () => {

@@ -1,83 +1,105 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
+
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
-import "./interfaces/IBuzzVault.sol";
+import "./interfaces/IBuzzTokenFactory.sol";
 import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IBuzzVault.sol";
 
-contract BuzzTokenFactory is AccessControl {
+contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
+    using SafeERC20 for IERC20;
+
+    /// @notice Error code emitted when token creation is disabled
     error BuzzToken_TokenCreationDisabled();
-    error BuzzToken_InvalidParams();
+    /// @notice Error code emitted when the same bool is passed
+    error BuzzToken_SameBool();
+    /// @notice Error code emitted when the vault is not registered
+    error BuzzToken_VaultNotRegistered();
+    /// @notice Error code emitted when the address is zero
+    error BuzzToken_AddressZero();
 
-    event TokenCreated(address token);
+    event TokenCreated(address indexed token);
+    event VaultSet(address indexed vault, bool status);
+    event TokenCreationSet(bool status);
 
     /// @dev access control owner role.
-    bytes32 public constant OWNER_ROLE = keccak256("OWNER_ROLE");
-    address public immutable createDeployer;
+    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
 
-    IBuzzEventTracker public eventTracker;
+    bytes32 public immutable OWNER_ROLE;
+    address public immutable CREATE_DEPLOYER;
+
+    IBuzzEventTracker public immutable eventTracker;
     bool public allowTokenCreation;
-    uint256 public constant totalSupplyOfTokens = 1000000000000000000000000000;
 
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
     constructor(address _eventTracker, address _owner, address _createDeployer) {
         eventTracker = IBuzzEventTracker(_eventTracker);
+        OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
-        createDeployer = _createDeployer;
+        CREATE_DEPLOYER = _createDeployer;
     }
 
     function createToken(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory image,
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata image,
         address vault,
         bytes32 salt
-    ) public returns (address) {
+    ) external nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
-        if (vaults[vault] == false) revert BuzzToken_InvalidParams();
+        if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
 
-        address token = _deployToken(name, symbol, description, image, vault, salt);
+        token = _deployToken(name, symbol, description, image, vault, salt);
 
         eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
         emit TokenCreated(token);
-
-        return address(token);
     }
 
-    function setVault(address _vault, bool enable) public onlyRole(OWNER_ROLE) {
-        if (_vault == address(0)) revert BuzzToken_InvalidParams();
+    function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
+        if (_vault == address(0)) revert BuzzToken_AddressZero();
+        if (vaults[_vault] == enable) revert BuzzToken_SameBool();
         vaults[_vault] = enable;
+
+        emit VaultSet(_vault, enable);
     }
 
-    function setAllowTokenCreation(bool _allowTokenCreation) public onlyRole(OWNER_ROLE) {
+    function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
+        if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
+
+        emit TokenCreationSet(allowTokenCreation);
     }
 
     function _deployToken(
-        string memory name,
-        string memory symbol,
-        string memory description,
-        string memory image,
+        string calldata name,
+        string calldata symbol,
+        string calldata description,
+        string calldata image,
         address vault,
         bytes32 salt
     ) internal returns (address token) {
+        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
+
         bytes memory bytecode =
             abi.encodePacked(
                 type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, totalSupplyOfTokens, address(this))
+                abi.encode(name, symbol, description, image, totalSupply, address(this))
             );
-
-        token = ICREATE3Factory(createDeployer).deploy(salt, bytecode);
-
-        IERC20(token).approve(vault, totalSupplyOfTokens);
-        IBuzzVault(vault).registerToken(token, totalSupplyOfTokens);
+        
         isDeployed[token] = true;
+        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
+
+        IERC20(token).safeApprove(vault, totalSupply);
+        IBuzzVault(vault).registerToken(token, totalSupply);
     }
 }

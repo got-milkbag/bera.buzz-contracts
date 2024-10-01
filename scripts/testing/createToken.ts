@@ -1,10 +1,9 @@
 import {ethers} from "hardhat";
 const hre = require("hardhat");
-import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTokenFactory__factory.ts";
 
 const CREATE_TOKEN_ABI =
     [
-        "function createToken (string memory name, string memory symbol, string memory description, string memory image, address vault, bytes32 salt) public returns (address)"
+        "function createToken (string calldata name, string calldata symbol, string calldata description, string calldata image, address vault, bytes32 salt) external returns (address token)"
     ];
 
 async function main() {
@@ -15,14 +14,14 @@ async function main() {
         deployer.address
     );
 
-    const tokenFactoryAddr = "0x29D09d1BC1505C6101d13aF1755265aA61fB9E29";
-    const abi = TokenFactory.BuzzTokenFactory__factory.abi;
+    const tokenFactoryAddr = "0xA61Abb8a2cD1b74E3c83C7D48bb2c0d388189fc3";
 
     // change every deployment, note deployer is temp proxy and not msg.sender
-    const salt = "0x2000000000000000000000000017e481daa1e92c233b6a774260d53b6f5e25d3";
+    const salt = "0x00000000000000000000000000000ef97e7373f5806fd04e465cc1fd7e395ca1";
+    const linearVault = "0xF23a123676028E44117440eC2DFC5fa15c5c5f81";
 
-    const tokenFactoryContract = new ethers.Contract(tokenFactoryAddr, abi, deployer);
-    const tx = await tokenFactoryContract.createToken("Test Token", "TT", "Test Token Description", "https://test.com", "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae", salt);
+    const tokenFactoryContract = new ethers.Contract(tokenFactoryAddr, CREATE_TOKEN_ABI, deployer);
+    const tx = await tokenFactoryContract.createToken("Test Token", "TT", "Test Token Description", "https://test.com", linearVault, salt);
     console.log(tx);
 }
 

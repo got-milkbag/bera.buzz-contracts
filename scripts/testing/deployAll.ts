@@ -55,7 +55,7 @@ async function main() {
     const factory = new ethers.ContractFactory(abi, factoryBytecode);
     const creationCode = factory.bytecode;
     // change salt for each new deployment
-    const salt = "0x2000000000000000000000000017e481daa1e92c233b6a774260d53b6f5e25c4";
+    const salt = "0x2000000000000000000000000017e481daa1e92c233b6a774260d53b6f5e25c7";
     const packedBytecode = ethers.utils.solidityPack(
         ["bytes", "bytes"],
         [

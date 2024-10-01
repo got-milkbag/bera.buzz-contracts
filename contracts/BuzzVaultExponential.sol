@@ -6,6 +6,7 @@ import "./BuzzVault.sol";
 /// @title BuzzVaultExponential contract
 /// @notice A contract implementing an exponential bonding curve
 contract BuzzVaultExponential is BuzzVault {
+    using SafeERC20 for IERC20;
     /**
      * @notice Constructor for a new BuzzVaultExponential contract
      * @param _feeRecipient The address that receives the protocol fee
@@ -90,7 +91,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
         // Transfer tokens to the buyer
-        IERC20(token).transfer(msg.sender, tokenAmountBuy);
+        IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
 
         tokenAmount = tokenAmountBuy;
     }
@@ -131,7 +132,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         netBeraAmount = beraAmountSell - beraAmountPrFee - beraAmountAfFee;
 
-        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
 
         _transferFee(feeRecipient, beraAmountPrFee);
 

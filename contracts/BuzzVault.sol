@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./libraries/Math.sol";
 import "./interfaces/IReferralManager.sol";
 import "./interfaces/IBuzzEventTracker.sol";
@@ -11,6 +12,7 @@ import "./interfaces/IBexPriceDecoder.sol";
 /// @title BuzzVault contract
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
+    using SafeERC20 for IERC20;
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
@@ -157,7 +159,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         // Assumption: Token has fixed supply upon deployment
         tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), 0, false);
 
-        IERC20(token).transferFrom(msg.sender, address(this), tokenBalance);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
 
     /**

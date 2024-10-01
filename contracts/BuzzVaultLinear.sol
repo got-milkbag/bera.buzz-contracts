@@ -6,6 +6,7 @@ import "./BuzzVault.sol";
 /// @title BuzzVaultLinear contract
 /// @notice A contract implementing a linear bonding curve with a fixed slope
 contract BuzzVaultLinear is BuzzVault {
+    using SafeERC20 for IERC20;
     /**
      * @notice Constructor for a new BuzzVaultLinear contract
      * @param _feeRecipient The address that receives the protocol fee
@@ -78,7 +79,7 @@ contract BuzzVaultLinear is BuzzVault {
         (uint256 tokenAmountBuy, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
-        
+
         // Update balances
         info.beraBalance += netBeraAmount;
         info.tokenBalance -= tokenAmountBuy;
@@ -90,7 +91,7 @@ contract BuzzVaultLinear is BuzzVault {
 
         if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
-        IERC20(token).transfer(msg.sender, tokenAmountBuy);
+        IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
     }
 
     /**
@@ -129,7 +130,7 @@ contract BuzzVaultLinear is BuzzVault {
         info.tokenBalance += tokenAmount;
         info.lastPrice = beraPerToken;
 
-        IERC20(token).transferFrom(msg.sender, address(this), tokenAmount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
 
         _transferFee(feeRecipient, beraAmountPrFee);
 

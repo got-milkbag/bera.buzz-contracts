@@ -156,7 +156,7 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function registerToken(address token, uint256 tokenBalance) external {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
-        if (tokenInfo[token].tokenBalance != 0 && tokenInfo[token].beraBalance != 0) revert BuzzVault_TokenExists();
+        if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
 
         // Assumption: Token has fixed supply upon deployment
         tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), 0, false);

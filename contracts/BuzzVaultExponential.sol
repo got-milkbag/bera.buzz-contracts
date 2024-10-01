@@ -69,7 +69,7 @@ contract BuzzVaultExponential is BuzzVault {
     ) internal override returns (uint256 tokenAmount) {
         uint256 beraAmount = msg.value;
         uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
-        uint256 beraAmountAfFee = 0;
+        uint256 beraAmountAfFee;
 
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);

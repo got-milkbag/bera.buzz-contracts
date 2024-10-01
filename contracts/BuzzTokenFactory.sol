@@ -7,10 +7,11 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
-import "./interfaces/IBuzzVault.sol";
+import "./interfaces/IBuzzTokenFactory.sol";
 import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IBuzzVault.sol";
 
-contract BuzzTokenFactory is AccessControl {
+contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
 
     /// @notice Error code emitted when token creation is disabled

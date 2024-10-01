@@ -5,9 +5,10 @@ import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./libraries/Math.sol";
-import "./interfaces/IReferralManager.sol";
-import "./interfaces/IBuzzEventTracker.sol";
+
 import "./interfaces/IBexPriceDecoder.sol";
+import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IReferralManager.sol";
 
 /// @title BuzzVault contract
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts

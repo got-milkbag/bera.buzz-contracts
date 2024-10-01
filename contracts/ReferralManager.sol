@@ -4,7 +4,9 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/access/Ownable.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract ReferralManager is Ownable, ReentrancyGuard {
+import "./interfaces/IReferralManager.sol";
+
+contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     /// @notice Error emitted when the caller is not authorized
     error ReferralManager_Unauthorised();
     /// @notice Error emitted when the payout is zero

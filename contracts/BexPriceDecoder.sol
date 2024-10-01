@@ -1,13 +1,14 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "./libraries/FixedPoint64.sol";
-import "./interfaces/bex/ILPToken.sol";
-import "./interfaces/bex/ICrocQuery.sol";
-
 import "@openzeppelin/contracts/access/Ownable.sol";
+import "./libraries/FixedPoint64.sol";
 
-contract BexPriceDecoder is Ownable {
+import "./interfaces/IBexPriceDecoder.sol";
+import "./interfaces/bex/ICrocQuery.sol";
+import "./interfaces/bex/ILPToken.sol";
+
+contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     using FixedPoint64 for uint160;
 
     ICrocQuery public immutable crocQuery;

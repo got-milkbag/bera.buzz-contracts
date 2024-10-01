@@ -7,6 +7,7 @@ import "./BuzzVault.sol";
 /// @notice A contract implementing an exponential bonding curve
 contract BuzzVaultExponential is BuzzVault {
     using SafeERC20 for IERC20;
+    
     /**
      * @notice Constructor for a new BuzzVaultExponential contract
      * @param _feeRecipient The address that receives the protocol fee

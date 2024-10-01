@@ -7,6 +7,7 @@ import "./BuzzVault.sol";
 /// @notice A contract implementing a linear bonding curve with a fixed slope
 contract BuzzVaultLinear is BuzzVault {
     using SafeERC20 for IERC20;
+    
     /**
      * @notice Constructor for a new BuzzVaultLinear contract
      * @param _feeRecipient The address that receives the protocol fee

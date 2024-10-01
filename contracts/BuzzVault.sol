@@ -13,6 +13,7 @@ import "./interfaces/IBexPriceDecoder.sol";
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid

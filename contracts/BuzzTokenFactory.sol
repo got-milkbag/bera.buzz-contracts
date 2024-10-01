@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
@@ -10,6 +11,8 @@ import "./interfaces/IBuzzVault.sol";
 import "./interfaces/IBuzzEventTracker.sol";
 
 contract BuzzTokenFactory is AccessControl {
+    using SafeERC20 for IERC20;
+
     /// @notice Error code emitted when token creation is disabled
     error BuzzToken_TokenCreationDisabled();
     /// @notice Error code emitted when the same bool is passed
@@ -84,7 +87,7 @@ contract BuzzTokenFactory is AccessControl {
         isDeployed[token] = true;
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).approve(vault, TOTAL_SUPPLY_OF_TOKENS);
+        IERC20(token).safeApprove(vault, TOTAL_SUPPLY_OF_TOKENS);
         IBuzzVault(vault).registerToken(token, TOTAL_SUPPLY_OF_TOKENS);
     }
 }

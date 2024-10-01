@@ -25,7 +25,9 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Error code emitted when the address is zero
     error BuzzToken_AddressZero();
 
-    event TokenCreated(address token);
+    event TokenCreated(address indexed token);
+    event VaultSet(address indexed vault, bool status);
+    event TokenCreationSet(bool status);
 
     /// @dev access control owner role.
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
@@ -65,12 +67,17 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_AddressZero();
+        if (vaults[_vault] == enable) revert BuzzToken_SameBool();
         vaults[_vault] = enable;
+
+        emit VaultSet(_vault, enable);
     }
 
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
         if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
+
+        emit TokenCreationSet(allowTokenCreation);
     }
 
     function _deployToken(

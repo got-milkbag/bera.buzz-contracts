@@ -4,7 +4,8 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 
 contract BuzzToken is ERC20 {
-    uint8 private constant _decimals = 18;
+    uint8 private constant DECIMALS = 18;
+    
     string public description;
     string public image;
 
@@ -21,7 +22,7 @@ contract BuzzToken is ERC20 {
         image = _image;
     }
 
-    function decimals() public view override returns (uint8) {
-        return _decimals;
+    function decimals() public pure override returns (uint8 _decimals) {
+        _decimals = DECIMALS;
     }
 }

@@ -1,7 +1,9 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
+
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/create3/ICREATE3Factory.sol";
@@ -11,7 +13,7 @@ import "./interfaces/IBuzzTokenFactory.sol";
 import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBuzzVault.sol";
 
-contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
+contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
 
     /// @notice Error code emitted when token creation is disabled
@@ -51,7 +53,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         string calldata image,
         address vault,
         bytes32 salt
-    ) external returns (address token) {
+    ) external nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
 

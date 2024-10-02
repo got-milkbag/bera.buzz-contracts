@@ -19,4 +19,14 @@ library Math {
         }
         return x;
     }
+
+    function sqrt(uint256 x) internal pure returns (uint256) {
+        uint256 z = (x + 1) / 2; // a = x, b = 1, (a + b) / 2 >= sqrt(ab)
+        uint256 y = x;
+        while (z < y) { // y = (x/z + z)/2; z = sqrt(x)
+            y = z;
+            z = (x / z + z) / 2;
+        }
+        return z;
+    }
 }

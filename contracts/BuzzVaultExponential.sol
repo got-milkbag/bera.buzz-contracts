@@ -44,12 +44,12 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 beraBalance = info.beraBalance;
         if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
 
-        uint256 totalSupply = info.totalSupply;
+        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
         if (isBuyOrder) {
-            return _calculateBuyPrice(amount, beraBalance, tokenBalance, totalSupply);
+            return _calculateBuyPrice(amount, beraBalance, totalSupply);
         } else {
-            return _calculateSellPrice(amount, tokenBalance, beraBalance);
+            return _calculateSellPrice(amount, TOTAL_SUPPLY_OF_TOKENS);
         }
     }
 
@@ -77,7 +77,7 @@ contract BuzzVaultExponential is BuzzVault {
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
-        (uint256 tokenAmountBuy, ) = _calculateBuyPrice(netBeraAmount, info.beraBalance, info.tokenBalance, info.totalSupply);
+        (uint256 tokenAmountBuy, ) = _calculateBuyPrice(netBeraAmount, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
 
@@ -113,7 +113,7 @@ contract BuzzVaultExponential is BuzzVault {
         address affiliate,
         TokenInfo storage info
     ) internal override returns (uint256 netBeraAmount) {
-        (uint256 beraAmountSell, ) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance);
+        (uint256 beraAmountSell, ) = _calculateSellPrice(tokenAmount, TOTAL_SUPPLY_OF_TOKENS);
 
         if (address(this).balance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
@@ -145,7 +145,6 @@ contract BuzzVaultExponential is BuzzVault {
     /**
      * @notice Calculate the amount of tokens that can be bought at the current curve
      * @param beraAmountIn The amount of Bera to buy with
-     * @param beraBalance The Bera balance of the token
      * @param tokenBalance The token balance of the token
      * @param totalSupply The total supply of the token
      * @return amountOut The amount of tokens that will be bought
@@ -153,38 +152,40 @@ contract BuzzVaultExponential is BuzzVault {
      */
     function _calculateBuyPrice(
         uint256 beraAmountIn,
-        uint256 beraBalance,
         uint256 tokenBalance,
         uint256 totalSupply
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken) {
         if (beraAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
-        // Exponential price calculation (tokens = beraBalance + beraAmountIn)^2 / tokenBalance
-        amountOut = ((beraBalance + beraAmountIn) ** 2) / tokenBalance;
-        uint256 newSupply = tokenBalance - amountOut;
+        uint256 k = tokenBalance * tokenBalance;
+        uint256 newSupply = Math.sqrt(k + 2 * beraAmountIn * 1e18);
+
         if (newSupply > totalSupply) revert BuzzVault_InvalidReserves();
-        
-        pricePerToken = ((beraAmountIn * 1e18) / amountOut);
+
+        amountOut = newSupply - tokenBalance;
+        pricePerToken = (beraAmountIn * 1e18) / amountOut;
     }
 
     /**
      * @notice Calculate the amount of Bera that can be received for selling tokens
      * @param tokenAmountIn The amount of tokens to sell
-     * @param tokenBalance The token balance of the token
-     * @param beraBalance The Bera balance of the token
+     * @param totalSupply The total supply of the token
      * @return amountOut The amount of Bera that will be received
      * @return pricePerToken The price per token, scalend by 1e18
      */
     function _calculateSellPrice(
         uint256 tokenAmountIn,
-        uint256 tokenBalance,
-        uint256 beraBalance
+        uint256 totalSupply
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken) {
         if (tokenAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
-        // Calculate sell price using inverse exponential curve
-        uint256 newTokenBalance = tokenBalance + tokenAmountIn;
-        amountOut = beraBalance - (newTokenBalance ** 2 / tokenBalance);
+        uint256 currentSupply = totalSupply;
+        uint256 k = currentSupply * currentSupply;
+
+        uint256 newSupply = currentSupply - tokenAmountIn;
+        uint256 newK = newSupply * newSupply;
+
+        amountOut = (k - newK) / (2 * 1e18);
         pricePerToken = ((amountOut * 1e18) / tokenAmountIn);
     }
 }

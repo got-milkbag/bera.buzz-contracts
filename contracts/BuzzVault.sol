@@ -40,6 +40,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
+    /// @notice The total supply of tokens
+    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -63,7 +65,6 @@ abstract contract BuzzVault is ReentrancyGuard {
     struct TokenInfo {
         uint256 tokenBalance;
         uint256 beraBalance; // aka reserve balance
-        uint256 totalSupply;
         uint256 lastPrice;
         bool bexListed;
     }
@@ -159,7 +160,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), 0, false);
+        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
@@ -182,7 +183,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         // Get the Bera/USD price (assumed 18 decimals)
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
-        uint256 circulatingSupply = info.totalSupply - tokenBalance;
+        uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
         marketCap = (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
     }
 

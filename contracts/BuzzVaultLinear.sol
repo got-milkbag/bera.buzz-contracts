@@ -44,7 +44,7 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 beraBalance = info.beraBalance;
         if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
         
-        uint256 totalSupply = info.totalSupply;
+        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
         if (isBuyOrder) {
             (amountOut, pricePerToken) = _calculateBuyPrice(amount, tokenBalance, beraBalance, totalSupply);
@@ -77,7 +77,7 @@ contract BuzzVaultLinear is BuzzVault {
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
-        (uint256 tokenAmountBuy, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        (uint256 tokenAmountBuy, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
 
@@ -111,7 +111,7 @@ contract BuzzVaultLinear is BuzzVault {
         address affiliate,
         TokenInfo storage info
     ) internal override returns (uint256 netBeraAmount) {
-        (uint256 beraAmountSell, uint256 beraPerToken) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, info.totalSupply);
+        (uint256 beraAmountSell, uint256 beraPerToken) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
         if (address(this).balance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
         if (beraAmountSell == 0) revert BuzzVault_QuoteAmountZero();

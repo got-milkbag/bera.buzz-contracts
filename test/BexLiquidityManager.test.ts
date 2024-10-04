@@ -27,10 +27,12 @@ describe("BexLiquidityManager Tests", () => {
         const Token = await ethers.getContractFactory("BuzzToken");
         token = await Token.connect(beraWhale).deploy("Test 1", "TST1", "Desc", "ipfs://", ethers.utils.parseEther("1000000"), beraWhale.address);
 
+        console.log("Token address: ", token.address);
+
         await token.approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000"));
     });
     describe("constructor", () => {
-        it("should set the factory address", async () => {
+        it("should create a pool and add liquidity", async () => {
             await bexLiquidityManager.connect(beraWhale).createPoolAndAdd(token.address, ethers.utils.parseEther("1000000"), {
                 value: ethers.utils.parseEther("1000000"),
             });

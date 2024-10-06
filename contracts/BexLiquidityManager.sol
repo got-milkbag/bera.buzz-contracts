@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "./libraries/Math64x64.sol";
 
 contract BexLiquidityManager {
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
@@ -16,7 +17,7 @@ contract BexLiquidityManager {
         crocSwapDex = ICrocSwapDex(_crocSwapDex);
     }
 
-    function createPoolAndAdd(address token, uint256 amount) external payable  {
+    function createPoolAndAdd(address token, uint256 amount) external payable {
         // Wrap Bera
         uint256 beraAmount = msg.value / 10;
         WBERA.deposit{value: beraAmount}();

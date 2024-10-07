@@ -30,24 +30,9 @@ async function main() {
 
     console.log(approveTx);
 
-    /*
-    const token1 = await Token.deploy("Test 2", "TST2", "Desc", "ipfs://", ethers.utils.parseEther("1000000"), deployer.address);
-
-    console.log("Token1 address: ", token1.address);
-    console.log("BexLiquidityManager address: ", bexLiquidityManager.address);
-
-    const approveTx1 = await token1.connect(deployer).approve(bexLiquidityManager.address, ethers.utils.parseEther("100"));
-
-    await approveTx1.wait();
-
-    console.log(approveTx1);
-    */
-
     const tx = await bexLiquidityManager.createPoolAndAdd(token.address, ethers.utils.parseEther("50"), {
         value: ethers.utils.parseEther("0.01")
     });
-
-    //await tx.wait();
 
     console.log(tx);
 }

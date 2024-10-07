@@ -15,14 +15,16 @@ contract BuzzVaultLinear is BuzzVault {
      * @param _referralManager The referral manager contract
      * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
+     * @param _liquidityManager The liquidity manager contract
      */
     constructor(
         address payable _feeRecipient,
         address _factory,
         address _referralManager,
         address _eventTracker,
-        address _priceDecoder
-    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder) {}
+        address _priceDecoder,
+        address _liquidityManager
+    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder, _liquidityManager) {}
 
     /**
      * @notice Quote the amount of tokens that will be bought or sold at the current curve

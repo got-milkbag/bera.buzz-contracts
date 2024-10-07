@@ -15,14 +15,16 @@ contract BuzzVaultExponential is BuzzVault {
      * @param _referralManager The referral manager contract
      * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
+     * @param _liquidityManager The liquidity manager contract
      */
     constructor(
         address payable _feeRecipient,
         address _factory,
         address _referralManager,
         address _eventTracker,
-        address _priceDecoder
-    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder) {}
+        address _priceDecoder,
+        address _liquidityManager
+    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder, _liquidityManager) {}
 
     /**
      * @notice Quote the amount of tokens that can be bought or sold at the current curve
@@ -49,7 +51,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (isBuyOrder) {
             return _calculateBuyPrice(amount, beraBalance, totalSupply);
         } else {
-            return _calculateSellPrice(amount, TOTAL_SUPPLY_OF_TOKENS);
+            return _calculateSellPrice(amount, totalSupply);
         }
     }
 
@@ -77,13 +79,14 @@ contract BuzzVaultExponential is BuzzVault {
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
-        (uint256 tokenAmountBuy, ) = _calculateBuyPrice(netBeraAmount, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
+        (uint256 tokenAmountBuy, uint256 beraPerToken) = _calculateBuyPrice(netBeraAmount, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
 
         // Update balances
         info.beraBalance += netBeraAmount;
         info.tokenBalance -= tokenAmountBuy;
+        info.lastPrice = beraPerToken;
 
         // Transfer the protocol fee
         _transferFee(feeRecipient, beraAmountPrFee);
@@ -113,7 +116,7 @@ contract BuzzVaultExponential is BuzzVault {
         address affiliate,
         TokenInfo storage info
     ) internal override returns (uint256 netBeraAmount) {
-        (uint256 beraAmountSell, ) = _calculateSellPrice(tokenAmount, TOTAL_SUPPLY_OF_TOKENS);
+        (uint256 beraAmountSell, uint256 beraPerToken) = _calculateSellPrice(tokenAmount, TOTAL_SUPPLY_OF_TOKENS);
 
         if (address(this).balance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
@@ -130,6 +133,7 @@ contract BuzzVaultExponential is BuzzVault {
          // Update balances
         info.beraBalance -= beraAmountSell;
         info.tokenBalance += tokenAmount;
+        info.lastPrice = beraPerToken;
 
         netBeraAmount = beraAmountSell - beraAmountPrFee - beraAmountAfFee;
 

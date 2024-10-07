@@ -8,6 +8,7 @@ import "./libraries/Math.sol";
 
 import "./interfaces/IBexPriceDecoder.sol";
 import "./interfaces/IBuzzEventTracker.sol";
+import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IReferralManager.sol";
 
 /// @title BuzzVault contract
@@ -42,6 +43,12 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
+    /// @notice The bera amount threshold to lock the bonding curve
+    uint256 public constant BERA_MARKET_CAP_LIQ = 12e18;
+    /// @notice Market cap threshold to lock the bonding curve
+    uint256 public constant MARKET_CAP = 69e21;
+    /// @notice Final balance threshold of the bonding curve
+    uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -53,19 +60,22 @@ abstract contract BuzzVault is ReentrancyGuard {
     IBuzzEventTracker public immutable eventTracker;
     /// @notice The price decoder contract
     IBexPriceDecoder public immutable priceDecoder;
+    /// @notice The liquidity manager contract
+    IBexLiquidityManager public immutable liquidityManager;
 
     /**
      * @notice Data about a token in the bonding curve
      * @param tokenBalance The token balance
      * @param beraBalance The Bera balance
-     * @param totalSupply The total supply of the token
      * @param lastPrice The last price of the token
+     * @param beraThreshold The amount of bera on the curve to lock it
      * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
         uint256 tokenBalance;
         uint256 beraBalance; // aka reserve balance
         uint256 lastPrice;
+        uint256 beraThreshold;
         bool bexListed;
     }
 
@@ -79,19 +89,22 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param _referralManager The referral manager contract
      * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
+     * @param _liquidityManager The liquidity manager contract
      */
     constructor(
         address payable _feeRecipient, 
         address _factory, 
         address _referralManager, 
         address _eventTracker, 
-        address _priceDecoder
+        address _priceDecoder,
+        address _liquidityManager
     ) {
         feeRecipient = _feeRecipient;
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
         eventTracker = IBuzzEventTracker(_eventTracker);
         priceDecoder = IBexPriceDecoder(_priceDecoder);
+        liquidityManager = IBexLiquidityManager(_liquidityManager);
     }
 
     /**
@@ -119,6 +132,13 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
+
+        // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K
+        if (info.beraBalance > info.beraThreshold
+            && info.tokenBalance <= CURVE_BALANCE_THRESHOLD
+            && getMarketCapFor(token) > MARKET_CAP) {
+                liquidityManager.createPoolAndAdd(token, 1e18);
+        }
     }
 
     /**
@@ -149,7 +169,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, false);
     }
 
-        /**
+    /**
      * @notice Register a token in the vault
      * @dev Only the factory can register tokens
      * @param token The token address
@@ -159,18 +179,20 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
 
+        uint256 beraAmount = _getBeraAmountForMarketCap();
+
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), false);
+        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), beraAmount, false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
 
-    /**
+        /**
      * @notice Returns the market cap of a token denominated in USD (from a USD-pegged stablecoin)
      * @param token The token address
      * @return marketCap The market cap of the token
      */
-    function getMarketCapFor(address token) external view returns (uint256 marketCap) {
+    function getMarketCapFor(address token) public view returns (uint256 marketCap) {
         TokenInfo storage info = tokenInfo[token];
 
         uint256 tokenBalance = info.tokenBalance;
@@ -228,5 +250,17 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function _getBpsToDeductForReferrals(address user) internal view returns (uint256 bps) {
         bps = referralManager.getReferralBpsFor(user);
+    }
+
+    /**
+     * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
+     * @return beraAmount The amount of BERA for market cap
+     */
+    function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
+        // Get the Bera/USD price (assumed 18 decimals)
+        uint256 beraUsdPrice = priceDecoder.getPrice();
+
+        // Assuming 18 decimal precision
+        beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice;
     }
 }

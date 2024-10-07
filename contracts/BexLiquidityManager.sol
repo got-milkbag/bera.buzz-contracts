@@ -4,11 +4,12 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
+import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "./libraries/Math64x64.sol";
 
-contract BexLiquidityManager {
+contract BexLiquidityManager is IBexLiquidityManager {
     using SafeERC20 for IERC20;
 
     error WrappedDepositFailed();

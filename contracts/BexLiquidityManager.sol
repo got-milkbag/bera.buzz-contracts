@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
+import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "./libraries/Math64x64.sol";
 
 contract BexLiquidityManager {
+    using SafeERC20 for IERC20;
+
     error WrappedDepositFailed();
 
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
@@ -28,9 +32,9 @@ contract BexLiquidityManager {
         if (IERC20(address(WBERA)).balanceOf(address(this)) == 0) revert WrappedDepositFailed();
 
         // Transfer and approve tokens
-        IERC20(token).transferFrom(msg.sender, address(this), amount);
-        IERC20(token).approve(address(crocSwapDex), amount);
-        IERC20(address(WBERA)).approve(address(crocSwapDex), beraAmount);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
+        IERC20(token).safeApprove(address(crocSwapDex), amount);
+        IERC20(address(WBERA)).safeApprove(address(crocSwapDex), beraAmount);
 
         address base = address(WBERA);
         address quote = token;

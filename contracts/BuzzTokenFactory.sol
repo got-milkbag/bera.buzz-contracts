@@ -29,9 +29,9 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
 
-    /// @dev access control owner role.
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
 
+    /// @dev access control owner role.
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 

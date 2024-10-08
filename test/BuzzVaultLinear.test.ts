@@ -166,7 +166,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 1: user1 buys a small amount of tokens
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
             const vaultTokenBalanceAfterFirstBuy = await token.balanceOf(vault.address);
             const user1BalanceAfterFirstBuy = await ethers.provider.getBalance(user1Signer.address);
             const tokenInfoAfterFirstBuy = await vault.tokenInfo(token.address);
@@ -180,7 +180,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 2: user2 buys using same BERA amount
             await vault
                 .connect(user2Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
             const vaultTokenBalanceAfterSecondBuy = await token.balanceOf(vault.address);
             const user2BalanceAfterSecondBuy = await ethers.provider.getBalance(user2Signer.address);
             const tokenInfoAfterSecondBuy = await vault.tokenInfo(token.address);
@@ -255,6 +255,28 @@ describe("BuzzVaultLinear Tests", () => {
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
+        });
+        it("should init a pool and deposit liquidity if preconditions are met", async () => {
+            const msgValue = ethers.utils.parseEther("1");
+
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("2800"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("3000"), 
+            });
+
+            const getMarket = await vault.getMarketCapFor(token.address);
+            console.log("Market cap: ", getMarket.toString());
+
+            const tokenInfoAfter = await vault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+
+            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
+
+            const tokenBalance = tokenInfoAfter[0];
+            console.log("Token balance: ", tokenBalance.toString());
+
+            // check balances
+            expect(tokenInfoAfter[4]).to.be.equal(true);
         });
     });
     describe("sell", () => {

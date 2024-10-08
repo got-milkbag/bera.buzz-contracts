@@ -132,7 +132,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
         // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K
-        if (info.beraBalance > info.beraThreshold && info.tokenBalance <= CURVE_BALANCE_THRESHOLD && getMarketCapFor(token) > MARKET_CAP) {
+        if (getMarketCapFor(token) > MARKET_CAP) {
             info.bexListed = true;
 
             // collect fee
@@ -140,7 +140,7 @@ abstract contract BuzzVault is ReentrancyGuard {
             uint256 dexFee = (info.beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
             _transferFee(feeRecipient, dexFee);
 
-            IERC20(token).approve(address(liquidityManager), info.tokenBalance);
+            IERC20(token).safeApprove(address(liquidityManager), info.tokenBalance);
             liquidityManager.createPoolAndAdd{value: info.beraBalance - dexFee}(token, info.tokenBalance, info.lastPrice);
         }
     }

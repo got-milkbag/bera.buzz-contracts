@@ -33,7 +33,7 @@ describe("BexLiquidityManager Tests", () => {
     });
     describe("constructor", () => {
         it("should create a pool and add liquidity", async () => {
-            await bexLiquidityManager.connect(beraWhale).createPoolAndAdd(token.address, ethers.utils.parseEther("1000000"), {
+            await bexLiquidityManager.connect(beraWhale).createPoolAndAdd(token.address, ethers.utils.parseEther("1000000"), 10, {
                 value: ethers.utils.parseEther("1000000"),
             });
         });

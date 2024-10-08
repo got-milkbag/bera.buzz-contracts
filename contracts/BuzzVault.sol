@@ -15,7 +15,7 @@ import "./interfaces/IReferralManager.sol";
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
-    
+
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
@@ -39,6 +39,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
+    /// @notice The DEX migration fee in basis points
+    uint256 public constant DEX_MIGRATION_FEE_BPS = 500; // 500 -> 5%
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens
@@ -92,10 +94,10 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param _liquidityManager The liquidity manager contract
      */
     constructor(
-        address payable _feeRecipient, 
-        address _factory, 
-        address _referralManager, 
-        address _eventTracker, 
+        address payable _feeRecipient,
+        address _factory,
+        address _referralManager,
+        address _eventTracker,
         address _priceDecoder,
         address _liquidityManager
     ) {
@@ -113,11 +115,7 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param minTokens The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buy(
-        address token, 
-        uint256 minTokens, 
-        address affiliate
-    ) external payable nonReentrant {
+    function buy(address token, uint256 minTokens, address affiliate) external payable nonReentrant {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         TokenInfo storage info = tokenInfo[token];
@@ -134,11 +132,16 @@ abstract contract BuzzVault is ReentrancyGuard {
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
         // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K
-        if (info.beraBalance > info.beraThreshold
-            && info.tokenBalance <= CURVE_BALANCE_THRESHOLD
-            && getMarketCapFor(token) > MARKET_CAP) {
-                info.bexListed = true;
-                liquidityManager.createPoolAndAdd(token, 1e18);
+        if (info.beraBalance > info.beraThreshold && info.tokenBalance <= CURVE_BALANCE_THRESHOLD && getMarketCapFor(token) > MARKET_CAP) {
+            info.bexListed = true;
+
+            // collect fee
+            // TODO: Check if we need to burn the same DEX_MIGRATION_FEE_BPS amount of tokens to keep the curve balanced
+            uint256 dexFee = (info.beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
+            _transferFee(feeRecipient, dexFee);
+
+            IERC20(token).approve(address(liquidityManager), info.tokenBalance);
+            liquidityManager.createPoolAndAdd{value: info.beraBalance - dexFee}(token, info.tokenBalance, info.lastPrice);
         }
     }
 
@@ -149,12 +152,7 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param minBera The minimum amount of Bera to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function sell(
-        address token, 
-        uint256 tokenAmount, 
-        uint256 minBera, 
-        address affiliate
-    ) external nonReentrant {
+    function sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate) external nonReentrant {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
 
         TokenInfo storage info = tokenInfo[token];
@@ -188,7 +186,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
 
-        /**
+    /**
      * @notice Returns the market cap of a token denominated in USD (from a USD-pegged stablecoin)
      * @param token The token address
      * @return marketCap The market cap of the token
@@ -214,7 +212,13 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate, TokenInfo storage info) internal virtual returns (uint256 beraAmount);
+    function _sell(
+        address token,
+        uint256 tokenAmount,
+        uint256 minBera,
+        address affiliate,
+        TokenInfo storage info
+    ) internal virtual returns (uint256 beraAmount);
 
     /**
      * @notice Transfers bera to a recipient, checking if the transfer was successful

@@ -137,6 +137,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (info.beraBalance > info.beraThreshold
             && info.tokenBalance <= CURVE_BALANCE_THRESHOLD
             && getMarketCapFor(token) > MARKET_CAP) {
+                info.bexListed = true;
                 liquidityManager.createPoolAndAdd(token, 1e18);
         }
     }

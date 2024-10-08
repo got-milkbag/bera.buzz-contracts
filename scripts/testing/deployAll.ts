@@ -8,6 +8,7 @@ const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address th
 const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
 const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
 const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
+const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
 // protocol fee is hardcoded in vaults
 
 // ReferralManager config
@@ -70,9 +71,21 @@ async function main() {
     await tx.wait();
     const factoryInstance = await ethers.getContractAt("BuzzTokenFactory", deployedAddress);
 
+    // Deploy BexLiquidityManager
+    const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
+    const bexLiquidityManager = await BexLiquidityManager.deploy(crocSwapDex);
+    console.log("BexLiquidityManager deployed to:", bexLiquidityManager.address);
+
     // Deploy Linear Vault
     const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-    const vault = await Vault.deploy(feeRecipient, factoryInstance.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
+    const vault = await Vault.deploy(
+        feeRecipient, 
+        factoryInstance.address, 
+        referralManager.address, 
+        eventTracker.address, 
+        bexPriceDecoder.address, 
+        bexLiquidityManager.address
+    );
     console.log("Linear Vault deployed to:", vault.address);
 
     // Deploy Exponential Vault
@@ -82,7 +95,8 @@ async function main() {
         factoryInstance.address,
         referralManager.address,
         eventTracker.address,
-        bexPriceDecoder.address
+        bexPriceDecoder.address,
+        bexLiquidityManager.address
     );
     console.log("Exponential Vault deployed to:", expVault.address);
 

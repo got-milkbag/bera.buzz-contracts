@@ -34,10 +34,12 @@ describe("BuzzVaultLinear Tests", () => {
     let crocQuery: Contract;
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
+    let bexLiquidityManager: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const payoutThreshold = 0;
+    const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -74,6 +76,10 @@ describe("BuzzVaultLinear Tests", () => {
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
         factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
 
+        // Deploy liquidity manager
+        const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         vault = await Vault.connect(ownerSigner).deploy(
@@ -81,7 +87,8 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
         );
 
         // Deploy Exponential Vault
@@ -91,7 +98,8 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
         );
 
         // Admin: Set Vault in the ReferralManager

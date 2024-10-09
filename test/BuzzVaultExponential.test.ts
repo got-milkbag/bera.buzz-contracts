@@ -79,17 +79,6 @@ describe("BuzzVaultExponential Tests", () => {
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
 
-        // Deploy Linear Vault
-        const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(
-            feeRecipient,
-            factory.address,
-            referralManager.address,
-            eventTracker.address,
-            bexPriceDecoder.address,
-            bexLiquidityManager.address
-        );
-
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
         expVault = await ExpVault.connect(ownerSigner).deploy(
@@ -101,16 +90,13 @@ describe("BuzzVaultExponential Tests", () => {
             bexLiquidityManager.address
         );
         // Admin: Set Vault in the ReferralManager
-        await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Set event setter contracts in EventTracker
-        //await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
-        await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
@@ -265,7 +251,7 @@ describe("BuzzVaultExponential Tests", () => {
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
             const msgValue = ethers.utils.parseEther("1");
 
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.1"), ethers.constants.AddressZero, {
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {
                 value: ethers.utils.parseEther("3000"), 
             });
 

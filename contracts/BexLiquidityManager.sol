@@ -7,7 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
-import "./libraries/Math64x64.sol";
+import "./libraries/PriceConverter.sol";
 
 contract BexLiquidityManager is IBexLiquidityManager {
     using SafeERC20 for IERC20;
@@ -47,7 +47,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         }
 
         // WIP - Init price is based on amount of quote tokens per base token.
-        uint128 _initPrice = uint128(1 << 64); // we can safely cast it down to uint128
+        uint128 _initPrice = PriceConverter.calculateInitialPrice(lastPrice, 18, 18);
         // We know how big liquidity is, so we can safely cast it to uint128.
         uint128 liquidity = uint128(beraAmount);
 
@@ -58,7 +58,8 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // Add liquidity
         // liquidity subcode (fixed in base tokens, fill-range liquidity)
         // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, res flags, lp conduit
-        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity, 0, type(uint128).max, 0, address(0));
+        // WIP - PLACEHOLDER: liquidity - 1e6 is a placeholder "for dust"
+        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - 1e6, _initPrice, _initPrice, 0, address(0));
 
         // Encode commands into a multipath call
         bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);

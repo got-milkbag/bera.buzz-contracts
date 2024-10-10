@@ -25,17 +25,20 @@ describe("BexLiquidityManager Tests", () => {
 
         // Deploy token
         const Token = await ethers.getContractFactory("BuzzToken");
-        token = await Token.connect(beraWhale).deploy("Test 1", "TST1", "Desc", "ipfs://", ethers.utils.parseEther("1000000"), beraWhale.address);
+        token = await Token.connect(beraWhale).deploy("Test 1", "TST1", "Desc", "ipfs://", ethers.utils.parseEther("1000000000"), beraWhale.address);
 
         console.log("Token address: ", token.address);
 
-        await token.approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000"));
+        await token.approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000000"));
     });
     describe("constructor", () => {
         it("should create a pool and add liquidity", async () => {
-            await bexLiquidityManager.connect(beraWhale).createPoolAndAdd(token.address, ethers.utils.parseEther("1000000"), 10, {
-                value: ethers.utils.parseEther("1000000"),
-            });
+            await bexLiquidityManager
+                .connect(beraWhale)
+                .createPoolAndAdd(token.address, ethers.utils.parseEther("1000000000"), ethers.utils.parseEther("0.5"), {
+                    value: ethers.utils.parseEther("1000000"),
+                });
+            console.log("Bera balance in pool after: ", await ethers.provider.getBalance(bexLiquidityManager.address));
         });
     });
 });

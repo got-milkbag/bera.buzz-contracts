@@ -26,6 +26,25 @@ library Math64x64 {
     int128 private constant MAX_64x64 = 0x7FFFFFFFFFFFFFFFFFFFFFFFFFFFFFFF;
 
     /**
+     * Convert unsigned 256-bit integer number into unsigned 64.64-bit fixed point
+     * number. Reverts on overflow.
+     *
+     * @param x unsigned 256-bit integer number
+     * @return unsigned 64.64-bit fixed point number
+     */
+    function fromUIntToUnsigned(uint256 x) internal pure returns (uint128) {
+        unchecked {
+            // Check if the input exceeds maximum value that can be represented in 64.64
+            // Maximum value is 2^64 - 1 (maximum integer part for unsigned 64.64)
+            require(x <= 0xFFFFFFFFFFFFFFFF, "Value exceeds maximum for 64.64");
+
+            // Shift left by 64 bits to create the fixed point number
+            // This is safe because we've already checked the upper bound
+            return uint128(x << 64);
+        }
+    }
+
+    /**
      * Convert signed 256-bit integer number into signed 64.64-bit fixed point
      * number.  Revert on overflow.
      *

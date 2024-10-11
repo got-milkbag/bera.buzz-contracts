@@ -9,6 +9,8 @@ const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
 const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
 const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
 const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
+
+const eventTrackerAddress = "0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E"; // Set the address of the existing
 // protocol fee is hardcoded in vaults
 
 // ReferralManager config
@@ -40,11 +42,14 @@ async function main() {
     const referralManager = await ReferralManager.deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
     console.log("ReferralManager deployed to:", referralManager.address);
 
-    // Deploy EventTracker
-    const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
-    const eventTracker = await EventTracker.deploy([]);
-    console.log("EventTracker deployed to:", eventTracker.address);
+    // Deploy EventTracker -- Option 1 - Deploy new EventTracker
+    // const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
+    // const eventTracker = await EventTracker.deploy([]);
+    // console.log("EventTracker deployed to:", eventTracker.address);
 
+    // Setup existing EventTracker -- Option 2 - Use existing EventTracker
+    const eventTracker = await ethers.getContractAt("BuzzEventTracker", eventTrackerAddress);
+    console.log("EventTracker address:", eventTracker.address);
     // Deploy factory without Create3
     // const Factory = await ethers.getContractFactory("BuzzTokenFactory");
     // const factory = await Factory.deploy(eventTracker.address, deployerAddress, create3Address);
@@ -79,11 +84,11 @@ async function main() {
     // Deploy Linear Vault
     const Vault = await ethers.getContractFactory("BuzzVaultLinear");
     const vault = await Vault.deploy(
-        feeRecipient, 
-        factoryInstance.address, 
-        referralManager.address, 
-        eventTracker.address, 
-        bexPriceDecoder.address, 
+        feeRecipient,
+        factoryInstance.address,
+        referralManager.address,
+        eventTracker.address,
+        bexPriceDecoder.address,
         bexLiquidityManager.address
     );
     console.log("Linear Vault deployed to:", vault.address);

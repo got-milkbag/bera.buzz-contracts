@@ -10,13 +10,13 @@ Create a `.env` file in the root directory of your project with the following va
 
 The following contracts have been deployed on the **Berachain Testnet**:
 
-- **BexPriceDecoder** deployed to: `0xAFFf96BFFe4786EBaF501CFCB640808cecD2E679`
-- **ReferralManager** deployed to: `0x8726A3F88f8fF34831b28dEDCc36DC6fae171e71`
-- **EventTracker** deployed to: `0xa817806f6e5Ce443e134A5631043e53A78F51a7f`
-- **Factory** deployed to: `0xc70A03cfa01E77CDd9762fBF834c2D0AD60fCC3D`
-- **Linear Vault** deployed to: `0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae`
-- **Exponential Vault** deployed to: `0x8a8BF2feF202127A9B957c0F376d25A68344Be2b`
+- **BexPriceDecoder** deployed to: `0x167FD63Ab03450625307A974d0B316f6291DCcB5`
+- **ReferralManager** deployed to: `0xB00730a9065011fFF49c6862B6B44fA8e8e0880c`
+- **EventTracker** deployed to: `0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E`
+- **Factory** deployed to: `0x9638369a3B42217486ee3b0F24f68BAB3EAE8EC2`
+- **Linear Vault** deployed to: `0x01BEE8C44978A33814b3057F00Ae7bA91016dF1C`
+- **Exponential Vault** deployed to: `0x0b7fe6E1d7a6af08bB53F5751Ca7f43134e74285`
 
 ## Graphql URL
 
-- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm0ia22vlgcsn01vuhewk2f6g/subgraphs/eventTracker-berachain-bartio/1/gn`
+- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/eventTracker0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E/1/gn`

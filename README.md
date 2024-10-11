@@ -19,4 +19,4 @@ The following contracts have been deployed on the **Berachain Testnet**:
 
 ## Graphql URL
 
-- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm0ia22vlgcsn01vuhewk2f6g/subgraphs/eventTracker-berachain-bartio/1/gn`
+- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/eventTracker0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E/1/gn`

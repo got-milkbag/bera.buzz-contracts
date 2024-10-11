@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-
 import "@openzeppelin/contracts/access/AccessControl.sol";
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
@@ -55,7 +54,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         string calldata image,
         address vault,
         bytes32 salt
-    ) external nonReentrant returns (address token) {
+    ) external payable nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
 
@@ -63,6 +62,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
         eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
         emit TokenCreated(token);
+
+        if (msg.value > 0) {
+            uint256 balanceBefore = IERC20(token).balanceOf(address(this));
+            IBuzzVault(vault).buy{value: msg.value}(token, 0, address(0));
+            uint256 balanceAfter = IERC20(token).balanceOf(address(this));
+            IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
+        }
     }
 
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
@@ -90,14 +96,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     ) internal returns (address token) {
         uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
-        bytes memory bytecode =
-            abi.encodePacked(
-                type(BuzzToken).creationCode, 
-                abi.encode(name, symbol, description, image, totalSupply, address(this))
-            );
-        
-        isDeployed[token] = true;
+        bytes memory bytecode = abi.encodePacked(
+            type(BuzzToken).creationCode,
+            abi.encode(name, symbol, description, image, totalSupply, address(this))
+        );
+
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
+        isDeployed[token] = true;
 
         IERC20(token).safeApprove(vault, totalSupply);
         IBuzzVault(vault).registerToken(token, totalSupply);

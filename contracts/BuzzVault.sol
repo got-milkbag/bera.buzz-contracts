@@ -121,14 +121,13 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
-        if (minTokens < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-
         uint256 contractBalance = IERC20(token).balanceOf(address(this));
         if (contractBalance < minTokens) revert BuzzVault_InvalidReserves();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
+        if (amountBought < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
         // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K

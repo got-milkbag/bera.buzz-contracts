@@ -252,7 +252,7 @@ describe("BuzzVaultExponential Tests", () => {
             const msgValue = ethers.utils.parseEther("1");
 
             await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("3000"), 
+                value: ethers.utils.parseEther("1"), 
             });
 
             const getMarket = await expVault.getMarketCapFor(token.address);

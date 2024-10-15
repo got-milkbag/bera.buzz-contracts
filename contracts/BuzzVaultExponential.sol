@@ -53,9 +53,9 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 remainingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
 
         if (isBuyOrder) {
-            return _calculateBuyPrice(remainingSupply, beraBalance, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+            return _calculateBuyPrice(remainingSupply, amount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
         } else {
-            return _calculateSellPrice(remainingSupply - tokenBalance, tokenBalance, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+            return _calculateSellPrice(remainingSupply, amount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
         }
     }
 

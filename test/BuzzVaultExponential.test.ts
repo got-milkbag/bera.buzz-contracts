@@ -202,9 +202,9 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
         });
-        it("should revert if user wants less than 0.001 token min buy", async () => {
+        it("should revert if user wants less than 0.001 token min", async () => {
             await expect(
-                expVault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                expVault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.00000000000000001")})
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should revert if user will get less than 0.001 token", async () => {

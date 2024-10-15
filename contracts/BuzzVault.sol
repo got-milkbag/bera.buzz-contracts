@@ -117,6 +117,8 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function buy(address token, uint256 minTokens, address affiliate) external payable nonReentrant {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
+        
+        if (minTokens < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
@@ -127,7 +129,6 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
-        if (amountBought < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
         // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K
@@ -154,10 +155,10 @@ abstract contract BuzzVault is ReentrancyGuard {
     function sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate) external nonReentrant {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
 
+        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
-
-        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
         if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 

@@ -210,14 +210,14 @@ describe("BuzzVaultLinear Tests", () => {
                 vault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidReserves");
         });
-        it("should revert if user wants less than 0.001 token min buy", async () => {
+        it("should revert if user wants less than 0.001 token min", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.00000000000000001")})
+                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should set a referral if one is provided", async () => {

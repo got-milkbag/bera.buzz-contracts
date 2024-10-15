@@ -65,7 +65,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
         if (msg.value > 0) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
-            IBuzzVault(vault).buy{value: msg.value}(token, 0, address(0));
+            IBuzzVault(vault).buy{value: msg.value}(token, 1e15, address(0));
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }

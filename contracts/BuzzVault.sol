@@ -51,6 +51,10 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant MARKET_CAP = 69e21;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
+    /// @notice The supply no decimals
+    uint256 public constant SUPPLY_NO_DECIMALS = 1e9;
+    /// @notice The bonding curve coefficient
+    uint256 public constant CURVE_COEFFICIENT = 815966221;
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -117,7 +121,7 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function buy(address token, uint256 minTokens, address affiliate) external payable nonReentrant {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
-        
+
         if (minTokens < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
         TokenInfo storage info = tokenInfo[token];

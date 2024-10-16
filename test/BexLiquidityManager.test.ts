@@ -14,10 +14,14 @@ describe("BexLiquidityManager Tests", () => {
     let factory: Contract;
     let bexLiquidityManager: Contract;
     let token: Contract;
+    let wbera: Contract;
 
     beforeEach(async () => {
         [ownerSigner, user1Signer] = await ethers.getSigners();
         beraWhale = await ethers.getImpersonatedSigner("0x8a73D1380345942F1cb32541F1b19C40D8e6C94B");
+
+        // Load WBERA contract
+        wbera = await ethers.getContractAt("WBERA", "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8");
 
         // Deploy BexLiquidityManager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
@@ -35,10 +39,12 @@ describe("BexLiquidityManager Tests", () => {
         it("should create a pool and add liquidity", async () => {
             await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, ethers.utils.parseEther("1000000000"), ethers.utils.parseEther("0.5"), {
-                    value: ethers.utils.parseEther("1000000"),
+                .createPoolAndAdd(token.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("0.5"), {
+                    value: ethers.utils.parseEther("2300"), // equivelant of 69k USD if 1 Bera = 30 USD
                 });
-            console.log("Bera balance in pool after: ", await ethers.provider.getBalance(bexLiquidityManager.address));
+            console.log("Bera balance in pool after transition to Bex: ", await ethers.provider.getBalance(bexLiquidityManager.address));
+            console.log("WBERA balance in pool after transition to Bex: ", await wbera.balanceOf(bexLiquidityManager.address));
+            console.log("Token balance in pool after transition to Bex: ", await token.balanceOf(bexLiquidityManager.address));
         });
     });
 });

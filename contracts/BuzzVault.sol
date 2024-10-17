@@ -55,11 +55,11 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant SUPPLY_NO_DECIMALS = 1e9;
     /// @notice The reserve BERA amount to lock the curve out
     uint256 public constant RESERVE_BERA = 100 ether;
-    /// @notice The bonding curve coefficient
+    /// @notice The bonding curve coefficient TODO recalculate coefficient
     uint256 public constant CURVE_COEFFICIENT = 81596622100;
-    /// @notice The initial virtual BERA amount
+    /// @notice The initial virtual BERA amount TODO change min amount
     uint256 public constant INITIAL_VIRTUAL_BERA = 1 ether;
-    /// @notice The initial price per token in Bera
+    /// @notice The initial price per token in Bera TODO recalculate initial price
     uint256 public constant INITIAL_PRICE = 82425830302;
     /// @notice The initial virtual token supply
     uint256 public initialVirtualBase;
@@ -146,7 +146,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
-        // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs curve buffer + virtual mcap K
+        // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> TODO needs curve buffer
         if ((info.beraBalance >= RESERVE_BERA) /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
             _lockCurveAndDeposit(token, info);
         }

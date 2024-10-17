@@ -41,7 +41,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The DEX migration fee in basis points
     uint256 public constant DEX_MIGRATION_FEE_BPS = 500; // 500 -> 5%
-    /// @notice The min ERC20 amount for bonding curve swaps
+    /// @notice The min ERC20 amount for bonding curve swaps TODO: solve min amount for linear curve
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
@@ -53,8 +53,16 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
     /// @notice The supply no decimals
     uint256 public constant SUPPLY_NO_DECIMALS = 1e9;
+    /// @notice The reserve BERA amount to lock the curve out
+    uint256 public constant RESERVE_BERA = 100 ether;
     /// @notice The bonding curve coefficient
-    uint256 public constant CURVE_COEFFICIENT = 815966221;
+    uint256 public constant CURVE_COEFFICIENT = 81596622100;
+    /// @notice The initial virtual BERA amount
+    uint256 public constant INITIAL_VIRTUAL_BERA = 1 ether;
+    /// @notice The initial price per token in Bera
+    uint256 public constant INITIAL_PRICE = 82425830302;
+    /// @notice The initial virtual token supply
+    uint256 public initialVirtualBase;
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -81,6 +89,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 tokenBalance;
         uint256 beraBalance; // aka reserve balance
         uint256 lastPrice;
+        uint256 lastBeraPrice;
         uint256 beraThreshold;
         bool bexListed;
     }
@@ -127,6 +136,8 @@ abstract contract BuzzVault is ReentrancyGuard {
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
 
+        if (info.bexListed) revert BuzzVault_BexListed();
+
         uint256 contractBalance = IERC20(token).balanceOf(address(this));
         if (contractBalance < minTokens) revert BuzzVault_InvalidReserves();
 
@@ -135,17 +146,9 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
 
-        // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs virtual mcap burn + curve buffer + virtual mcap K
-        if (getMarketCapFor(token) > MARKET_CAP) {
-            info.bexListed = true;
-
-            // collect fee
-            // TODO: Check if we need to burn the same DEX_MIGRATION_FEE_BPS amount of tokens to keep the curve balanced
-            uint256 dexFee = (info.beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
-            _transferFee(feeRecipient, dexFee);
-
-            IERC20(token).safeApprove(address(liquidityManager), info.tokenBalance);
-            liquidityManager.createPoolAndAdd{value: info.beraBalance - dexFee}(token, info.tokenBalance, info.lastPrice);
+        // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> needs curve buffer + virtual mcap K
+        if ((info.beraBalance >= RESERVE_BERA) /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
+            _lockCurveAndDeposit(token, info);
         }
     }
 
@@ -160,9 +163,12 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
 
         if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+        if (address(this).balance < INITIAL_VIRTUAL_BERA) revert BuzzVault_InvalidReserves();
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.beraBalance == 0) revert BuzzVault_UnknownToken();
+
+        if (info.bexListed) revert BuzzVault_BexListed();
 
         if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 
@@ -184,10 +190,13 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         uint256 beraAmount = _getBeraAmountForMarketCap();
 
+        initialVirtualBase = (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18;
+
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, IERC20(token).totalSupply(), beraAmount, false);
+        tokenInfo[token] = TokenInfo(tokenBalance - initialVirtualBase, INITIAL_VIRTUAL_BERA, 0, 0, beraAmount, false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
+        //IERC20(token).safeTransfer(address(0x1), (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18);
     }
 
     /**
@@ -209,10 +218,11 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
-        marketCap = (info.lastPrice * circulatingSupply * beraUsdPrice) / 1e36;
+        marketCap = ((info.lastPrice * beraUsdPrice) * circulatingSupply) / 1e36;
+        //marketCap = address(this).balance;
     }
 
-    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256 amountOut, uint256 pricePerToken);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
 
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
@@ -232,6 +242,38 @@ abstract contract BuzzVault is ReentrancyGuard {
     function _transferFee(address payable recipient, uint256 amount) internal {
         (bool success, ) = recipient.call{value: amount}("");
         if (!success) revert BuzzVault_FeeTransferFailed();
+    }
+
+    /**
+     * @notice Locks the bonding curve and deposits the tokens in the liquidity manager
+     * @param token The token address
+     * @param info The token info struct
+     */
+    function _lockCurveAndDeposit(
+        address token, 
+        TokenInfo storage info
+    ) internal {
+        uint256 tokenBalance = info.tokenBalance;
+        uint256 beraBalance = info.beraBalance;
+        uint256 lastBeraPrice = info.lastBeraPrice;
+        
+        info.bexListed = true;
+
+        // collect fee
+        uint256 dexFee = (beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
+        _transferFee(feeRecipient, dexFee);
+
+        // burn tokens
+        uint256 tokenFeeAmount = (dexFee * lastBeraPrice) / 1e18;
+        uint256 balancedAmount = tokenFeeAmount + initialVirtualBase;
+        IERC20(token).safeTransfer(address(0x1), balancedAmount);
+
+        uint256 netTokenAmount = tokenBalance - balancedAmount;
+        uint256 netBeraAmount = beraBalance - dexFee - INITIAL_VIRTUAL_BERA;
+
+        IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
+        /// TODO: Fix initial price
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, 2e22);
     }
 
     /**

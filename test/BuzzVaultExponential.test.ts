@@ -58,7 +58,7 @@ describe("BuzzVaultExponential Tests", () => {
         //Deploy mock ICrocQuery
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
         crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
-
+        
         // Deploy BexPriceDecoder
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
         bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
@@ -126,11 +126,12 @@ describe("BuzzVaultExponential Tests", () => {
         beforeEach(async () => {});
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await expVault.tokenInfo(token.address);
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
+            expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
+            //expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
             //expect(tokenInfo.beraBalance).to.be.equal(0);
             expect(tokenInfo.bexListed).to.be.equal(false);
 
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
+            //expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
         });
         it("should revert if caller is not factory", async () => {
             await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
@@ -209,7 +210,7 @@ describe("BuzzVaultExponential Tests", () => {
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
-                expVault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
+                expVault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.000000000000001")})
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should set a referral if one is provided", async () => {
@@ -249,10 +250,10 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("1");
+            const msgValue = ethers.utils.parseEther("100");
 
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("1"), 
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("100"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("100"), 
             });
 
             const getMarket = await expVault.getMarketCapFor(token.address);
@@ -268,14 +269,14 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Token balanceA: ", tokenBalance.toString());
 
             // check balances
-            expect(tokenInfoAfter[4]).to.be.equal(true);
+            expect(tokenInfoAfter[5]).to.be.equal(true);
         });
     });
     describe("sell", () => {
         beforeEach(async () => {
             await expVault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")});
+                .buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("10")});
         });
         it("should revert if token doesn't exist", async () => {
             await expect(

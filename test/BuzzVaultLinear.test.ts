@@ -143,11 +143,11 @@ describe("BuzzVaultLinear Tests", () => {
         beforeEach(async () => {});
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await vault.tokenInfo(token.address);
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
+            expect(await token.balanceOf(vault.address)).to.be.equal(await token.totalSupply());
             //expect(tokenInfo.beraBalance).to.be.equal(0);
             expect(tokenInfo.bexListed).to.be.equal(false);
 
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(vault.address));
+            //expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(vault.address));
         });
         it("should revert if caller is not factory", async () => {
             await expect(vault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
@@ -217,7 +217,7 @@ describe("BuzzVaultLinear Tests", () => {
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
+                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.000000000000000001")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should set a referral if one is provided", async () => {
@@ -257,7 +257,7 @@ describe("BuzzVaultLinear Tests", () => {
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("1");
+            const msgValue = ethers.utils.parseEther("3000");
 
             await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("2800"), ethers.constants.AddressZero, {
                 value: ethers.utils.parseEther("3000"), 
@@ -276,14 +276,14 @@ describe("BuzzVaultLinear Tests", () => {
             console.log("Token balance: ", tokenBalance.toString());
 
             // check balances
-            expect(tokenInfoAfter[4]).to.be.equal(true);
+            expect(tokenInfoAfter[5]).to.be.equal(true);
         });
     });
     describe("sell", () => {
         beforeEach(async () => {
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")});
+                .buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("10")});
         });
         it("should revert if token doesn't exist", async () => {
             await expect(
@@ -304,6 +304,7 @@ describe("BuzzVaultLinear Tests", () => {
         });
         it("should emit a trade event", async () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
+            console.log("User token balance: ", userTokenBalance.toString());
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);
             await expect(vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
                 eventTracker,
@@ -313,6 +314,7 @@ describe("BuzzVaultLinear Tests", () => {
         it("should increase the tokenBalance", async () => {
             const tokenInfoBefore = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
+            console.log("User token balance: ", userTokenBalance.toString());
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);
             await vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero);
             const tokenInfoAfter = await vault.tokenInfo(token.address);

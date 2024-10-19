@@ -144,7 +144,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
-        eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, true);
+        eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
 
         // BOILERPLATE CODE -> NEEDS CHANGES!!!!! -> placeholder for final logic -> TODO needs curve buffer
         if ((info.beraBalance >= RESERVE_BERA) /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
@@ -175,7 +175,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountSold = _sell(token, tokenAmount, minBera, affiliate, info);
-        eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, false);
+        eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, info.lastPrice, false);
     }
 
     /**
@@ -199,30 +199,11 @@ abstract contract BuzzVault is ReentrancyGuard {
         //IERC20(token).safeTransfer(address(0x1), (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18);
     }
 
-    /**
-     * @notice Returns the market cap of a token denominated in USD (from a USD-pegged stablecoin)
-     * @param token The token address
-     * @return marketCap The market cap of the token
-     */
-    function getMarketCapFor(address token) public view returns (uint256 marketCap) {
-        TokenInfo storage info = tokenInfo[token];
-
-        uint256 tokenBalance = info.tokenBalance;
-
-        // Ensure token is valid
-        if (tokenBalance == 0 && info.beraBalance == 0) {
-            revert BuzzVault_UnknownToken();
-        }
-
-        // Get the Bera/USD price (assumed 18 decimals)
-        uint256 beraUsdPrice = priceDecoder.getPrice();
-
-        uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
-        marketCap = ((info.lastPrice * beraUsdPrice) * circulatingSupply) / 1e36;
-        //marketCap = address(this).balance;
-    }
-
-    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
+    function quote(
+        address token,
+        uint256 amount,
+        bool isBuyOrder
+    ) external view virtual returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
 
     function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
@@ -249,14 +230,11 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param token The token address
      * @param info The token info struct
      */
-    function _lockCurveAndDeposit(
-        address token, 
-        TokenInfo storage info
-    ) internal {
+    function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 tokenBalance = info.tokenBalance;
         uint256 beraBalance = info.beraBalance;
         uint256 lastBeraPrice = info.lastBeraPrice;
-        
+
         info.bexListed = true;
 
         // collect fee

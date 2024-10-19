@@ -12,7 +12,15 @@ contract BuzzEventTracker is Ownable, IBuzzEventTracker {
     error BuzzEventTracker_AddressZero();
 
     // Amounts emitted
-    event Trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, bool isBuyOrder, address vault);
+    event Trade(
+        address indexed user,
+        address indexed token,
+        uint256 tokenAmount,
+        uint256 beraAmount,
+        uint256 lastPrice,
+        bool isBuyOrder,
+        address vault
+    );
     event TokenCreated(address token, string name, string symbol, string description, string image, address deployer, address vault);
     event EventSetterSet(address indexed contractSet, bool status);
 
@@ -24,15 +32,9 @@ contract BuzzEventTracker is Ownable, IBuzzEventTracker {
         }
     }
 
-    function emitTrade(
-        address user, 
-        address token, 
-        uint256 tokenAmount, 
-        uint256 beraAmount, 
-        bool isBuyOrder
-    ) external {
+    function emitTrade(address user, address token, uint256 tokenAmount, uint256 beraAmount, uint256 lastPrice, bool isBuyOrder) external {
         if (!eventSetters[msg.sender]) revert BuzzEventTracker_Unauthorized();
-        emit Trade(user, token, tokenAmount, beraAmount, isBuyOrder, msg.sender);
+        emit Trade(user, token, tokenAmount, beraAmount, lastPrice, isBuyOrder, msg.sender);
     }
 
     function emitTokenCreated(

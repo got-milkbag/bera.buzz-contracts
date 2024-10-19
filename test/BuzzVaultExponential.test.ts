@@ -135,11 +135,11 @@ describe("BuzzVaultExponential Tests", () => {
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await expVault.tokenInfo(token.address);
             expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
-            //expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
-            //expect(tokenInfo.beraBalance).to.be.equal(0);
+            expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
+            expect(tokenInfo.beraBalance).to.be.equal(0);
             expect(tokenInfo.bexListed).to.be.equal(false);
 
-            //expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
+            expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
         });
         it("should revert if caller is not factory", async () => {
             await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
@@ -278,9 +278,6 @@ describe("BuzzVaultExponential Tests", () => {
             await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {
                 value: ethers.utils.parseEther("10"),
             });
-
-            //const getMarket = await expVault.getMarketCapFor(token.address);
-            //console.log("Market cap: ", getMarket.toString());
 
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);

@@ -130,7 +130,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
         (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(circulatingSupply, tokenAmount, CURVE_ALPHA, CURVE_BETA);
 
-        if (info.beraBalance - INITIAL_VIRTUAL_BERA < beraAmountSell) revert BuzzVault_InvalidReserves();
+        if (info.beraBalance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
         if (beraAmountSell == 0) revert BuzzVault_QuoteAmountZero();
 

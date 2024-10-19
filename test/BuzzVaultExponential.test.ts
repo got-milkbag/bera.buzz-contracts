@@ -256,8 +256,8 @@ describe("BuzzVaultExponential Tests", () => {
                 value: ethers.utils.parseEther("10"), 
             });
 
-            const getMarket = await expVault.getMarketCapFor(token.address);
-            console.log("Market cap: ", getMarket.toString());
+            //const getMarket = await expVault.getMarketCapFor(token.address);
+            //console.log("Market cap: ", getMarket.toString());
 
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
@@ -269,7 +269,7 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Token balanceA: ", tokenBalance.toString());
 
             // check balances
-            expect(tokenInfoAfter[5]).to.be.equal(true);
+            expect(tokenInfoAfter[4]).to.be.equal(true);
         });
     });
     describe("sell", () => {

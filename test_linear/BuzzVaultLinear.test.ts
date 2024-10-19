@@ -263,8 +263,8 @@ describe("BuzzVaultLinear Tests", () => {
                 value: ethers.utils.parseEther("3000"), 
             });
 
-            const getMarket = await vault.getMarketCapFor(token.address);
-            console.log("Market cap: ", getMarket.toString());
+            //const getMarket = await vault.getMarketCapFor(token.address);
+            //console.log("Market cap: ", getMarket.toString());
 
             const tokenInfoAfter = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);

@@ -70,7 +70,7 @@ describe("BuzzTokenFactory Tests", () => {
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
 
         // Deploy Linear Vault
-        const Vault = await ethers.getContractFactory("BuzzVaultLinear");
+        /*const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         vault = await Vault.connect(ownerSigner).deploy(
             feeRecipient,
             factory.address,
@@ -78,7 +78,7 @@ describe("BuzzTokenFactory Tests", () => {
             eventTracker.address,
             bexPriceDecoder.address,
             bexLiquidityManager.address
-        );
+        );*/
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
@@ -92,16 +92,16 @@ describe("BuzzTokenFactory Tests", () => {
         );
 
         // Admin: Set Vault in the ReferralManager
-        await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
+        //await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Set event setter contracts in EventTracker
-        await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
+        //await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
-        await factory.connect(ownerSigner).setVault(vault.address, true);
+        //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
@@ -123,7 +123,7 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"))
+                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"))
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
@@ -133,7 +133,7 @@ describe("BuzzTokenFactory Tests", () => {
         });
         describe("_deployToken", () => {
             beforeEach(async () => {
-                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"));
+                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"));
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
@@ -153,12 +153,12 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await factory.isDeployed(token.address)).to.be.equal(true);
             });
             it("should transfer the totalSupply to the vault", async () => {
-                expect(await token.balanceOf(vault.address)).to.be.equal(await token.totalSupply());
+                expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
             });
         });
         describe("buy on deployment", () => {
             beforeEach(async () => {
-                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"), {
+                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
                     value: ethers.utils.parseEther("0.01"),
                 });
                 const receipt = await tx.wait();
@@ -180,21 +180,21 @@ describe("BuzzTokenFactory Tests", () => {
             );
         });
         it("should revert if the vault is configured with the same bool", async () => {
-            expect(await factory.vaults(vault.address)).to.be.equal(true);
-            await expect(factory.connect(ownerSigner).setVault(vault.address, true)).to.be.revertedWithCustomError(factory, "BuzzToken_SameBool");
+            expect(await factory.vaults(expVault.address)).to.be.equal(true);
+            await expect(factory.connect(ownerSigner).setVault(expVault.address, true)).to.be.revertedWithCustomError(factory, "BuzzToken_SameBool");
         });
         it("should set the vault", async () => {
-            await factory.connect(ownerSigner).setVault(vault.address, false);
-            await factory.connect(ownerSigner).setVault(vault.address, true);
-            expect(await factory.vaults(vault.address)).to.be.equal(true);
+            await factory.connect(ownerSigner).setVault(expVault.address, false);
+            await factory.connect(ownerSigner).setVault(expVault.address, true);
+            expect(await factory.vaults(expVault.address)).to.be.equal(true);
         });
         it("should emit a VaultSet event", async () => {
-            await factory.connect(ownerSigner).setVault(vault.address, false);
+            await factory.connect(ownerSigner).setVault(expVault.address, false);
 
-            await expect(factory.connect(ownerSigner).setVault(vault.address, true)).to.emit(factory, "VaultSet").withArgs(vault.address, true);
+            await expect(factory.connect(ownerSigner).setVault(expVault.address, true)).to.emit(factory, "VaultSet").withArgs(expVault.address, true);
         });
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setVault(vault.address, true)).to.be.reverted;
+            await expect(factory.connect(user1Signer).setVault(expVault.address, true)).to.be.reverted;
         });
     });
     describe("setAllowTokenCreation", () => {

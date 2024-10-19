@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "solady/src/utils/FixedPointMathLib.sol";
 import "./libraries/Math.sol";
 
 import "./interfaces/IBexPriceDecoder.sol";
@@ -15,6 +16,8 @@ import "./interfaces/IReferralManager.sol";
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
+    using FixedPointMathLib for uint256;
+    using FixedPointMathLib for int256;
 
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
@@ -59,10 +62,12 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant CURVE_BETA = 3350000000;
     /// @notice The initial virtual BERA amount
     uint256 public constant INITIAL_VIRTUAL_BERA = 24e17;
-    /// @notice The initial price per token in Bera
-    uint256 public constant INITIAL_PRICE = 2465938162;
     /// @notice The initial virtual token supply
     uint256 public initialVirtualBase;
+    /// @notice The initial token price
+    uint256 public initialTokenPrice;
+    /// @notice The initial Bera price
+    uint256 public initialBeraPrice;
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -90,7 +95,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraBalance; // aka reserve balance
         uint256 lastPrice;
         uint256 lastBeraPrice;
-        uint256 beraThreshold;
+        //uint256 beraThreshold;
         bool bexListed;
     }
 
@@ -188,12 +193,12 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
 
-        uint256 beraAmount = _getBeraAmountForMarketCap();
+        //uint256 beraAmount = _getBeraAmountForMarketCap();
 
-        initialVirtualBase = (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18;
+        (initialVirtualBase, initialTokenPrice, initialBeraPrice) = _calculateBuyDeployment(0, INITIAL_VIRTUAL_BERA, CURVE_ALPHA, CURVE_BETA);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance - initialVirtualBase, INITIAL_VIRTUAL_BERA, 0, 0, beraAmount, false);
+        tokenInfo[token] = TokenInfo(tokenBalance - initialVirtualBase, INITIAL_VIRTUAL_BERA, initialTokenPrice, initialBeraPrice, /*beraAmount,*/ false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
         //IERC20(token).safeTransfer(address(0x1), (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18);
@@ -238,7 +243,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         info.bexListed = true;
 
         // collect fee
-        uint256 dexFee = (beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
+        uint256 dexFee = ((beraBalance - INITIAL_VIRTUAL_BERA) * DEX_MIGRATION_FEE_BPS) / 10000;
         _transferFee(feeRecipient, dexFee);
 
         // burn tokens
@@ -246,12 +251,12 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 balancedAmount = tokenFeeAmount + initialVirtualBase;
         IERC20(token).safeTransfer(address(0x1), balancedAmount);
 
-        uint256 netTokenAmount = tokenBalance - balancedAmount;
+        //uint256 netTokenAmount = tokenBalance - balancedAmount;
         uint256 netBeraAmount = beraBalance - dexFee - INITIAL_VIRTUAL_BERA;
 
         IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
         /// TODO: Fix initial price
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, 2e22);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, IERC20(token).balanceOf(address(this)), 2e22);
     }
 
     /**
@@ -281,15 +286,46 @@ abstract contract BuzzVault is ReentrancyGuard {
         bps = referralManager.getReferralBpsFor(user);
     }
 
+    
     /**
      * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
      * @return beraAmount The amount of BERA for market cap
      */
-    function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
-        // Get the Bera/USD price (assumed 18 decimals)
-        uint256 beraUsdPrice = priceDecoder.getPrice();
+    // function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
+    //     // Get the Bera/USD price (assumed 18 decimals)
+    //     uint256 beraUsdPrice = priceDecoder.getPrice();
 
         // Assuming 18 decimal precision
-        beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice;
+    //     beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice;
+    // }
+
+    /**
+     * @notice Calculate the amount of tokens that can be bought at the current curve
+     * @param circulatingSupply The circulating supply of the token
+     * @param beraAmountIn The amount of Bera to buy with
+     * @param curveAlpha The alpha coefficient of the curve
+     * @param curveBeta The beta coefficient of the curve
+     * @return amountOut The amount of tokens that will be bought
+     * @return pricePerToken The price per token, scalend by 1e18
+     * @return pricePerBera The price per Bera, scaled by 1e18
+     */
+    function _calculateBuyDeployment(
+        uint256 circulatingSupply,
+        uint256 beraAmountIn,
+        uint256 curveAlpha,
+        uint256 curveBeta
+    ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera) {
+        if (beraAmountIn == 0) revert BuzzVault_QuoteAmountZero();
+
+        // calculate exp(b*x0)
+        uint256 exp_b_x0 = uint256((int256(curveBeta.mulWad(circulatingSupply))).expWad());
+
+        // calculate exp(b*x0) + (dy*b/a)
+        uint256 exp_b_x1 = exp_b_x0 + beraAmountIn.fullMulDiv(curveBeta, curveAlpha);
+
+        amountOut = uint256(int256(exp_b_x1).lnWad()).divWad(curveBeta) - circulatingSupply;
+        pricePerToken = (beraAmountIn * 1e18) / amountOut;
+        pricePerBera = (amountOut * 1e18) / beraAmountIn;
     }
+
 }

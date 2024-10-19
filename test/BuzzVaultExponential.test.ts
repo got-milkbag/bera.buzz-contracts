@@ -264,19 +264,20 @@ describe("BuzzVaultExponential Tests", () => {
 
             const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in Bera: ", pricePerToken);
+            console.log("ABI decoded", ethers.utils.defaultAbiCoder.decode(["uint128"], "0x0000000000000000000000000000000000000000000000016a09e667f3bd0000"));
 
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("10");
+            const msgValue = ethers.utils.parseEther("10.2");
 
             const tokenContractBalance = await token.balanceOf(expVault.address);
             console.log("Token contract balanceA: ", tokenContractBalance.toString());
 
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("10"),
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10.2"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("10.2"),
             });
 
             const tokenInfoAfter = await expVault.tokenInfo(token.address);

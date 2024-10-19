@@ -80,7 +80,7 @@ library Math64x64 {
      */
     function fromUInt(uint256 x) internal pure returns (int128) {
         unchecked {
-            require(x <= 0x7FFFFFFFFFFFFFFF);
+            require(x <= 0x7FFFFFFFFFFFFFFF, "overflow");
             return int128(int256(x << 64));
         }
     }
@@ -94,7 +94,7 @@ library Math64x64 {
      */
     function toUInt(int128 x) internal pure returns (uint64) {
         unchecked {
-            require(x >= 0);
+            require(x >= 0, "negative value");
             return uint64(uint128(x >> 64));
         }
     }
@@ -135,7 +135,7 @@ library Math64x64 {
      */
     function sqrt(int128 x) internal pure returns (int128) {
         unchecked {
-            require(x >= 0);
+            require(x >= 0, "negative value");
             return int128(sqrtu(uint256(int256(x)) << 64));
         }
     }
@@ -147,7 +147,7 @@ library Math64x64 {
      * @param x unsigned 256-bit integer number
      * @return unsigned 128-bit integer number
      */
-    function sqrtu(uint256 x) private pure returns (uint128) {
+    function sqrtu(uint256 x) internal pure returns (uint128) {
         unchecked {
             if (x == 0) return 0;
             else {

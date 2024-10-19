@@ -8,14 +8,16 @@ import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "./libraries/PriceConverter.sol";
+import "./libraries/Math64x64.sol";
 
 contract BexLiquidityManager is IBexLiquidityManager {
     using SafeERC20 for IERC20;
+    using Math64x64 for uint128;
 
     /// @notice Error code emitted when deposit to the WBera contract fails
     error WrappedDepositFailed();
 
-    /// @notice The pool index to use when creating a pool (0.3% fee)
+    /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
     /// @notice A constant amount of tokens to burn when creating a pool
     uint256 public constant BURN_AMOUNT = 1e6; // 0.001 token
@@ -63,6 +65,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
 
         // WIP - Init price is based on amount of quote tokens per base token.
         uint128 _initPrice = PriceConverter.calculateInitialPrice(lastPrice, 18, 18);
+        //uint128 _initPrice = uint128(Math64x64.toUInt(Math64x64.sqrt(Math64x64.fromUInt(lastPrice))));
         // We know how big liquidity is, so we can safely cast it to uint128.
         uint128 liquidity = uint128(beraAmount);
 

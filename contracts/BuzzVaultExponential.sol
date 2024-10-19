@@ -81,7 +81,8 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);
-            beraAmountAfFee = (beraAmount * bps) / 10000;
+            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
+            beraAmountPrFee -= beraAmountAfFee;
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
@@ -135,11 +136,12 @@ contract BuzzVaultExponential is BuzzVault {
         if (beraAmountSell == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 beraAmountPrFee = (beraAmountSell * PROTOCOL_FEE_BPS) / 10000;
-        uint256 beraAmountAfFee = 0;
+        uint256 beraAmountAfFee;
 
         if (affiliate != address(0)) {
             uint256 bps = _getBpsToDeductForReferrals(msg.sender);
-            beraAmountAfFee = (beraAmountSell * bps) / 10000;
+            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
+            beraAmountPrFee -= beraAmountAfFee;
         }
 
         // Update balances

@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "solady/src/utils/FixedPointMathLib.sol";
 import "./libraries/Math.sol";
 
 import "./interfaces/IBexPriceDecoder.sol";
@@ -16,8 +15,6 @@ import "./interfaces/IReferralManager.sol";
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
 abstract contract BuzzVault is ReentrancyGuard {
     using SafeERC20 for IERC20;
-    using FixedPointMathLib for uint256;
-    using FixedPointMathLib for int256;
 
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
@@ -52,8 +49,6 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
-    /// @notice Market cap threshold to lock the bonding curve
-    uint256 public constant MARKET_CAP = 69e21;
     /// @notice The reserve BERA amount to lock the curve out
     uint256 public constant RESERVE_BERA = 10 ether;
     /// @notice The bonding curve alpha coefficient
@@ -87,7 +82,6 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraBalance; // aka reserve balance
         uint256 lastPrice;
         uint256 lastBeraPrice;
-        //uint256 beraThreshold;
         bool bexListed;
     }
 
@@ -143,7 +137,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 amountBought = _buy(token, minTokens, affiliate, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
 
-        if ((info.beraBalance >= RESERVE_BERA) /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
+        if (info.beraBalance >= RESERVE_BERA /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
             _lockCurveAndDeposit(token, info);
         }
     }
@@ -232,16 +226,18 @@ abstract contract BuzzVault is ReentrancyGuard {
         _transferFee(feeRecipient, dexFee);
 
         // burn tokens
-        uint256 tokenFeeAmount = (dexFee * lastBeraPrice) / 1e18;
-        uint256 balancedAmount = tokenFeeAmount /*+ initialVirtualBase*/;
+        uint256 balancedAmount = (dexFee * lastBeraPrice) / 1e18;
         IERC20(token).safeTransfer(address(0x1), balancedAmount);
 
-        //uint256 netTokenAmount = tokenBalance - balancedAmount;
+        uint256 netTokenAmount = tokenBalance - balancedAmount;
         uint256 netBeraAmount = beraBalance - dexFee;
 
         IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
         /// TODO: Fix initial price
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, IERC20(token).balanceOf(address(this)), 2e22);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, 2e22);
+        if (IERC20(token).balanceOf(address(this)) > 0) {
+            IERC20(token).safeTransfer(address(0x1), IERC20(token).balanceOf(address(this)));
+        }
     }
 
     /**

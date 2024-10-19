@@ -24,9 +24,11 @@ describe("BuzzTokenFactory Tests", () => {
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
+    let treasuryBalanceBefore: BigNumber;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
+    const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
     const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
@@ -63,8 +65,13 @@ describe("BuzzTokenFactory Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
-
+        factory = await Factory.connect(ownerSigner).deploy(
+            eventTracker.address,
+            ownerSigner.address,
+            create3Factory.address,
+            feeRecipient,
+            listingFee
+        );
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
@@ -117,23 +124,51 @@ describe("BuzzTokenFactory Tests", () => {
             const ownerRoleHash = await factory.OWNER_ROLE();
             expect(await factory.hasRole(ownerRoleHash, ownerSigner.address)).to.be.equal(true);
         });
+        it("should set the treasury", async () => {
+            expect(await factory.treasury()).to.be.equal(feeRecipient);
+        });
+        it("should set the listingFee", async () => {
+            expect(await factory.listingFee()).to.be.equal(listingFee);
+        });
     });
     describe("createToken", () => {
         beforeEach(async () => {});
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"))
+                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                    value: listingFee,
+                })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", user1Signer.address, formatBytes32String("12345"))
+                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", user1Signer.address, formatBytes32String("12345"), {
+                    value: listingFee,
+                })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
+        });
+        it("should revert if the listing fee is not sent", async () => {
+            await expect(
+                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                    value: 0,
+                })
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
         });
         describe("_deployToken", () => {
             beforeEach(async () => {
-                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"));
+                treasuryBalanceBefore = await ethers.provider.getBalance(feeRecipient);
+                const tx = await factory.createToken(
+                    "TEST",
+                    "TEST",
+                    "Test token is the best",
+                    "0x0",
+                    expVault.address,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFee,
+                    }
+                );
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
@@ -155,12 +190,25 @@ describe("BuzzTokenFactory Tests", () => {
             it("should transfer the totalSupply to the vault", async () => {
                 expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
             });
+            it("should transfer the listingFee to the treasury", async () => {
+                expect(await ethers.provider.getBalance(feeRecipient)).to.be.equal(treasuryBalanceBefore.add(listingFee));
+            });
         });
         describe("buy on deployment", () => {
             beforeEach(async () => {
-                const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
-                    value: ethers.utils.parseEther("0.01"),
-                });
+                const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
+
+                const tx = await factory.createToken(
+                    "TEST",
+                    "TEST",
+                    "Test token is the best",
+                    "0x0",
+                    expVault.address,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFeeAndBuyAmount,
+                    }
+                );
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
@@ -213,6 +261,35 @@ describe("BuzzTokenFactory Tests", () => {
         it("should emit an AllowTokenCreation event", async () => {
             expect(await factory.allowTokenCreation()).to.be.equal(true);
             await expect(factory.connect(ownerSigner).setAllowTokenCreation(false)).to.emit(factory, "TokenCreationSet").withArgs(false);
+        });
+    });
+    describe("setListingFee", () => {
+        it("should revert if the caller doesn't have an owner role", async () => {
+            await expect(factory.connect(user1Signer).setListingFee(ethers.utils.parseEther("0.003"))).to.be.reverted;
+        });
+        it("should set the listing fee", async () => {
+            await factory.connect(ownerSigner).setListingFee(ethers.utils.parseEther("0.003"));
+            expect(await factory.listingFee()).to.be.equal(ethers.utils.parseEther("0.003"));
+        });
+        it("should emit a ListingFeeSet event", async () => {
+            expect(await factory.listingFee()).to.be.equal(listingFee);
+            await expect(factory.connect(ownerSigner).setListingFee(ethers.utils.parseEther("0.003")))
+                .to.emit(factory, "ListingFeeSet")
+                .withArgs(ethers.utils.parseEther("0.003"));
+        });
+    });
+    describe("setTreasury", () => {
+        it("should revert if the caller doesn't have an owner role", async () => {
+            await expect(factory.connect(user1Signer).setTreasury(user1Signer.address)).to.be.reverted;
+        });
+        it("should set the treasury", async () => {
+            expect(await factory.treasury()).to.be.equal(feeRecipient);
+            await factory.connect(ownerSigner).setTreasury(user1Signer.address);
+            expect(await factory.treasury()).to.be.equal(user1Signer.address);
+        });
+        it("should emit a TreasurySet event", async () => {
+            expect(await factory.treasury()).to.be.equal(feeRecipient);
+            await expect(factory.connect(ownerSigner).setTreasury(user1Signer.address)).to.emit(factory, "TreasurySet").withArgs(user1Signer.address);
         });
     });
 });

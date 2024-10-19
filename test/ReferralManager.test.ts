@@ -4,7 +4,7 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 import {Contract} from "ethers";
-import { formatBytes32String } from "ethers/lib/utils";
+import {formatBytes32String} from "ethers/lib/utils";
 
 describe("BuzzVault Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -30,6 +30,7 @@ describe("BuzzVault Tests", () => {
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
+    const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
     const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
@@ -70,15 +71,27 @@ describe("BuzzVault Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
-
+        factory = await Factory.connect(ownerSigner).deploy(
+            eventTracker.address,
+            ownerSigner.address,
+            create3Factory.address,
+            feeRecipient,
+            listingFee
+        );
         // Deploy Linear Vault
         //const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         //vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
+        );
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
@@ -96,7 +109,9 @@ describe("BuzzVault Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"));
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+            value: listingFee,
+        });
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 

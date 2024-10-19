@@ -1,37 +1,17 @@
 {
   "version": "1",
-  "name": "eventTracker",
+  "name": "eventTrackerSimple_1Aa19D",
   "abis": {
     "eventTracker": {
-      "path": "./eventTracker.vault.abi.json"
+      "path": "./eventTracker.abi.json"
     }
   },
   "instances": [
     {
       "abi": "eventTracker",
-      "address": "0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E",
-      "startBlock": 5069279,
-      "chain": "berachain-bartio",
-      "enrich": {
-        "handlers": {
-          "Trade(indexed address,indexed address,uint256,uint256,bool,address)": {
-            "calls": {
-              "marketCap": {
-                "name": "getMarketCapFor",
-                "params": "event.params.token",
-                "source": "event.params.vault",
-                "required": true
-              }
-            },
-            "entities": {
-              "MarketCap": {
-                "token address": "event.params.token.toHexString()",
-                "marketCap uint256": "calls.marketCap"
-              }
-            }
-          }
-        }
-      }
+      "address": "0x3dc9e752032955F3a7B703B264519D29551Aa19D",
+      "startBlock": 5785721,
+      "chain": "berachain-bartio"
     }
   ]
 }

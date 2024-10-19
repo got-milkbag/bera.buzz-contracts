@@ -41,7 +41,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The DEX migration fee in basis points
     uint256 public constant DEX_MIGRATION_FEE_BPS = 500; // 500 -> 5%
-    /// @notice The min ERC20 amount for bonding curve swaps TODO: solve min amount for linear curve
+    /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
@@ -51,16 +51,16 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant MARKET_CAP = 69e21;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
-    /// @notice The supply no decimals
-    uint256 public constant SUPPLY_NO_DECIMALS = 1e9;
     /// @notice The reserve BERA amount to lock the curve out
-    uint256 public constant RESERVE_BERA = 100 ether;
-    /// @notice The bonding curve coefficient TODO recalculate coefficient
-    uint256 public constant CURVE_COEFFICIENT = 81596622100;
-    /// @notice The initial virtual BERA amount TODO change min amount
-    uint256 public constant INITIAL_VIRTUAL_BERA = 1 ether;
-    /// @notice The initial price per token in Bera TODO recalculate initial price
-    uint256 public constant INITIAL_PRICE = 82425830302;
+    uint256 public constant RESERVE_BERA = 10 ether;
+    /// @notice The bonding curve alpha coefficient
+    uint256 public constant CURVE_ALPHA = 24659381630;
+    /// @notice The bonding curve beta coefficient
+    uint256 public constant CURVE_BETA = 3350000000;
+    /// @notice The initial virtual BERA amount
+    uint256 public constant INITIAL_VIRTUAL_BERA = 24e17;
+    /// @notice The initial price per token in Bera
+    uint256 public constant INITIAL_PRICE = 2465938162;
     /// @notice The initial virtual token supply
     uint256 public initialVirtualBase;
 

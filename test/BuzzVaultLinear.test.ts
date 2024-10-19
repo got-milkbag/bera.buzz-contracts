@@ -283,7 +283,7 @@ describe("BuzzVaultLinear Tests", () => {
         beforeEach(async () => {
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("10")});
+                .buy(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("3")});
         });
         it("should revert if token doesn't exist", async () => {
             await expect(

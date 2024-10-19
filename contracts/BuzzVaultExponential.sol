@@ -54,9 +54,9 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
 
         if (isBuyOrder) {
-            (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(circulatingSupply, amount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+            (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
         } else {
-            (amountOut, pricePerToken, pricePerBera) = _calculateSellPrice(circulatingSupply, amount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+            (amountOut, pricePerToken, pricePerBera) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
         }
     }
 
@@ -85,7 +85,7 @@ contract BuzzVaultExponential is BuzzVault {
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
-        (uint256 tokenAmountBuy, uint256 beraPerToken, uint256 tokenPerBera) = _calculateBuyPrice(circulatingSupply, netBeraAmount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+        (uint256 tokenAmountBuy, uint256 beraPerToken, uint256 tokenPerBera) = _calculateBuyPrice(circulatingSupply, netBeraAmount, CURVE_ALPHA, CURVE_BETA);
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
@@ -127,7 +127,7 @@ contract BuzzVaultExponential is BuzzVault {
         TokenInfo storage info
     ) internal override returns (uint256 netBeraAmount) {
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
-        (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(circulatingSupply, tokenAmount, SUPPLY_NO_DECIMALS, CURVE_COEFFICIENT);
+        (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(circulatingSupply, tokenAmount, CURVE_ALPHA, CURVE_BETA);
 
         if (info.beraBalance - INITIAL_VIRTUAL_BERA < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
@@ -164,8 +164,8 @@ contract BuzzVaultExponential is BuzzVault {
      * @notice Calculate the amount of tokens that can be bought at the current curve
      * @param circulatingSupply The circulating supply of the token
      * @param beraAmountIn The amount of Bera to buy with
-     * @param totalSupplyNoPrecision The total supply of the token without decimals
-     * @param coefficient The coefficient of the curve
+     * @param curveAlpha The alpha coefficient of the curve
+     * @param curveBeta The beta coefficient of the curve
      * @return amountOut The amount of tokens that will be bought
      * @return pricePerToken The price per token, scalend by 1e18
      * @return pricePerBera The price per Bera, scaled by 1e18
@@ -173,18 +173,18 @@ contract BuzzVaultExponential is BuzzVault {
     function _calculateBuyPrice(
         uint256 circulatingSupply,
         uint256 beraAmountIn,
-        uint256 totalSupplyNoPrecision,
-        uint256 coefficient
+        uint256 curveAlpha,
+        uint256 curveBeta
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera) {
         if (beraAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
         // calculate exp(b*x0)
-        uint256 exp_b_x0 = uint256((int256(totalSupplyNoPrecision.mulWad(circulatingSupply))).expWad());
+        uint256 exp_b_x0 = uint256((int256(curveBeta.mulWad(circulatingSupply))).expWad());
 
         // calculate exp(b*x0) + (dy*b/a)
-        uint256 exp_b_x1 = exp_b_x0 + beraAmountIn.fullMulDiv(totalSupplyNoPrecision, coefficient);
+        uint256 exp_b_x1 = exp_b_x0 + beraAmountIn.fullMulDiv(curveBeta, curveAlpha);
 
-        amountOut = uint256(int256(exp_b_x1).lnWad()).divWad(totalSupplyNoPrecision) - circulatingSupply;
+        amountOut = uint256(int256(exp_b_x1).lnWad()).divWad(curveBeta) - circulatingSupply;
         pricePerToken = (beraAmountIn * 1e18) / amountOut;
         pricePerBera = (amountOut * 1e18) / beraAmountIn;
     }
@@ -193,8 +193,8 @@ contract BuzzVaultExponential is BuzzVault {
      * @notice Calculate the amount of Bera that can be received for selling tokens
      * @param circulatingSupply The circulating supply of the token
      * @param tokenAmountIn The amount of tokens to sell
-     * @param totalSupplyNoPrecision, The total supply of the token without decimals
-     * @param coefficient The coefficient of the curve
+     * @param curveAlpha The alpha coefficient of the curve
+     * @param curveBeta The beta coefficient of the curve
      * @return amountOut The amount of Bera that will be received
      * @return pricePerToken The price per token, scalend by 1e18
      * @return pricePerBera The price per Bera, scaled by 1e18
@@ -202,20 +202,20 @@ contract BuzzVaultExponential is BuzzVault {
     function _calculateSellPrice(
         uint256 circulatingSupply,
         uint256 tokenAmountIn,
-        uint256 totalSupplyNoPrecision,
-        uint256 coefficient
+        uint256 curveAlpha,
+        uint256 curveBeta
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera) {
         if (tokenAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
         require(circulatingSupply >= tokenAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
         // calculate exp(b*x0), exp(b*x1)
-        int256 exp_b_x0 = (int256(totalSupplyNoPrecision.mulWad(circulatingSupply))).expWad();
-        int256 exp_b_x1 = (int256(totalSupplyNoPrecision.mulWad(circulatingSupply - tokenAmountIn))).expWad();
+        int256 exp_b_x0 = (int256(curveBeta.mulWad(circulatingSupply))).expWad();
+        int256 exp_b_x1 = (int256(curveBeta.mulWad(circulatingSupply - tokenAmountIn))).expWad();
 
         // calculate deltaY = (a/b)*(exp(b*x0) - exp(b*x1))
         uint256 delta = uint256(exp_b_x0 - exp_b_x1);
 
-        amountOut = coefficient.fullMulDiv(delta, totalSupplyNoPrecision);
+        amountOut = curveAlpha.fullMulDiv(delta, curveBeta);
         pricePerToken = (amountOut * 1e18) / tokenAmountIn;
         pricePerBera = (tokenAmountIn * 1e18) / amountOut;
     }

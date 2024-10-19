@@ -250,10 +250,10 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("100");
+            const msgValue = ethers.utils.parseEther("10");
 
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("100"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("100"), 
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("10"), 
             });
 
             const getMarket = await expVault.getMarketCapFor(token.address);
@@ -276,7 +276,7 @@ describe("BuzzVaultExponential Tests", () => {
         beforeEach(async () => {
             await expVault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("10")});
+                .buy(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("3")});
         });
         it("should revert if token doesn't exist", async () => {
             await expect(

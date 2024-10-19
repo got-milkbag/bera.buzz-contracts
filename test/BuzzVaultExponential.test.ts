@@ -146,6 +146,10 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault,
                 "BuzzVault_Unauthorized"
             );
+            //console.log("initial approx token price:", calculateTokenPrice(ethers.utils.parseEther("2.7"), await expVault.initialVirtualBase()));
+            //console.log("initial Token price:", await expVault.initialTokenPrice());
+            //console.log("initial Bera price:", await expVault.initialBeraPrice());
+            //console.log("initial virtual base:", ethers.utils.formatEther(await expVault.initialVirtualBase()));
         });
     });
     describe("buy", () => {
@@ -268,6 +272,9 @@ describe("BuzzVaultExponential Tests", () => {
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
             const msgValue = ethers.utils.parseEther("10");
 
+            const tokenContractBalance = await token.balanceOf(expVault.address);
+            console.log("Token contract balanceA: ", tokenContractBalance.toString());
+
             await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {
                 value: ethers.utils.parseEther("10"),
             });
@@ -286,6 +293,13 @@ describe("BuzzVaultExponential Tests", () => {
 
             // check balances
             expect(tokenInfoAfter[4]).to.be.equal(true);
+        });
+        it("should revert if softcap is not respected", async () => {
+            await expect(
+                expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("20"), ethers.constants.AddressZero, {
+                    value: ethers.utils.parseEther("20"),
+                })
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_SoftcapReached");
         });
     });
     describe("sell", () => {

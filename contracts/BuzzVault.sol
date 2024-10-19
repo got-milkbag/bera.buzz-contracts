@@ -39,6 +39,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_TokenExists();
     /// @notice Error code emitted when min ERC20 amount not respected
     error BuzzVault_InvalidMinTokenAmount();
+    /// @notice Error code emitted when curve softcap has been reached
+    error BuzzVault_SoftcapReached();
 
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
@@ -48,16 +50,18 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
+    /// @notice The total amount of tokens to be sold
+    uint256 public constant TOTAL_TOKENS_TO_SELL = 8e26;
+    /// @notice Final balance threshold of the bonding curve
+    uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
     /// @notice The bera amount threshold to lock the bonding curve
     uint256 public constant BERA_MARKET_CAP_LIQ = 12e18;
     /// @notice Market cap threshold to lock the bonding curve
     uint256 public constant MARKET_CAP = 69e21;
-    /// @notice Final balance threshold of the bonding curve
-    uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
     /// @notice The reserve BERA amount to lock the curve out
     uint256 public constant RESERVE_BERA = 10 ether;
     /// @notice The bonding curve alpha coefficient
-    uint256 public constant CURVE_ALPHA = 24659381630;
+    uint256 public constant CURVE_ALPHA = 2535885936;
     /// @notice The bonding curve beta coefficient
     uint256 public constant CURVE_BETA = 3350000000;
     /// @notice The initial virtual BERA amount
@@ -195,10 +199,10 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         //uint256 beraAmount = _getBeraAmountForMarketCap();
 
-        (initialVirtualBase, initialTokenPrice, initialBeraPrice) = _calculateBuyDeployment(0, INITIAL_VIRTUAL_BERA, CURVE_ALPHA, CURVE_BETA);
+        //(initialVirtualBase, initialTokenPrice, initialBeraPrice) = _calculateBuyDeployment(0, INITIAL_VIRTUAL_BERA, CURVE_ALPHA, CURVE_BETA);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance - initialVirtualBase, INITIAL_VIRTUAL_BERA, initialTokenPrice, initialBeraPrice, /*beraAmount,*/ false);
+        tokenInfo[token] = TokenInfo(tokenBalance, INITIAL_VIRTUAL_BERA, 0, 0, /*beraAmount,*/ false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
         //IERC20(token).safeTransfer(address(0x1), (INITIAL_VIRTUAL_BERA * INITIAL_PRICE) / 1e18);
@@ -248,7 +252,7 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         // burn tokens
         uint256 tokenFeeAmount = (dexFee * lastBeraPrice) / 1e18;
-        uint256 balancedAmount = tokenFeeAmount + initialVirtualBase;
+        uint256 balancedAmount = tokenFeeAmount /*+ initialVirtualBase*/;
         IERC20(token).safeTransfer(address(0x1), balancedAmount);
 
         //uint256 netTokenAmount = tokenBalance - balancedAmount;

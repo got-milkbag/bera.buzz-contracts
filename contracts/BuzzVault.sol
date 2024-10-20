@@ -42,7 +42,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The DEX migration fee in basis points
-    uint256 public constant DEX_MIGRATION_FEE_BPS = 500; // 500 -> 5%
+    uint256 public constant DEX_MIGRATION_FEE_BPS = 420; // 420 -> 4.2%
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens

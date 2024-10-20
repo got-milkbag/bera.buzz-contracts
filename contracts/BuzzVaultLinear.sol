@@ -7,7 +7,7 @@ import "./BuzzVault.sol";
 /// @notice A contract implementing a linear bonding curve with a fixed slope
 contract BuzzVaultLinear is BuzzVault {
     using SafeERC20 for IERC20;
-    
+
     /**
      * @notice Constructor for a new BuzzVaultLinear contract
      * @param _feeRecipient The address that receives the protocol fee
@@ -36,8 +36,8 @@ contract BuzzVaultLinear is BuzzVault {
      * @return pricePerBera The price per Bera, scaled by 1e18
      */
     function quote(
-        address token, 
-        uint256 amount, 
+        address token,
+        uint256 amount,
         bool isBuyOrder
     ) external view override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera) {
         TokenInfo storage info = tokenInfo[token];
@@ -46,7 +46,7 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 tokenBalance = info.tokenBalance;
         uint256 beraBalance = info.beraBalance;
         if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
-        
+
         uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
         if (isBuyOrder) {
@@ -60,27 +60,28 @@ contract BuzzVaultLinear is BuzzVault {
      * @notice Buy tokens from the bonding curve with Bera
      * @param token The token address
      * @param minTokens The minimum amount of tokens to buy
-     * @param affiliate The affiliate address
      * @param info The token info struct
      * @return tokenAmount The amount of tokens bought
      */
-    function _buy(
-        address token, 
-        uint256 minTokens, 
-        address affiliate, 
-        TokenInfo storage info
-    ) internal override returns (uint256 tokenAmount) {
+    function _buy(address token, uint256 minTokens, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
         uint256 beraAmount = msg.value;
         uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee;
-        if (affiliate != address(0)) {
-            uint256 bps = _getBpsToDeductForReferrals(msg.sender);
-            beraAmountAfFee = (beraAmount * bps) / 10000;
+
+        uint256 bps = _getBpsToDeductForReferrals(msg.sender);
+        if (bps > 0) {
+            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
+            beraAmountPrFee -= beraAmountAfFee;
         }
 
         uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
 
-        (uint256 tokenAmountBuy, uint256 beraPerToken, uint256 tokenPerBera) = _calculateBuyPrice(netBeraAmount, info.tokenBalance, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
+        (uint256 tokenAmountBuy, uint256 beraPerToken, uint256 tokenPerBera) = _calculateBuyPrice(
+            netBeraAmount,
+            info.tokenBalance,
+            info.beraBalance,
+            TOTAL_SUPPLY_OF_TOKENS
+        );
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
 
@@ -94,7 +95,7 @@ contract BuzzVaultLinear is BuzzVault {
 
         _transferFee(feeRecipient, beraAmountPrFee);
 
-        if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
+        if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
 
@@ -106,18 +107,16 @@ contract BuzzVaultLinear is BuzzVault {
      * @param token The token address
      * @param tokenAmount The amount of tokens to sell
      * @param minBera The minimum amount of Bera to receive
-     * @param affiliate The affiliate address
      * @param info The token info struct
      * @return netBeraAmount The amount of Bera after fees
      */
-    function _sell(
-        address token,
-        uint256 tokenAmount,
-        uint256 minBera,
-        address affiliate,
-        TokenInfo storage info
-    ) internal override returns (uint256 netBeraAmount) {
-        (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(tokenAmount, info.tokenBalance, info.beraBalance, TOTAL_SUPPLY_OF_TOKENS);
+    function _sell(address token, uint256 tokenAmount, uint256 minBera, TokenInfo storage info) internal override returns (uint256 netBeraAmount) {
+        (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(
+            tokenAmount,
+            info.tokenBalance,
+            info.beraBalance,
+            TOTAL_SUPPLY_OF_TOKENS
+        );
         if (info.beraBalance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
         if (beraAmountSell == 0) revert BuzzVault_QuoteAmountZero();
@@ -125,9 +124,10 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 beraAmountPrFee = (beraAmountSell * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee = 0;
 
-        if (affiliate != address(0)) {
-            uint256 bps = _getBpsToDeductForReferrals(msg.sender);
-            beraAmountAfFee = (beraAmountSell * bps) / 10000;
+        uint256 bps = _getBpsToDeductForReferrals(msg.sender);
+        if (bps > 0) {
+            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
+            beraAmountPrFee -= beraAmountAfFee;
         }
 
         netBeraAmount = beraAmountSell - beraAmountPrFee - beraAmountAfFee;
@@ -144,7 +144,7 @@ contract BuzzVaultLinear is BuzzVault {
 
         _transferFee(feeRecipient, beraAmountPrFee);
 
-        if (affiliate != address(0)) _forwardReferralFee(msg.sender, beraAmountAfFee);
+        if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
         _transferFee(payable(msg.sender), netBeraAmount);
     }

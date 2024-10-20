@@ -160,11 +160,9 @@ describe("BuzzVault Tests", () => {
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
         });
         it("should not set the referral if it's the same as msg.sender", async () => {
-            await expect(
-                expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
-                    value: ethers.utils.parseEther("0.01"),
-                })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+                value: ethers.utils.parseEther("0.01"),
+            });
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
         });
         it("should increase the referralCount counter", async () => {

@@ -134,7 +134,7 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountBought = _buy(token, minTokens, affiliate, info);
+        uint256 amountBought = _buy(token, minTokens, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
 
         if (info.beraBalance >= RESERVE_BERA /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
@@ -163,7 +163,7 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountSold = _sell(token, tokenAmount, minBera, affiliate, info);
+        uint256 amountSold = _sell(token, tokenAmount, minBera, info);
         eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, info.lastPrice, false);
     }
 
@@ -189,15 +189,9 @@ abstract contract BuzzVault is ReentrancyGuard {
         bool isBuyOrder
     ) external view virtual returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
 
-    function _buy(address token, uint256 minTokens, address affiliate, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
+    function _buy(address token, uint256 minTokens, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
-    function _sell(
-        address token,
-        uint256 tokenAmount,
-        uint256 minBera,
-        address affiliate,
-        TokenInfo storage info
-    ) internal virtual returns (uint256 beraAmount);
+    function _sell(address token, uint256 tokenAmount, uint256 minBera, TokenInfo storage info) internal virtual returns (uint256 beraAmount);
 
     /**
      * @notice Transfers bera to a recipient, checking if the transfer was successful
@@ -267,7 +261,6 @@ abstract contract BuzzVault is ReentrancyGuard {
         bps = referralManager.getReferralBpsFor(user);
     }
 
-    
     /**
      * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
      * @return beraAmount The amount of BERA for market cap
@@ -276,7 +269,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     //     // Get the Bera/USD price (assumed 18 decimals)
     //     uint256 beraUsdPrice = priceDecoder.getPrice();
 
-        // Assuming 18 decimal precision
+    // Assuming 18 decimal precision
     //     beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice;
     // }
 }

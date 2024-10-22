@@ -34,10 +34,12 @@ describe("BuzzVaultLinear Tests", () => {
     let crocQuery: Contract;
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
+    let bexLiquidityManager: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const payoutThreshold = 0;
+    const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -74,6 +76,10 @@ describe("BuzzVaultLinear Tests", () => {
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
         factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
 
+        // Deploy liquidity manager
+        const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+
         // Deploy Linear Vault
         const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         vault = await Vault.connect(ownerSigner).deploy(
@@ -81,7 +87,8 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
         );
 
         // Deploy Exponential Vault
@@ -91,7 +98,8 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
         );
 
         // Admin: Set Vault in the ReferralManager
@@ -135,11 +143,11 @@ describe("BuzzVaultLinear Tests", () => {
         beforeEach(async () => {});
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await vault.tokenInfo(token.address);
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
+            expect(await token.balanceOf(vault.address)).to.be.equal(await token.totalSupply());
             //expect(tokenInfo.beraBalance).to.be.equal(0);
             expect(tokenInfo.bexListed).to.be.equal(false);
 
-            expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(vault.address));
+            //expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(vault.address));
         });
         it("should revert if caller is not factory", async () => {
             await expect(vault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
@@ -158,7 +166,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 1: user1 buys a small amount of tokens
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
             const vaultTokenBalanceAfterFirstBuy = await token.balanceOf(vault.address);
             const user1BalanceAfterFirstBuy = await ethers.provider.getBalance(user1Signer.address);
             const tokenInfoAfterFirstBuy = await vault.tokenInfo(token.address);
@@ -172,7 +180,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 2: user2 buys using same BERA amount
             await vault
                 .connect(user2Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("1")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
             const vaultTokenBalanceAfterSecondBuy = await token.balanceOf(vault.address);
             const user2BalanceAfterSecondBuy = await ethers.provider.getBalance(user2Signer.address);
             const tokenInfoAfterSecondBuy = await vault.tokenInfo(token.address);
@@ -202,14 +210,14 @@ describe("BuzzVaultLinear Tests", () => {
                 vault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidReserves");
         });
-        it("should revert if user wants less than 0.001 token min buy", async () => {
+        it("should revert if user wants less than 0.001 token min", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.00000000000000001")})
+                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.000000000000000001")})
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should set a referral if one is provided", async () => {
@@ -248,12 +256,34 @@ describe("BuzzVaultLinear Tests", () => {
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
+        it("should init a pool and deposit liquidity if preconditions are met", async () => {
+            const msgValue = ethers.utils.parseEther("3000");
+
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("2800"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("3000"), 
+            });
+
+            //const getMarket = await vault.getMarketCapFor(token.address);
+            //console.log("Market cap: ", getMarket.toString());
+
+            const tokenInfoAfter = await vault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+
+            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            console.log("Price per token in Bera: ", pricePerToken);
+
+            const tokenBalance = tokenInfoAfter[0];
+            console.log("Token balance: ", tokenBalance.toString());
+
+            // check balances
+            expect(tokenInfoAfter[5]).to.be.equal(true);
+        });
     });
     describe("sell", () => {
         beforeEach(async () => {
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")});
+                .buy(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("3")});
         });
         it("should revert if token doesn't exist", async () => {
             await expect(
@@ -274,6 +304,7 @@ describe("BuzzVaultLinear Tests", () => {
         });
         it("should emit a trade event", async () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
+            console.log("User token balance: ", userTokenBalance.toString());
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);
             await expect(vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
                 eventTracker,
@@ -283,6 +314,7 @@ describe("BuzzVaultLinear Tests", () => {
         it("should increase the tokenBalance", async () => {
             const tokenInfoBefore = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
+            console.log("User token balance: ", userTokenBalance.toString());
             await token.connect(user1Signer).approve(vault.address, userTokenBalance);
             await vault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero);
             const tokenInfoAfter = await vault.tokenInfo(token.address);

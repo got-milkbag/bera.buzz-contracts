@@ -12,8 +12,32 @@
   },
   {
     "inputs": [],
+    "name": "BuzzEventTracker_AddressZero",
+    "type": "error"
+  },
+  {
+    "inputs": [],
     "name": "BuzzEventTracker_Unauthorized",
     "type": "error"
+  },
+  {
+    "anonymous": false,
+    "inputs": [
+      {
+        "indexed": true,
+        "internalType": "address",
+        "name": "contractSet",
+        "type": "address"
+      },
+      {
+        "indexed": false,
+        "internalType": "bool",
+        "name": "status",
+        "type": "bool"
+      }
+    ],
+    "name": "EventSetterSet",
+    "type": "event"
   },
   {
     "anonymous": false,
@@ -80,7 +104,7 @@
         "type": "address"
       }
     ],
-    "name": "tokenCreated",
+    "name": "TokenCreated",
     "type": "event"
   },
   {
@@ -112,6 +136,12 @@
       },
       {
         "indexed": false,
+        "internalType": "uint256",
+        "name": "lastPrice",
+        "type": "uint256"
+      },
+      {
+        "indexed": false,
         "internalType": "bool",
         "name": "isBuyOrder",
         "type": "bool"
@@ -123,7 +153,7 @@
         "type": "address"
       }
     ],
-    "name": "trade",
+    "name": "Trade",
     "type": "event"
   },
   {
@@ -192,6 +222,11 @@
         "type": "uint256"
       },
       {
+        "internalType": "uint256",
+        "name": "lastPrice",
+        "type": "uint256"
+      },
+      {
         "internalType": "bool",
         "name": "isBuyOrder",
         "type": "bool"
@@ -229,25 +264,6 @@
         "internalType": "address",
         "name": "",
         "type": "address"
-      }
-    ],
-    "stateMutability": "view",
-    "type": "function"
-  },
-  {
-    "inputs": [
-      {
-        "internalType": "address",
-        "name": "token",
-        "type": "address"
-      }
-    ],
-    "name": "getMarketCapFor",
-    "outputs": [
-      {
-        "internalType": "uint256",
-        "name": "",
-        "type": "uint256"
       }
     ],
     "stateMutability": "view",

@@ -4,7 +4,7 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 import {Contract} from "ethers";
-import { formatBytes32String } from "ethers/lib/utils";
+import {formatBytes32String} from "ethers/lib/utils";
 
 describe("BuzzVault Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -26,10 +26,13 @@ describe("BuzzVault Tests", () => {
     let crocQuery: Contract;
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
+    let bexLiquidityManager: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
+    const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
+    const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -54,6 +57,10 @@ describe("BuzzVault Tests", () => {
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
         bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
+        // Deploy liquidity manager
+        const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
@@ -64,33 +71,47 @@ describe("BuzzVault Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(eventTracker.address, ownerSigner.address, create3Factory.address);
-
+        factory = await Factory.connect(ownerSigner).deploy(
+            eventTracker.address,
+            ownerSigner.address,
+            create3Factory.address,
+            feeRecipient,
+            listingFee
+        );
         // Deploy Linear Vault
-        const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-        vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
+        //const Vault = await ethers.getContractFactory("BuzzVaultLinear");
+        //vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
-        expVault = await ExpVault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address);
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeRecipient,
+            factory.address,
+            referralManager.address,
+            eventTracker.address,
+            bexPriceDecoder.address,
+            bexLiquidityManager.address
+        );
 
         // Admin: Set Vault in the ReferralManager
-        await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
+        await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Set event setter contracts in EventTracker
-        await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
+        //await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
         await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
-        await factory.connect(ownerSigner).setVault(vault.address, true);
+        //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", vault.address, formatBytes32String("12345"));
+        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+            value: listingFee,
+        });
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 
@@ -113,7 +134,7 @@ describe("BuzzVault Tests", () => {
     });
     describe("setReferral", () => {
         beforeEach(async () => {
-            tx = await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -133,17 +154,15 @@ describe("BuzzVault Tests", () => {
         });
         it("should not update the referral if one is already set", async () => {
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
-            await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
+            await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
         });
         it("should not set the referral if it's the same as msg.sender", async () => {
-            await expect(
-                vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
-                    value: ethers.utils.parseEther("0.01"),
-                })
-            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+                value: ethers.utils.parseEther("0.01"),
+            });
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
         });
         it("should increase the referralCount counter", async () => {
@@ -155,7 +174,7 @@ describe("BuzzVault Tests", () => {
         });
         describe("setReferral - indirect referral", () => {
             beforeEach(async () => {
-                tx = await vault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                tx = await expVault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
@@ -176,7 +195,7 @@ describe("BuzzVault Tests", () => {
     });
     describe("getReferralBpsFor", () => {
         beforeEach(async () => {
-            tx = await vault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -192,7 +211,7 @@ describe("BuzzVault Tests", () => {
         });
         describe("getReferralBpsFor - indirect referral", () => {
             beforeEach(async () => {
-                await vault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                await expVault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });

@@ -8,5 +8,5 @@ interface IBuzzTokenFactory {
         string calldata image,
         address vault,
         bytes32 salt
-    ) external returns (address token);
+    ) external payable returns (address token);
 }

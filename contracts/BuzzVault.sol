@@ -49,12 +49,15 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
-    /// @notice The reserve BERA amount to lock the curve out
-    uint256 public constant RESERVE_BERA = 10 ether;
     /// @notice The bonding curve alpha coefficient
-    uint256 public constant CURVE_ALPHA = 2535885936;
+    uint256 public constant CURVE_ALPHA = 202848073251;
     /// @notice The bonding curve beta coefficient
     uint256 public constant CURVE_BETA = 3350000000;
+    /// @notice The market cap threshold
+    uint256 public constant BERA_MARKET_CAP_LIQ = 69420 ether;
+    /// @notice The reserve Bera amount to lock the bonding curve out (calculated at 22/10 02:28 UTC)
+    uint256 public constant RESERVE_BERA = 822.6 ether;
+
 
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
@@ -82,6 +85,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraBalance; // aka reserve balance
         uint256 lastPrice;
         uint256 lastBeraPrice;
+        //uint256 beraThreshold;
         bool bexListed;
     }
 
@@ -137,7 +141,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 amountBought = _buy(token, minTokens, info);
         eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
 
-        if (info.beraBalance >= RESERVE_BERA /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
+        if (info.beraBalance >= RESERVE_BERA/*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
             _lockCurveAndDeposit(token, info);
         }
     }
@@ -177,8 +181,10 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].beraBalance > 0) revert BuzzVault_TokenExists();
 
+        //uint256 reserveBera = _getBeraAmountForMarketCap();
+
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, 0, 0, false);
+        tokenInfo[token] = TokenInfo(tokenBalance, 0, 0, 0, /*reserveBera,*/ false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
@@ -265,11 +271,11 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
      * @return beraAmount The amount of BERA for market cap
      */
-    // function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
-    //     // Get the Bera/USD price (assumed 18 decimals)
-    //     uint256 beraUsdPrice = priceDecoder.getPrice();
+    //function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
+        // Get the Bera/USD price (assumed 18 decimals)
+    //    uint256 beraUsdPrice = priceDecoder.getPrice();
 
-    // Assuming 18 decimal precision
-    //     beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice;
-    // }
+        // Assuming 18 decimal precision
+    //    beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice / 5;
+    //}
 }

@@ -271,13 +271,13 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("10.2");
+            const msgValue = ethers.utils.parseEther("830");
 
             const tokenContractBalance = await token.balanceOf(expVault.address);
             console.log("Token contract balanceA: ", tokenContractBalance.toString());
 
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("10.2"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("10.2"),
+            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("840"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("840"),
             });
 
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
@@ -294,8 +294,8 @@ describe("BuzzVaultExponential Tests", () => {
         });
         it("should revert if softcap is not respected", async () => {
             await expect(
-                expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("20"), ethers.constants.AddressZero, {
-                    value: ethers.utils.parseEther("20"),
+                expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
+                    value: ethers.utils.parseEther("1000"),
                 })
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_SoftcapReached");
         });

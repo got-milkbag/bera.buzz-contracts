@@ -228,7 +228,7 @@ abstract contract BuzzVault is ReentrancyGuard {
 
         IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
         /// TODO: Fix initial price
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, 2e22);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, lastBeraPrice);
         if (IERC20(token).balanceOf(address(this)) > 0) {
             IERC20(token).safeTransfer(address(0x1), IERC20(token).balanceOf(address(this)));
         }

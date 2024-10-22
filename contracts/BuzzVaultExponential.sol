@@ -55,8 +55,11 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (isBuyOrder) {
             (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
+            if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
+            if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
         } else {
             (amountOut, pricePerToken, pricePerBera) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
+            if (amountOut > beraBalance) revert BuzzVault_InvalidReserves();
         }
     }
 

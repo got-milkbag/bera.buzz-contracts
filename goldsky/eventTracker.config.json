@@ -1,6 +1,6 @@
 {
   "version": "1",
-  "name": "eventTrackerSimple5CC1",
+  "name": "eventTrackerSimpleFAED",
   "abis": {
     "eventTracker": {
       "path": "./eventTracker.abi.json"
@@ -9,8 +9,8 @@
   "instances": [
     {
       "abi": "eventTracker",
-      "address": "0x7768A4492a584d7A8C1ea0Fa391D88C81B2c5CC1",
-      "startBlock": 5824021,
+      "address": "0x15003BD3651CddB0cB052608D025Db420EFEfAed",
+      "startBlock": 5903350,
       "chain": "berachain-bartio"
     }
   ]

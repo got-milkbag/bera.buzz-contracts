@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
-import "./libraries/PriceConverter.sol";
 import "./libraries/SqrtMath.sol";
 
 contract BexLiquidityManager is IBexLiquidityManager {

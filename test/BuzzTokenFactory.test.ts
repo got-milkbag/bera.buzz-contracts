@@ -116,21 +116,21 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", user1Signer.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", user1Signer.address, formatBytes32String("12345"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
         it("should revert if the listing fee is not sent", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
                     value: 0,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
@@ -138,7 +138,7 @@ describe("BuzzTokenFactory Tests", () => {
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
-            const tx = await factory.createToken(name, symbol, "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+            const tx = await factory.createToken(name, symbol, expVault.address, formatBytes32String("12345"), {
                 value: listingFee,
             });
             const receipt = await tx.wait();
@@ -155,17 +155,9 @@ describe("BuzzTokenFactory Tests", () => {
         describe("_deployToken", () => {
             beforeEach(async () => {
                 treasuryBalanceBefore = await ethers.provider.getBalance(feeRecipient);
-                const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    "Test token is the best",
-                    "0x0",
-                    expVault.address,
-                    formatBytes32String("12345"),
-                    {
-                        value: listingFee,
-                    }
-                );
+                const tx = await factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
+                    value: listingFee,
+                });
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
@@ -174,8 +166,6 @@ describe("BuzzTokenFactory Tests", () => {
             it("should create a token with the correct metadata", async () => {
                 expect(await token.name()).to.be.equal("TEST");
                 expect(await token.symbol()).to.be.equal("TEST");
-                expect(await token.description()).to.be.equal("Test token is the best");
-                expect(await token.image()).to.be.equal("0x0");
             });
             it("should create a token with the storred contract supply", async () => {
                 const totalSupply = await factory.TOTAL_SUPPLY_OF_TOKENS();
@@ -195,17 +185,9 @@ describe("BuzzTokenFactory Tests", () => {
             beforeEach(async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
 
-                const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    "Test token is the best",
-                    "0x0",
-                    expVault.address,
-                    formatBytes32String("12345"),
-                    {
-                        value: listingFeeAndBuyAmount,
-                    }
-                );
+                const tx = await factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
+                    value: listingFeeAndBuyAmount,
+                });
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract

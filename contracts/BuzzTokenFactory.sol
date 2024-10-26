@@ -60,8 +60,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     function createToken(
         string calldata name,
         string calldata symbol,
-        string calldata description,
-        string calldata image,
         address vault,
         bytes32 salt
     ) external payable nonReentrant returns (address token) {
@@ -70,7 +68,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
 
         _transferFee(listingFee);
-        token = _deployToken(name, symbol, description, image, vault, salt);
+        token = _deployToken(name, symbol, vault, salt);
 
         emit TokenCreated(token, name, symbol, msg.sender, vault);
 
@@ -109,20 +107,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit ListingFeeSet(_listingFee);
     }
 
-    function _deployToken(
-        string calldata name,
-        string calldata symbol,
-        string calldata description,
-        string calldata image,
-        address vault,
-        bytes32 salt
-    ) internal returns (address token) {
+    function _deployToken(string calldata name, string calldata symbol, address vault, bytes32 salt) internal returns (address token) {
         uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
-        bytes memory bytecode = abi.encodePacked(
-            type(BuzzToken).creationCode,
-            abi.encode(name, symbol, description, image, totalSupply, address(this))
-        );
+        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, totalSupply, address(this)));
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;

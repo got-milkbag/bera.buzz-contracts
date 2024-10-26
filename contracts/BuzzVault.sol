@@ -40,6 +40,8 @@ abstract contract BuzzVault is ReentrancyGuard {
 
     /// @notice Event emitted when a trade occurs
     event Trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, uint256 lastPrice, bool isBuyOrder);
+    /// @notice Event emitted when a token is listed in Bex
+    event BexListed(address indexed token);
 
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
@@ -228,6 +230,8 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (IERC20(token).balanceOf(address(this)) > 0) {
             IERC20(token).safeTransfer(address(0x1), IERC20(token).balanceOf(address(this)));
         }
+        // TODO: Emit more data as necessary
+        emit BexListed(token);
     }
 
     /**
@@ -256,16 +260,4 @@ abstract contract BuzzVault is ReentrancyGuard {
     function _getBpsToDeductForReferrals(address user) internal view returns (uint256 bps) {
         bps = referralManager.getReferralBpsFor(user);
     }
-
-    /**
-     * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
-     * @return beraAmount The amount of BERA for market cap
-     */
-    //function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
-    // Get the Bera/USD price (assumed 18 decimals)
-    //    uint256 beraUsdPrice = priceDecoder.getPrice();
-
-    // Assuming 18 decimal precision
-    //    beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice / 5;
-    //}
 }

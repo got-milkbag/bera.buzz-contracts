@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./libraries/Math.sol";
 
 import "./interfaces/IBexPriceDecoder.sol";
-import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IReferralManager.sol";
 
@@ -39,6 +38,9 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice Error code emitted when curve softcap has been reached
     error BuzzVault_SoftcapReached();
 
+    /// @notice Event emitted when a trade occurs
+    event Trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, uint256 lastPrice, bool isBuyOrder);
+
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The DEX migration fee in basis points
@@ -58,15 +60,12 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice The reserve Bera amount to lock the bonding curve out (calculated at 22/10 02:28 UTC)
     uint256 public constant RESERVE_BERA = 822.6 ether;
 
-
     /// @notice The address that receives the protocol fee
     address payable public immutable feeRecipient;
     /// @notice The factory contract that can register tokens
     address public immutable factory;
     /// @notice The referral manager contract
     IReferralManager public immutable referralManager;
-    /// @notice The event tracker contract
-    IBuzzEventTracker public immutable eventTracker;
     /// @notice The price decoder contract
     IBexPriceDecoder public immutable priceDecoder;
     /// @notice The liquidity manager contract
@@ -97,22 +96,13 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param _feeRecipient The address that receives the protocol fee
      * @param _factory The factory contract that can register tokens
      * @param _referralManager The referral manager contract
-     * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
      * @param _liquidityManager The liquidity manager contract
      */
-    constructor(
-        address payable _feeRecipient,
-        address _factory,
-        address _referralManager,
-        address _eventTracker,
-        address _priceDecoder,
-        address _liquidityManager
-    ) {
+    constructor(address payable _feeRecipient, address _factory, address _referralManager, address _priceDecoder, address _liquidityManager) {
         feeRecipient = _feeRecipient;
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
-        eventTracker = IBuzzEventTracker(_eventTracker);
         priceDecoder = IBexPriceDecoder(_priceDecoder);
         liquidityManager = IBexLiquidityManager(_liquidityManager);
     }
@@ -139,9 +129,9 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, info);
-        eventTracker.emitTrade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
+        emit Trade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
 
-        if (info.beraBalance >= RESERVE_BERA/*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
+        if (info.beraBalance >= RESERVE_BERA /*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
             _lockCurveAndDeposit(token, info);
         }
     }
@@ -168,7 +158,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountSold = _sell(token, tokenAmount, minBera, info);
-        eventTracker.emitTrade(msg.sender, token, tokenAmount, amountSold, info.lastPrice, false);
+        emit Trade(msg.sender, token, tokenAmount, amountSold, info.lastPrice, false);
     }
 
     /**
@@ -272,10 +262,10 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @return beraAmount The amount of BERA for market cap
      */
     //function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
-        // Get the Bera/USD price (assumed 18 decimals)
+    // Get the Bera/USD price (assumed 18 decimals)
     //    uint256 beraUsdPrice = priceDecoder.getPrice();
 
-        // Assuming 18 decimal precision
+    // Assuming 18 decimal precision
     //    beraAmount = (BERA_MARKET_CAP_LIQ * 1e18) / beraUsdPrice / 5;
     //}
 }

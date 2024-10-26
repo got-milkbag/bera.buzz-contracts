@@ -4,6 +4,7 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {formatBytes32String} from "ethers/lib/utils";
 import {BigNumber, Contract} from "ethers";
+import {anyValue} from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 // Function to calculate the price per token in ETH
 function calculateTokenPrice(etherSpent: BigNumber, tokensReceived: BigNumber) {
@@ -27,7 +28,6 @@ describe("BuzzVaultExponential Tests", () => {
     let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
-    let eventTracker: Contract;
     let expVault: Contract;
     let bexLpToken: Contract;
     let crocQuery: Contract;
@@ -68,19 +68,10 @@ describe("BuzzVaultExponential Tests", () => {
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
 
-        // Deploy EventTracker
-        const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
-        eventTracker = await EventTracker.connect(ownerSigner).deploy([]);
-
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(
-            eventTracker.address,
-            ownerSigner.address,
-            create3Factory.address,
-            feeRecipient,
-            listingFee
-        );
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
+
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
@@ -91,16 +82,11 @@ describe("BuzzVaultExponential Tests", () => {
             feeRecipient,
             factory.address,
             referralManager.address,
-            eventTracker.address,
             bexPriceDecoder.address,
             bexLiquidityManager.address
         );
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
-
-        // Admin: Set event setter contracts in EventTracker
-        await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
-        await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
         await factory.connect(ownerSigner).setVault(expVault.address, true);
@@ -125,9 +111,6 @@ describe("BuzzVaultExponential Tests", () => {
         });
         it("should set the referralManager address", async () => {
             expect(await expVault.referralManager()).to.be.equal(referralManager.address);
-        });
-        it("should set the eventTracker address", async () => {
-            expect(await expVault.eventTracker()).to.be.equal(eventTracker.address);
         });
     });
     describe("registerToken", () => {
@@ -244,7 +227,9 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault
                     .connect(user1Signer)
                     .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
-            ).to.emit(eventTracker, "Trade");
+            )
+                .to.emit(expVault, "Trade")
+                .withArgs(user1Signer.address, token.address, anyValue, ethers.utils.parseEther("0.1"), anyValue, true);
         });
         it("should transfer the 1% of msg.value to feeRecipient", async () => {
             const feeRecipientBalanceBefore = await ethers.provider.getBalance(feeRecipient);
@@ -264,7 +249,10 @@ describe("BuzzVaultExponential Tests", () => {
 
             const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in Bera: ", pricePerToken);
-            console.log("ABI decoded", ethers.utils.defaultAbiCoder.decode(["uint128"], "0x0000000000000000000000000000000000000000000000016a09e667f3bd0000"));
+            console.log(
+                "ABI decoded",
+                ethers.utils.defaultAbiCoder.decode(["uint128"], "0x0000000000000000000000000000000000000000000000016a09e667f3bd0000")
+            );
 
             // check balances
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].sub(userTokenBalance));
@@ -324,10 +312,9 @@ describe("BuzzVaultExponential Tests", () => {
         it("should emit a trade event", async () => {
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             await token.connect(user1Signer).approve(expVault.address, userTokenBalance);
-            await expect(expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero)).to.emit(
-                eventTracker,
-                "Trade"
-            );
+            await expect(expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero))
+                .to.emit(expVault, "Trade")
+                .withArgs(user1Signer.address, token.address, userTokenBalance, anyValue, anyValue, false);
         });
         it("should increase the tokenBalance", async () => {
             const tokenInfoBefore = await expVault.tokenInfo(token.address);

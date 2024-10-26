@@ -9,7 +9,6 @@ import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzTokenFactory.sol";
-import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBuzzVault.sol";
 
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
@@ -28,7 +27,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
 
-    event TokenCreated(address indexed token);
+    event TokenCreated(address indexed token, string name, string symbol, address indexed deployer, address indexed vault);
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event ListingFeeSet(uint256 fee);
@@ -44,16 +43,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 
-    /// @notice The address of the event tracker contract
-    IBuzzEventTracker public immutable eventTracker;
     /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
     bool public allowTokenCreation;
 
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor(address _eventTracker, address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
-        eventTracker = IBuzzEventTracker(_eventTracker);
+    constructor(address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
         CREATE_DEPLOYER = _createDeployer;
@@ -76,8 +72,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         _transferFee(listingFee);
         token = _deployToken(name, symbol, description, image, vault, salt);
 
-        eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
-        emit TokenCreated(token);
+        emit TokenCreated(token, name, symbol, msg.sender, vault);
 
         if ((msg.value - listingFee) > 0) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));

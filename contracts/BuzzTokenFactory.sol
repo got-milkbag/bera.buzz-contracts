@@ -27,7 +27,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
 
-    event TokenCreated(address indexed token, string name, string symbol, address indexed deployer, address indexed vault);
+    event TokenCreated(
+        address indexed token, 
+        address indexed vault, 
+        address indexed deployer, 
+        string name, 
+        string symbol
+    );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event ListingFeeSet(uint256 fee);
@@ -85,14 +91,14 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         _transferFee(listingFee);
         token = _deployToken(name, symbol, vault, salt);
 
-        emit TokenCreated(token, name, symbol, msg.sender, vault);
-
         if ((msg.value - listingFee) > 0) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
             IBuzzVault(vault).buy{value: msg.value - listingFee}(token, 1e15, address(0));
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
+
+        emit TokenCreated(token, vault, msg.sender, name, symbol);
     }
 
     /**

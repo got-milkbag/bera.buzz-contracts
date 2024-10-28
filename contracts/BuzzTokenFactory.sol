@@ -49,6 +49,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
+    /**
+     * @notice Constructor of the Token Factory contract
+     * @param _owner The owner of the contract
+     * @param _createDeployer The address of the CREATE3 deployer
+     * @param _tresury The address of the treasury
+     * @param _listingFee The fee to deploy a token
+     */
     constructor(address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
@@ -57,6 +64,14 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         listingFee = _listingFee;
     }
 
+    /**
+     * @notice Deploys a new token
+     * @dev Msg.value should be greater or equal to the listing fee
+     * @param name The name of the token
+     * @param symbol The symbol of the token
+     * @param vault The address of the vault
+     * @param salt The salt for the CREATE3 deployment
+     */
     function createToken(
         string calldata name,
         string calldata symbol,
@@ -80,6 +95,11 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         }
     }
 
+    /**
+     * @notice Enables or disables a vault address that can be used to deploy tokens
+     * @param _vault The address of the vault
+     * @param enable The status of the vault
+     */
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_AddressZero();
         if (vaults[_vault] == enable) revert BuzzToken_SameBool();
@@ -88,6 +108,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit VaultSet(_vault, enable);
     }
 
+    /**
+     * @notice Enables or disables token creation
+     * @param _allowTokenCreation The status of token creation
+     */
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
         if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
@@ -95,18 +119,34 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit TokenCreationSet(allowTokenCreation);
     }
 
+    /**
+     * @notice Sets the treasury address
+     * @param _treasury The address of the treasury
+     */
     function setTreasury(address payable _treasury) external onlyRole(OWNER_ROLE) {
         treasury = _treasury;
 
         emit TreasurySet(_treasury);
     }
 
+    /**
+     * @notice Sets the listing fee
+     * @param _listingFee The fee to deploy a token
+     */
     function setListingFee(uint256 _listingFee) external onlyRole(OWNER_ROLE) {
         listingFee = _listingFee;
 
         emit ListingFeeSet(_listingFee);
     }
 
+    /**
+     * @notice Deploys a new token using CREATE3
+     * @param name The name of the token
+     * @param symbol The symbol of the token
+     * @param vault The address of the vault
+     * @param salt The salt for the CREATE3 deployment
+     * @return token The address of the deployed token
+     */
     function _deployToken(string calldata name, string calldata symbol, address vault, bytes32 salt) internal returns (address token) {
         uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 

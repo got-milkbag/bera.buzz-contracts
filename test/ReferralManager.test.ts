@@ -19,7 +19,6 @@ describe("BuzzVault Tests", () => {
     let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
-    let eventTracker: Contract;
     let expVault: Contract;
     let tx: any;
     let bexLpToken: Contract;
@@ -65,19 +64,9 @@ describe("BuzzVault Tests", () => {
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
 
-        // Deploy EventTracker
-        const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
-        eventTracker = await EventTracker.connect(ownerSigner).deploy([]);
-
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(
-            eventTracker.address,
-            ownerSigner.address,
-            create3Factory.address,
-            feeRecipient,
-            listingFee
-        );
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
         // Deploy Linear Vault
         //const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         //vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);
@@ -88,7 +77,6 @@ describe("BuzzVault Tests", () => {
             feeRecipient,
             factory.address,
             referralManager.address,
-            eventTracker.address,
             bexPriceDecoder.address,
             bexLiquidityManager.address
         );
@@ -97,11 +85,6 @@ describe("BuzzVault Tests", () => {
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
-        // Admin: Set event setter contracts in EventTracker
-        //await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
-        await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
-        await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
-
         // Admin: Set Vault as the factory's vault & enable token creation
         //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
@@ -109,7 +92,7 @@ describe("BuzzVault Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
             value: listingFee,
         });
         const receipt = await tx.wait();

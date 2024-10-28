@@ -17,7 +17,6 @@ describe("BuzzTokenFactory Tests", () => {
     let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
-    let eventTracker: Contract;
     let expVault: Contract;
     let bexLpToken: Contract;
     let crocQuery: Contract;
@@ -59,19 +58,9 @@ describe("BuzzTokenFactory Tests", () => {
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
 
-        // Deploy EventTracker
-        const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
-        eventTracker = await EventTracker.connect(ownerSigner).deploy([]);
-
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(
-            eventTracker.address,
-            ownerSigner.address,
-            create3Factory.address,
-            feeRecipient,
-            listingFee
-        );
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
@@ -93,7 +82,6 @@ describe("BuzzTokenFactory Tests", () => {
             feeRecipient,
             factory.address,
             referralManager.address,
-            eventTracker.address,
             bexPriceDecoder.address,
             bexLiquidityManager.address
         );
@@ -102,11 +90,6 @@ describe("BuzzTokenFactory Tests", () => {
         //await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
-        // Admin: Set event setter contracts in EventTracker
-        //await eventTracker.connect(ownerSigner).setEventSetter(vault.address, true);
-        await eventTracker.connect(ownerSigner).setEventSetter(expVault.address, true);
-        await eventTracker.connect(ownerSigner).setEventSetter(factory.address, true);
-
         // Admin: Set Vault as the factory's vault & enable token creation
         //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
@@ -114,9 +97,6 @@ describe("BuzzTokenFactory Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
     });
     describe("constructor", () => {
-        it("should set the eventTracker address", async () => {
-            expect(await factory.eventTracker()).to.be.equal(eventTracker.address);
-        });
         it("should set the CREATE_DEPLOYER", async () => {
             expect(await factory.CREATE_DEPLOYER()).to.be.equal(create3Factory.address);
         });
@@ -136,39 +116,48 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", user1Signer.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", user1Signer.address, formatBytes32String("12345"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
         it("should revert if the listing fee is not sent", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
                     value: 0,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
         });
+        it("should emit a TokenCreated event", async () => {
+            const name = "TEST";
+            const symbol = "TST";
+            const tx = await factory.createToken(name, symbol, expVault.address, formatBytes32String("12345"), {
+                value: listingFee,
+            });
+            const receipt = await tx.wait();
+            const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
+            expect(tokenCreatedEvent.args.name).to.be.equal(name);
+            expect(tokenCreatedEvent.args.symbol).to.be.equal(symbol);
+            expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
+            expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
+
+            // Get token contract
+            token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
+            expect(await token.name()).to.be.equal(name);
+        });
         describe("_deployToken", () => {
             beforeEach(async () => {
                 treasuryBalanceBefore = await ethers.provider.getBalance(feeRecipient);
-                const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    "Test token is the best",
-                    "0x0",
-                    expVault.address,
-                    formatBytes32String("12345"),
-                    {
-                        value: listingFee,
-                    }
-                );
+                const tx = await factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
+                    value: listingFee,
+                });
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
@@ -177,8 +166,6 @@ describe("BuzzTokenFactory Tests", () => {
             it("should create a token with the correct metadata", async () => {
                 expect(await token.name()).to.be.equal("TEST");
                 expect(await token.symbol()).to.be.equal("TEST");
-                expect(await token.description()).to.be.equal("Test token is the best");
-                expect(await token.image()).to.be.equal("0x0");
             });
             it("should create a token with the storred contract supply", async () => {
                 const totalSupply = await factory.TOTAL_SUPPLY_OF_TOKENS();
@@ -198,17 +185,9 @@ describe("BuzzTokenFactory Tests", () => {
             beforeEach(async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
 
-                const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    "Test token is the best",
-                    "0x0",
-                    expVault.address,
-                    formatBytes32String("12345"),
-                    {
-                        value: listingFeeAndBuyAmount,
-                    }
-                );
+                const tx = await factory.createToken("TEST", "TEST", expVault.address, formatBytes32String("12345"), {
+                    value: listingFeeAndBuyAmount,
+                });
                 const receipt = await tx.wait();
                 const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract

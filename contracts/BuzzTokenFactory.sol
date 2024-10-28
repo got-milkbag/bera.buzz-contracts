@@ -9,7 +9,6 @@ import "./interfaces/create3/ICREATE3Factory.sol";
 
 import "./BuzzToken.sol";
 import "./interfaces/IBuzzTokenFactory.sol";
-import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBuzzVault.sol";
 
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
@@ -28,7 +27,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
 
-    event TokenCreated(address indexed token);
+    event TokenCreated(
+        address indexed token, 
+        address indexed vault, 
+        address indexed deployer, 
+        string name, 
+        string symbol
+    );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event ListingFeeSet(uint256 fee);
@@ -44,16 +49,20 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     bytes32 public immutable OWNER_ROLE;
     address public immutable CREATE_DEPLOYER;
 
-    /// @notice The address of the event tracker contract
-    IBuzzEventTracker public immutable eventTracker;
     /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
     bool public allowTokenCreation;
 
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor(address _eventTracker, address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
-        eventTracker = IBuzzEventTracker(_eventTracker);
+    /**
+     * @notice Constructor of the Token Factory contract
+     * @param _owner The owner of the contract
+     * @param _createDeployer The address of the CREATE3 deployer
+     * @param _tresury The address of the treasury
+     * @param _listingFee The fee to deploy a token
+     */
+    constructor(address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
         CREATE_DEPLOYER = _createDeployer;
@@ -61,11 +70,17 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         listingFee = _listingFee;
     }
 
+    /**
+     * @notice Deploys a new token
+     * @dev Msg.value should be greater or equal to the listing fee
+     * @param name The name of the token
+     * @param symbol The symbol of the token
+     * @param vault The address of the vault
+     * @param salt The salt for the CREATE3 deployment
+     */
     function createToken(
         string calldata name,
         string calldata symbol,
-        string calldata description,
-        string calldata image,
         address vault,
         bytes32 salt
     ) external payable nonReentrant returns (address token) {
@@ -74,10 +89,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
 
         _transferFee(listingFee);
-        token = _deployToken(name, symbol, description, image, vault, salt);
-
-        eventTracker.emitTokenCreated(token, name, symbol, description, image, msg.sender, vault);
-        emit TokenCreated(token);
+        token = _deployToken(name, symbol, vault, salt);
 
         if ((msg.value - listingFee) > 0) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
@@ -85,8 +97,15 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
+
+        emit TokenCreated(token, vault, msg.sender, name, symbol);
     }
 
+    /**
+     * @notice Enables or disables a vault address that can be used to deploy tokens
+     * @param _vault The address of the vault
+     * @param enable The status of the vault
+     */
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_AddressZero();
         if (vaults[_vault] == enable) revert BuzzToken_SameBool();
@@ -95,6 +114,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit VaultSet(_vault, enable);
     }
 
+    /**
+     * @notice Enables or disables token creation
+     * @param _allowTokenCreation The status of token creation
+     */
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
         if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
@@ -102,32 +125,38 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit TokenCreationSet(allowTokenCreation);
     }
 
+    /**
+     * @notice Sets the treasury address
+     * @param _treasury The address of the treasury
+     */
     function setTreasury(address payable _treasury) external onlyRole(OWNER_ROLE) {
         treasury = _treasury;
 
         emit TreasurySet(_treasury);
     }
 
+    /**
+     * @notice Sets the listing fee
+     * @param _listingFee The fee to deploy a token
+     */
     function setListingFee(uint256 _listingFee) external onlyRole(OWNER_ROLE) {
         listingFee = _listingFee;
 
         emit ListingFeeSet(_listingFee);
     }
 
-    function _deployToken(
-        string calldata name,
-        string calldata symbol,
-        string calldata description,
-        string calldata image,
-        address vault,
-        bytes32 salt
-    ) internal returns (address token) {
+    /**
+     * @notice Deploys a new token using CREATE3
+     * @param name The name of the token
+     * @param symbol The symbol of the token
+     * @param vault The address of the vault
+     * @param salt The salt for the CREATE3 deployment
+     * @return token The address of the deployed token
+     */
+    function _deployToken(string calldata name, string calldata symbol, address vault, bytes32 salt) internal returns (address token) {
         uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
 
-        bytes memory bytecode = abi.encodePacked(
-            type(BuzzToken).creationCode,
-            abi.encode(name, symbol, description, image, totalSupply, address(this))
-        );
+        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, totalSupply, address(this)));
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;

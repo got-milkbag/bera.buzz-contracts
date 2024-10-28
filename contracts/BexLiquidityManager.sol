@@ -16,6 +16,9 @@ contract BexLiquidityManager is IBexLiquidityManager {
     /// @notice Error code emitted when deposit to the WBera contract fails
     error WrappedDepositFailed();
 
+    /// @notice Event emitted when liquidity is migrated to BEX
+    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice);
+
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
     /// @notice The address of the wrapped Bera token
@@ -79,5 +82,8 @@ contract BexLiquidityManager is IBexLiquidityManager {
 
         // Execute multipath call
         crocSwapDex.userCmd(6, encodedCmd);
+
+        // Emit event
+        emit BexListed(token, beraAmount, initPrice);
     }
 }

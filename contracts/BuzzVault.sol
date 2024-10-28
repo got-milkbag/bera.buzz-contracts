@@ -39,7 +39,17 @@ abstract contract BuzzVault is ReentrancyGuard {
     error BuzzVault_SoftcapReached();
 
     /// @notice Event emitted when a trade occurs
-    event Trade(address indexed user, address indexed token, uint256 tokenAmount, uint256 beraAmount, uint256 lastPrice, bool isBuyOrder);
+    event Trade(
+        address indexed user,
+        address indexed token,
+        uint256 tokenAmount,
+        uint256 beraAmount,
+        uint256 tokenBalance,
+        uint256 beraBalance,
+        uint256 lastPrice,
+        uint256 lastBeraPrice,
+        bool isBuyOrder
+    );
     /// @notice Event emitted when a token is listed in Bex
     event BexListed(address indexed token);
 
@@ -131,7 +141,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountBought = _buy(token, minTokens, info);
-        emit Trade(msg.sender, token, amountBought, msg.value, info.lastPrice, true);
+        emit Trade(msg.sender, token, amountBought, msg.value, info.tokenBalance, info.beraBalance, info.lastPrice, info.lastBeraPrice, true);
 
         if (info.beraBalance >= RESERVE_BERA /*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
             _lockCurveAndDeposit(token, info);
@@ -160,7 +170,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         uint256 amountSold = _sell(token, tokenAmount, minBera, info);
-        emit Trade(msg.sender, token, tokenAmount, amountSold, info.lastPrice, false);
+        emit Trade(msg.sender, token, tokenAmount, amountSold, info.tokenBalance, info.beraBalance, info.lastPrice, info.lastBeraPrice, false);
     }
 
     /**

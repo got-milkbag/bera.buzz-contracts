@@ -229,7 +229,7 @@ describe("BuzzVaultExponential Tests", () => {
                     .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
             )
                 .to.emit(expVault, "Trade")
-                .withArgs(user1Signer.address, token.address, anyValue, ethers.utils.parseEther("0.1"), anyValue, true);
+                .withArgs(user1Signer.address, token.address, anyValue, ethers.utils.parseEther("0.1"), anyValue, anyValue, anyValue, anyValue, true);
         });
         it("should transfer the 1% of msg.value to feeRecipient", async () => {
             const feeRecipientBalanceBefore = await ethers.provider.getBalance(feeRecipient);
@@ -314,7 +314,7 @@ describe("BuzzVaultExponential Tests", () => {
             await token.connect(user1Signer).approve(expVault.address, userTokenBalance);
             await expect(expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero))
                 .to.emit(expVault, "Trade")
-                .withArgs(user1Signer.address, token.address, userTokenBalance, anyValue, anyValue, false);
+                .withArgs(user1Signer.address, token.address, userTokenBalance, anyValue, anyValue, anyValue, anyValue, anyValue, false);
         });
         it("should increase the tokenBalance", async () => {
             const tokenInfoBefore = await expVault.tokenInfo(token.address);

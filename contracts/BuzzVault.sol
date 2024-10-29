@@ -4,9 +4,10 @@ pragma solidity ^0.8.19;
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./libraries/Math.sol";
 
 import "./interfaces/IBexPriceDecoder.sol";
+import "./interfaces/IBuzzToken.sol";
+import "./interfaces/IBuzzEventTracker.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IReferralManager.sol";
 
@@ -36,7 +37,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice Error code emitted when min ERC20 amount not respected
     error BuzzVault_InvalidMinTokenAmount();
     /// @notice Error code emitted when curve softcap has been reached
-    error BuzzVault_SoftcapReached();
+    //error BuzzVault_SoftcapReached();
 
     /// @notice Event emitted when a trade occurs
     event Trade(
@@ -61,6 +62,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
+    /// @notice Initial tokens to sell in the curve
+    uint256 public constant CURVE_INITIAL_SELL = 8e26;
     /// @notice The bonding curve alpha coefficient
     uint256 public constant CURVE_ALPHA = 202848073251;
     /// @notice The bonding curve beta coefficient
@@ -215,26 +218,31 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param info The token info struct
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
-        uint256 tokenBalance = info.tokenBalance;
         uint256 beraBalance = info.beraBalance;
         uint256 lastBeraPrice = info.lastBeraPrice;
 
+        info.beraBalance = 0;
+        info.tokenBalance = 0;
+        info.lastBeraPrice = 0;
+        info.lastPrice = 0;
         info.bexListed = true;
 
         // collect fee
         uint256 dexFee = (beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
         _transferFee(feeRecipient, dexFee);
-
-        // burn tokens
-        uint256 balancedAmount = (dexFee * lastBeraPrice) / 1e18;
-        IERC20(token).safeTransfer(address(0x1), balancedAmount);
-
-        uint256 netTokenAmount = tokenBalance - balancedAmount;
         uint256 netBeraAmount = beraBalance - dexFee;
 
-        IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, netTokenAmount, lastBeraPrice);
-        
+        // burn tokens
+        //uint256 balancedAmount = (dexFee * lastBeraPrice) / 1e18;
+        //IERC20(token).safeTransfer(address(0x1), balancedAmount);
+        //uint256 netTokenAmount = tokenBalance - balancedAmount;
+
+        IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
+
+        IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD /*- balancedAmount*/);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD, lastBeraPrice);
+
+        // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
             IERC20(token).safeTransfer(address(0x1), IERC20(token).balanceOf(address(this)));
         }

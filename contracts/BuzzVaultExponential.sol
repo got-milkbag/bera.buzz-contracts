@@ -54,7 +54,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (isBuyOrder) {
             (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
-            if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
+            //if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
         } else {
             (amountOut, pricePerToken, pricePerBera) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
             if (amountOut > beraBalance) revert BuzzVault_InvalidReserves();
@@ -74,6 +74,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee;
 
+        /// TODO: Implement fee rounding refund
         uint256 bps = _getBpsToDeductForReferrals(msg.sender);
         if (bps > 0) {
             beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
@@ -90,7 +91,8 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
-        if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
+        if (tokenAmountBuy > info.tokenBalance) revert BuzzVault_InvalidReserves();
+        //if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
 
         // Update balances
         info.beraBalance += netBeraAmount;
@@ -105,7 +107,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Transfer the affiliate fee
         if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
-
+        
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
 

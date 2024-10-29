@@ -29,6 +29,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_FeeTransferFailed();
     /// @notice Error code emitted when the tax is too high
     error BuzzToken_TaxTooHigh();
+    /// @notice Error code emitted when there is a tax address but 0 tax or vice versa
+    error BuzzToken_TaxMismatch();
 
     event TokenCreated(address indexed token);
     event VaultSet(address indexed vault, bool status);
@@ -79,6 +81,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
         if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
+        if ((taxTo == address(0) && tax > 0) || (taxTo != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
 
         _transferFee(listingFee);
         token = _deployToken(name, symbol, vault, taxTo, salt, tax);

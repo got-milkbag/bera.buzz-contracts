@@ -56,7 +56,8 @@ contract BuzzToken is ERC20, AccessControl {
         uint256 amountAfterTax = amount - taxAmount;
 
         super._transfer(sender, recipient, amountAfterTax);
-        if (TAX_ADDRESS != address(0)) {
+        
+        if (TAX_ADDRESS != address(0) && taxAmount > 0) {
             super._transfer(sender, TAX_ADDRESS, taxAmount);
         }
 

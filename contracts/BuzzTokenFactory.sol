@@ -27,6 +27,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_InsufficientFee();
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
+    /// @notice Error code emitted when the tax is too high
+    error BuzzToken_TaxTooHigh();
 
     event TokenCreated(address indexed token);
     event VaultSet(address indexed vault, bool status);
@@ -34,7 +36,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     event ListingFeeSet(uint256 fee);
     event TreasurySet(address indexed treasury);
 
+    /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 8e26;
+    /// @notice The maximum tax rate in bps (10%)
+    uint256 public constant MAX_TAX = 1000;
     /// @notice The fee that needs to be paid to deploy a token, in wei.
     uint256 public listingFee;
     /// @notice The treasury address collecting the listing fee
@@ -73,6 +78,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
+        if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
 
         _transferFee(listingFee);
         token = _deployToken(name, symbol, vault, taxTo, salt, tax);

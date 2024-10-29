@@ -7,7 +7,9 @@ import "@openzeppelin/contracts/access/AccessControl.sol";
 contract BuzzToken is ERC20, AccessControl {
     event TaxedTransfer(address indexed from, address indexed to, uint256 amount, uint256 taxAmount);
 
-    /// @dev access control owner role.
+    /// @dev The maximum tax rate in bps (10%)
+    uint256 private constant MAX_TAX = 1000;
+    /// @dev access control minter role.
     bytes32 public immutable MINTER_ROLE;
     /// @notice The tax rate in bps
     uint256 public immutable TAX;
@@ -25,6 +27,8 @@ contract BuzzToken is ERC20, AccessControl {
         address taxTo,
         address _owner
     ) ERC20(name, symbol) {
+        require(_tax <= MAX_TAX, "BuzzToken: tax exceeds MAX_TAX");
+        
         TAX = _tax;
         _mint(mintTo, _initialSupply);
 

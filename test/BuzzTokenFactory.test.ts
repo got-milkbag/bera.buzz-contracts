@@ -159,7 +159,7 @@ describe("BuzzTokenFactory Tests", () => {
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
-            const tx = await factory.createToken(name, symbol, expVault.address, formatBytes32String("12345"), {
+            const tx = await factory.createToken(name, symbol, expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
                 value: listingFee,
             });
             const receipt = await tx.wait();

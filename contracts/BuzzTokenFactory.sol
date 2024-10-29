@@ -26,20 +26,30 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_InsufficientFee();
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
-
+    /// @notice Error code emitted when the tax is too high
+    error BuzzToken_TaxTooHigh();
+    /// @notice Error code emitted when there is a tax address but 0 tax or vice versa
+    error BuzzToken_TaxMismatch();
+    
+    /// TODO: Fix indexed limit
     event TokenCreated(
         address indexed token, 
         address indexed vault, 
-        address indexed deployer, 
+        address indexed deployer,
+        address taxTo, 
         string name, 
-        string symbol
+        string symbol,
+        uint256 tax
     );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event ListingFeeSet(uint256 fee);
     event TreasurySet(address indexed treasury);
 
-    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
+    /// @notice The initial supply of the token
+    uint256 public constant INITIAL_SUPPLY = 8e26;
+    /// @notice The maximum tax rate in bps (10%)
+    uint256 public constant MAX_TAX = 1000;
     /// @notice The fee that needs to be paid to deploy a token, in wei.
     uint256 public listingFee;
     /// @notice The treasury address collecting the listing fee
@@ -59,37 +69,44 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @notice Constructor of the Token Factory contract
      * @param _owner The owner of the contract
      * @param _createDeployer The address of the CREATE3 deployer
-     * @param _tresury The address of the treasury
+     * @param _treasury The address of the treasury
      * @param _listingFee The fee to deploy a token
      */
-    constructor(address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
+    constructor(address _owner, address _createDeployer, address _treasury, uint256 _listingFee) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
+
         CREATE_DEPLOYER = _createDeployer;
-        treasury = payable(_tresury);
+        treasury = payable(_treasury);
         listingFee = _listingFee;
     }
-
+    
     /**
      * @notice Deploys a new token
      * @dev Msg.value should be greater or equal to the listing fee
      * @param name The name of the token
      * @param symbol The symbol of the token
      * @param vault The address of the vault
+     * @param taxTo The address of the tax recipient
      * @param salt The salt for the CREATE3 deployment
+     * @param tax The tax rate in bps
      */
     function createToken(
         string calldata name,
         string calldata symbol,
         address vault,
-        bytes32 salt
+        address taxTo,
+        bytes32 salt,
+        uint256 tax
     ) external payable nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (!vaults[vault]) revert BuzzToken_VaultNotRegistered();
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
+        if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
+        if ((taxTo == address(0) && tax > 0) || (taxTo != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
 
         _transferFee(listingFee);
-        token = _deployToken(name, symbol, vault, salt);
+        token = _deployToken(name, symbol, vault, taxTo, salt, tax);
 
         if ((msg.value - listingFee) > 0) {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
@@ -98,7 +115,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
 
-        emit TokenCreated(token, vault, msg.sender, name, symbol);
+        emit TokenCreated(token, vault, msg.sender, taxTo, name, symbol, tax);
     }
 
     /**
@@ -150,19 +167,29 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param name The name of the token
      * @param symbol The symbol of the token
      * @param vault The address of the vault
+     * @param taxTo The address of the tax recipient
      * @param salt The salt for the CREATE3 deployment
+     * @param tax The tax rate in bps
      * @return token The address of the deployed token
      */
-    function _deployToken(string calldata name, string calldata symbol, address vault, bytes32 salt) internal returns (address token) {
-        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
-
-        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, totalSupply, address(this)));
+    function _deployToken(
+        string calldata name,
+        string calldata symbol,
+        address vault,
+        address taxTo,
+        bytes32 salt,
+        uint256 tax
+    ) internal returns (address token) {
+        bytes memory bytecode = abi.encodePacked(
+            type(BuzzToken).creationCode,
+            abi.encode(name, symbol, INITIAL_SUPPLY, tax, address(this), taxTo, vault)
+        );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;
 
-        IERC20(token).safeApprove(vault, totalSupply);
-        IBuzzVault(vault).registerToken(token, totalSupply);
+        IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
+        IBuzzVault(vault).registerToken(token, INITIAL_SUPPLY);
     }
 
     /**

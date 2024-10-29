@@ -17,7 +17,6 @@ contract BuzzVaultExponential is BuzzVault {
      * @param _feeRecipient The address that receives the protocol fee
      * @param _factory The factory contract that can register tokens
      * @param _referralManager The referral manager contract
-     * @param _eventTracker The event tracker contract
      * @param _priceDecoder The price decoder contract
      * @param _liquidityManager The liquidity manager contract
      */
@@ -25,10 +24,9 @@ contract BuzzVaultExponential is BuzzVault {
         address payable _feeRecipient,
         address _factory,
         address _referralManager,
-        address _eventTracker,
         address _priceDecoder,
         address _liquidityManager
-    ) BuzzVault(_feeRecipient, _factory, _referralManager, _eventTracker, _priceDecoder, _liquidityManager) {}
+    ) BuzzVault(_feeRecipient, _factory, _referralManager, _priceDecoder, _liquidityManager) {}
 
     /**
      * @notice Quote the amount of tokens that can be bought or sold at the current curve

@@ -10,7 +10,6 @@ const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
 const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
 const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
 
-const eventTrackerAddress = "0x6b4cF5C392839198d9eB29C2ed5Ed6e5D894799E"; // Set the address of the existing
 // protocol fee is hardcoded in vaults
 
 // ReferralManager config
@@ -43,19 +42,6 @@ async function main() {
     const referralManager = await ReferralManager.deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
     console.log("ReferralManager deployed to:", referralManager.address);
 
-    // Deploy EventTracker -- Option 1 - Deploy new EventTracker
-    const EventTracker = await ethers.getContractFactory("BuzzEventTracker");
-    const eventTracker = await EventTracker.deploy([]);
-    console.log("EventTracker deployed to:", eventTracker.address);
-
-    // Setup existing EventTracker -- Option 2 - Use existing EventTracker
-    // const eventTracker = await ethers.getContractAt("BuzzEventTracker", eventTrackerAddress);
-    // console.log("EventTracker address:", eventTracker.address);
-    // Deploy factory without Create3
-    // const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-    // const factory = await Factory.deploy(eventTracker.address, deployerAddress, create3Address);
-    // console.log("Factory deployed to:", factory.address);
-
     // Deploy Factory via Create3
     const abi = TokenFactory.BuzzTokenFactory__factory.abi;
     const factoryBytecode = TokenFactory.BuzzTokenFactory__factory.bytecode;
@@ -68,8 +54,8 @@ async function main() {
         [
             creationCode,
             ethers.utils.defaultAbiCoder.encode(
-                ["address", "address", "address", "address", "uint256"],
-                [eventTracker.address, deployerAddress, create3Address, feeRecipient, listingFee]
+                ["address", "address", "address", "uint256"],
+                [deployerAddress, create3Address, feeRecipient, listingFee]
             ),
         ]
     );
@@ -91,7 +77,6 @@ async function main() {
     //     feeRecipient,
     //     factoryInstance.address,
     //     referralManager.address,
-    //     eventTracker.address,
     //     bexPriceDecoder.address,
     //     bexLiquidityManager.address
     // );
@@ -103,7 +88,6 @@ async function main() {
         feeRecipient,
         factoryInstance.address,
         referralManager.address,
-        eventTracker.address,
         bexPriceDecoder.address,
         bexLiquidityManager.address
     );
@@ -112,11 +96,6 @@ async function main() {
     // Admin: Set Vault in the ReferralManager
     // await referralManager.setWhitelistedVault(vault.address, true);
     await referralManager.setWhitelistedVault(expVault.address, true);
-
-    // Admin: Set event setter contracts in EventTracker
-    // await eventTracker.setEventSetter(vault.address, true);
-    await eventTracker.setEventSetter(expVault.address, true);
-    await eventTracker.setEventSetter(factoryInstance.address, true);
 
     // Admin: Set Vault as the factory's vault & enable token creation
     // await factoryInstance.setVault(vault.address, true);

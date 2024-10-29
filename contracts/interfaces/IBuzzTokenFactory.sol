@@ -5,9 +5,9 @@ interface IBuzzTokenFactory {
     function createToken(
         string calldata name,
         string calldata symbol,
-        string calldata description,
-        string calldata image,
         address vault,
-        bytes32 salt
+        address taxTo,
+        bytes32 salt,
+        uint256 tax
     ) external payable returns (address token);
 }

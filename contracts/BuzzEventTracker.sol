@@ -21,7 +21,7 @@ contract BuzzEventTracker is Ownable, IBuzzEventTracker {
         bool isBuyOrder,
         address vault
     );
-    event TokenCreated(address token, string name, string symbol, string description, string image, address deployer, address vault);
+    event TokenCreated(address indexed token, string name, string symbol, address deployer, address vault, uint256 tax);
     event EventSetterSet(address indexed contractSet, bool status);
 
     mapping(address => bool) public eventSetters;
@@ -41,13 +41,12 @@ contract BuzzEventTracker is Ownable, IBuzzEventTracker {
         address token,
         string calldata name,
         string calldata symbol,
-        string calldata description,
-        string calldata image,
         address deployer,
-        address vault
+        address vault,
+        uint256 tax
     ) external {
         if (!eventSetters[msg.sender]) revert BuzzEventTracker_Unauthorized();
-        emit TokenCreated(token, name, symbol, description, image, deployer, vault);
+        emit TokenCreated(token, name, symbol, deployer, vault, tax);
     }
 
     function setEventSetter(address _contract, bool enable) external onlyOwner {

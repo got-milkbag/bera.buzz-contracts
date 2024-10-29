@@ -29,7 +29,7 @@ describe("BexLiquidityManager Tests", () => {
 
         // Deploy token
         const Token = await ethers.getContractFactory("BuzzToken");
-        token = await Token.connect(beraWhale).deploy("Test 1", "TST1", "Desc", "ipfs://", ethers.utils.parseEther("1000000000"), beraWhale.address, beraWhale.address);
+        token = await Token.connect(beraWhale).deploy("Test 1", "TST1", ethers.utils.parseEther("1000000000"), ethers.utils.parseEther("0"), beraWhale.address,  ethers.constants.AddressZero, beraWhale.address);
 
         console.log("Token address: ", token.address);
 

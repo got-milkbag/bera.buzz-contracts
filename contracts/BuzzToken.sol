@@ -5,29 +5,38 @@ import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
 
 contract BuzzToken is ERC20, AccessControl {
+    event TaxedTransfer(address indexed from, address indexed to, uint256 amount, uint256 taxAmount);
+
     /// @dev access control owner role.
     bytes32 public immutable MINTER_ROLE;
-
-    uint8 private constant DECIMALS = 18;
+    /// @notice The tax rate in bps
+    uint256 public immutable TAX;
+    /// @notice The tax address receiving the tax. Defaults to address(0) if tax is 0.
+    address public TAX_ADDRESS;
     
-    string public description;
-    string public image;
+    uint8 private constant DECIMALS = 18;
 
     constructor(
         string memory name,
         string memory symbol,
-        string memory _description,
-        string memory _image,
         uint256 _initialSupply,
+        uint256 _tax,
         address mintTo,
+        address taxTo,
         address _owner
     ) ERC20(name, symbol) {
-        description = _description;
-        image = _image;
+        TAX = _tax;
         _mint(mintTo, _initialSupply);
 
         MINTER_ROLE = keccak256("MINTER_ROLE");
         _grantRole(MINTER_ROLE, _owner);
+
+        if (_tax > 0 && taxTo != address(0)) {
+            TAX_ADDRESS = taxTo;
+        }
+        else {
+            TAX_ADDRESS = address(0);
+        }
     }
 
     function decimals() public pure override returns (uint8 _decimals) {
@@ -36,5 +45,17 @@ contract BuzzToken is ERC20, AccessControl {
 
     function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(account, amount);
+    }
+
+    function _transfer(address sender, address recipient, uint256 amount) internal virtual override {
+        uint256 taxAmount = amount * TAX / 10000;
+        uint256 amountAfterTax = amount - taxAmount;
+
+        super._transfer(sender, recipient, amountAfterTax);
+        if (TAX_ADDRESS != address(0)) {
+            super._transfer(sender, TAX_ADDRESS, taxAmount);
+        }
+
+        emit TaxedTransfer(sender, recipient, amount, taxAmount);
     }
 }

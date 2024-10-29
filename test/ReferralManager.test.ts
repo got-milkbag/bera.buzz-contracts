@@ -6,7 +6,7 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {Contract} from "ethers";
 import {formatBytes32String} from "ethers/lib/utils";
 
-describe("BuzzVault Tests", () => {
+describe("ReferralManager Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
     let feeRecipient: string;
 
@@ -109,7 +109,7 @@ describe("BuzzVault Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
             value: listingFee,
         });
         const receipt = await tx.wait();

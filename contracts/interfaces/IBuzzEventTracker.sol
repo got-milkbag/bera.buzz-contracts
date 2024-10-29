@@ -8,9 +8,8 @@ interface IBuzzEventTracker {
         address token,
         string calldata name,
         string calldata symbol,
-        string calldata description,
-        string calldata image,
         address deployer,
-        address vault
+        address vault,
+        uint256 tax
     ) external;
 }

@@ -107,7 +107,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
             value: listingFee,
         });
         const receipt = await tx.wait();

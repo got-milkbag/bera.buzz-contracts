@@ -136,21 +136,21 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", user1Signer.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", user1Signer.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
         it("should revert if the listing fee is not sent", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", "Test token is the best", "0x0", expVault.address, formatBytes32String("12345"), {
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
                     value: 0,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
@@ -161,10 +161,10 @@ describe("BuzzTokenFactory Tests", () => {
                 const tx = await factory.createToken(
                     "TEST",
                     "TEST",
-                    "Test token is the best",
-                    "0x0",
                     expVault.address,
+                    ethers.constants.AddressZero,
                     formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
                     {
                         value: listingFee,
                     }
@@ -177,8 +177,6 @@ describe("BuzzTokenFactory Tests", () => {
             it("should create a token with the correct metadata", async () => {
                 expect(await token.name()).to.be.equal("TEST");
                 expect(await token.symbol()).to.be.equal("TEST");
-                expect(await token.description()).to.be.equal("Test token is the best");
-                expect(await token.image()).to.be.equal("0x0");
             });
             it("should create a token with the storred contract supply", async () => {
                 const totalSupply = await factory.INITIAL_SUPPLY();
@@ -201,10 +199,10 @@ describe("BuzzTokenFactory Tests", () => {
                 const tx = await factory.createToken(
                     "TEST",
                     "TEST",
-                    "Test token is the best",
-                    "0x0",
                     expVault.address,
+                    ethers.constants.AddressZero, 
                     formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
                     {
                         value: listingFeeAndBuyAmount,
                     }

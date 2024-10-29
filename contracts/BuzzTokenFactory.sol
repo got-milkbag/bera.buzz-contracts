@@ -34,7 +34,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     event ListingFeeSet(uint256 fee);
     event TreasurySet(address indexed treasury);
 
-    uint256 public constant TOTAL_SUPPLY_OF_TOKENS = 1e27;
+    uint256 public constant INITIAL_SUPPLY = 8e26;
     /// @notice The fee that needs to be paid to deploy a token, in wei.
     uint256 public listingFee;
     /// @notice The treasury address collecting the listing fee
@@ -52,12 +52,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     mapping(address => bool) public vaults;
     mapping(address => bool) public isDeployed;
 
-    constructor(address _eventTracker, address _owner, address _createDeployer, address _tresury, uint256 _listingFee) {
+    constructor(address _eventTracker, address _owner, address _createDeployer, address _treasury, uint256 _listingFee) {
         eventTracker = IBuzzEventTracker(_eventTracker);
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
+
         CREATE_DEPLOYER = _createDeployer;
-        treasury = payable(_tresury);
+        treasury = payable(_treasury);
         listingFee = _listingFee;
     }
 
@@ -122,18 +123,16 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address vault,
         bytes32 salt
     ) internal returns (address token) {
-        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
-
         bytes memory bytecode = abi.encodePacked(
             type(BuzzToken).creationCode,
-            abi.encode(name, symbol, description, image, totalSupply, address(this))
+            abi.encode(name, symbol, description, image, INITIAL_SUPPLY, address(this), vault)
         );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;
 
-        IERC20(token).safeApprove(vault, totalSupply);
-        IBuzzVault(vault).registerToken(token, totalSupply);
+        IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
+        IBuzzVault(vault).registerToken(token, INITIAL_SUPPLY);
     }
 
     /**

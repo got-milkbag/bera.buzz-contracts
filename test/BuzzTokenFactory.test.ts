@@ -181,7 +181,7 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await token.image()).to.be.equal("0x0");
             });
             it("should create a token with the storred contract supply", async () => {
-                const totalSupply = await factory.TOTAL_SUPPLY_OF_TOKENS();
+                const totalSupply = await factory.INITIAL_SUPPLY();
                 expect(await token.totalSupply()).to.be.equal(totalSupply);
             });
             it("should set the contract as deployed", async () => {

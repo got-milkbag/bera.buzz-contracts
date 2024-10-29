@@ -92,7 +92,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
-        if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
+        //if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
 
         // Update balances
         info.beraBalance += netBeraAmount;
@@ -107,7 +107,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Transfer the affiliate fee
         if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
-
+        
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
 

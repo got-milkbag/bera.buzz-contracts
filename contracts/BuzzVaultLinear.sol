@@ -2,6 +2,7 @@
 pragma solidity ^0.8.19;
 
 import "./BuzzVault.sol";
+import "./libraries/Math.sol";
 
 /// @title BuzzVaultLinear contract
 /// @notice A contract implementing a linear bonding curve with a fixed slope

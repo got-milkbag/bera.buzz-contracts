@@ -17,6 +17,8 @@ contract BexLiquidityManager is IBexLiquidityManager {
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
+    /// @notice The amount of tokens to burn when adding liquidity
+    uint256 private constant BURN_AMOUNT = 1 ether;
     /// @notice The address of the wrapped Bera token
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
     /// @notice The address of the CrocSwap DEX
@@ -71,7 +73,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // liquidity subcode (fixed in base tokens, fill-range liquidity)
         // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, res flags, lp conduit
         // because Bex burns a small insignificant amount of tokens, we reduce the liquidity by BURN_AMOUNT
-        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - 1 ether, _initPrice, _initPrice, 0, address(0));
+        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, address(0));
 
         // Encode commands into a multipath call
         bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);

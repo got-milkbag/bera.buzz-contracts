@@ -292,13 +292,6 @@ describe("BuzzVaultExponential Tests", () => {
             // check balances
             expect(tokenInfoAfter[4]).to.be.equal(true);
         });
-        it("should revert if softcap is not respected", async () => {
-            await expect(
-                expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
-                    value: ethers.utils.parseEther("1000"),
-                })
-            ).to.be.revertedWithCustomError(expVault, "BuzzVault_SoftcapReached");
-        });
     });
     describe("sell", () => {
         beforeEach(async () => {

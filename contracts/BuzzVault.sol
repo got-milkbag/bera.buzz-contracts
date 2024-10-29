@@ -37,7 +37,7 @@ abstract contract BuzzVault is ReentrancyGuard {
     /// @notice Error code emitted when min ERC20 amount not respected
     error BuzzVault_InvalidMinTokenAmount();
     /// @notice Error code emitted when curve softcap has been reached
-    error BuzzVault_SoftcapReached();
+    //error BuzzVault_SoftcapReached();
 
     /// @notice The protocol fee in basis points
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
@@ -217,9 +217,7 @@ abstract contract BuzzVault is ReentrancyGuard {
      * @param info The token info struct
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
-        //uint256 tokenBalance = info.tokenBalance;
         uint256 beraBalance = info.beraBalance;
-        uint256 lastPrice = info.lastPrice;
         uint256 lastBeraPrice = info.lastBeraPrice;
 
         info.beraBalance = 0;
@@ -231,18 +229,16 @@ abstract contract BuzzVault is ReentrancyGuard {
         // collect fee
         uint256 dexFee = (beraBalance * DEX_MIGRATION_FEE_BPS) / 10000;
         _transferFee(feeRecipient, dexFee);
+        uint256 netBeraAmount = beraBalance - dexFee;
 
         // burn tokens
         //uint256 balancedAmount = (dexFee * lastBeraPrice) / 1e18;
         //IERC20(token).safeTransfer(address(0x1), balancedAmount);
-
         //uint256 netTokenAmount = tokenBalance - balancedAmount;
-        uint256 netBeraAmount = beraBalance - dexFee;
 
-        IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD /*- balancedAmount*/);
+        IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
 
-        IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
-        /// TODO: Fix initial price
+        IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD /*- balancedAmount*/);
         liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD, lastBeraPrice);
 
         // burn any rounding excess

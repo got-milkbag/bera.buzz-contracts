@@ -241,6 +241,21 @@ describe("BuzzTokenFactory Tests", () => {
                 const tax = BigNumber.from(1000);
                 expect(await token.TAX()).to.be.equal(tax);
             });
+            it("should revert if the initial buy is bigger than 5% of the total supply", async () => {
+                await expect(
+                    factory.createToken(
+                        "TEST",
+                        "TEST",
+                        expVault.address,
+                        ethers.constants.AddressZero,
+                        formatBytes32String("123456006"),
+                        BigNumber.from(0),
+                        {
+                            value: ethers.utils.parseEther("100"),
+                        }
+                    )
+                ).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
+            });
         });
     });
     describe("setVault", () => {

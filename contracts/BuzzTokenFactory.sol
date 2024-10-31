@@ -30,6 +30,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_TaxTooHigh();
     /// @notice Error code emitted when there is a tax address but 0 tax or vice versa
     error BuzzToken_TaxMismatch();
+    /// @notice Error code emitted when the max initial buy is exceeded
+    error BuzzToken_MaxInitialBuyExceeded();
     
     /// TODO: Fix indexed limit
     event TokenCreated(
@@ -50,6 +52,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     uint256 public constant INITIAL_SUPPLY = 8e26;
     /// @notice The maximum tax rate in bps (10%)
     uint256 public constant MAX_TAX = 1000;
+    /// @notice The maximum initial deployer buy (5% of the total 1B supply)
+    uint256 public constant MAX_INITIAL_BUY = 5e25;
     /// @notice The fee that needs to be paid to deploy a token, in wei.
     uint256 public listingFee;
     /// @notice The treasury address collecting the listing fee
@@ -112,6 +116,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             uint256 balanceBefore = IERC20(token).balanceOf(address(this));
             IBuzzVault(vault).buy{value: msg.value - listingFee}(token, 1e15, address(0));
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
+
+            if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
 

@@ -49,7 +49,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 beraBalance = info.beraBalance;
         if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
 
-        uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
+        uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - tokenBalance;
 
         if (isBuyOrder) {
             (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
@@ -69,7 +69,7 @@ contract BuzzVaultExponential is BuzzVault {
      * @return tokenAmount The amount of tokens bought
      */
     function _buy(address token, uint256 minTokens, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
-        uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
+        uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - info.tokenBalance;
         uint256 beraAmount = msg.value;
         uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
         uint256 beraAmountAfFee;
@@ -91,7 +91,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
-        if (tokenAmountBuy > info.tokenBalance) revert BuzzVault_InvalidReserves();
+        if (tokenAmountBuy > info.tokenBalance) tokenAmountBuy = info.tokenBalance;
         //if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
 
         // Update balances
@@ -123,7 +123,7 @@ contract BuzzVaultExponential is BuzzVault {
      * @return netBeraAmount The amount of Bera after fees
      */
     function _sell(address token, uint256 tokenAmount, uint256 minBera, TokenInfo storage info) internal override returns (uint256 netBeraAmount) {
-        uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
+        uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - info.tokenBalance;
         (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(
             circulatingSupply,
             tokenAmount,

@@ -14,5 +14,5 @@ interface IBuzzVault {
         address token,
         uint256 amount,
         bool isBuyOrder
-    ) external view returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
+    ) external view returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
 }

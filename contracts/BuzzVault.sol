@@ -55,7 +55,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 tokenBalance,
         uint256 baseBalance,
         uint256 lastPrice,
-        uint256 lastBeraPrice,
+        uint256 lastBasePrice,
         bool isBuyOrder
     );
 
@@ -106,7 +106,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 tokenBalance;
         uint256 baseBalance; // aka reserve balance
         uint256 lastPrice;
-        uint256 lastBeraPrice;
+        uint256 lastBasePrice;
         //uint256 beraThreshold;
         bool bexListed;
     }
@@ -132,7 +132,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Buy tokens from the vault with Bera. The base token of the token must be WBera
+     * @notice Buy tokens from the vault with the native currency. The base token of the token must be WBera
      * @param token The token address
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
@@ -165,43 +165,11 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         _buyTokens(token, baseAmount, minTokensOut, affiliate);
     }
 
-    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
-        if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-
-        TokenInfo storage info = tokenInfo[token];
-        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
-
-        if (info.bexListed) revert BuzzVault_BexListed();
-
-        uint256 contractBalance = IERC20(token).balanceOf(address(this));
-        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
-
-        if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
-
-        uint256 amountBought = _buy(token, baseAmount, minTokensOut, info);
-        emit Trade(
-            msg.sender,
-            token,
-            info.baseToken,
-            amountBought,
-            baseAmount,
-            info.tokenBalance,
-            info.baseBalance,
-            info.lastPrice,
-            info.lastBeraPrice,
-            true
-        );
-
-        if (info.baseBalance >= RESERVE_BERA /*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
-            _lockCurveAndDeposit(token, info);
-        }
-    }
-
     /**
-     * @notice Sell tokens to the vault for Bera
-     * @param token The token address
-     * @param tokenAmount The amount of tokens to sell
-     * @param minAmountOut The minimum amount of base token to receive, will revert if slippage exceeds this value
+     * @notice Sell tokens to the vault for base tokens
+     * @param token The (quote) token address
+     * @param tokenAmount The amount of (quote) tokens to sell
+     * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
     function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant {
@@ -228,7 +196,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
             info.tokenBalance,
             info.baseBalance,
             info.lastPrice,
-            info.lastBeraPrice,
+            info.lastBasePrice,
             false
         );
     }
@@ -255,9 +223,9 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         address token,
         uint256 amount,
         bool isBuyOrder
-    ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
+    ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
 
-    function _buy(address token, uint256 baseAmount, uint256 minTokens, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
+    function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
 
     function _sell(
         address token,
@@ -265,7 +233,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 minAmountOut,
         TokenInfo storage info,
         bool unwrap
-    ) internal virtual returns (uint256 beraAmount);
+    ) internal virtual returns (uint256 netBaseAmount);
 
     /**
      * @notice Transfers bera to a recipient, checking if the transfer was successful
@@ -284,11 +252,11 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 baseBalance = info.baseBalance;
-        uint256 lastBeraPrice = info.lastBeraPrice;
+        uint256 lastBasePrice = info.lastBasePrice;
 
         info.baseBalance = 0;
         info.tokenBalance = 0;
-        info.lastBeraPrice = 0;
+        info.lastBasePrice = 0;
         info.lastPrice = 0;
         info.bexListed = true;
 
@@ -299,14 +267,14 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 netBeraAmount = baseBalance - dexFee;
 
         // burn tokens
-        //uint256 balancedAmount = (dexFee * lastBeraPrice) / 1e18;
+        //uint256 balancedAmount = (dexFee * lastBasePrice) / 1e18;
         //IERC20(token).safeTransfer(address(0x1), balancedAmount);
         //uint256 netTokenAmount = tokenBalance - balancedAmount;
 
         IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD /*- balancedAmount*/);
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD, lastBeraPrice);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD, lastBasePrice);
 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
@@ -315,7 +283,46 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Regisers the referral for a user in ReferralManager
+     * @notice Internal function containing the peripheral logic to buy tokens from the bonding curve using an erc20 base token
+     * @param token The token address
+     * @param baseAmount The amount of base tokens to buy with
+     * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
+     * @param affiliate The affiliate address, zero address if none
+     */
+    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
+        if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+
+        TokenInfo storage info = tokenInfo[token];
+        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
+
+        if (info.bexListed) revert BuzzVault_BexListed();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
+
+        if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
+
+        uint256 amountBought = _buy(token, baseAmount, minTokensOut, info);
+        emit Trade(
+            msg.sender,
+            token,
+            info.baseToken,
+            amountBought,
+            baseAmount,
+            info.tokenBalance,
+            info.baseBalance,
+            info.lastPrice,
+            info.lastBasePrice,
+            true
+        );
+
+        if (info.baseBalance >= RESERVE_BERA /*info.beraThreshold*/ /*&& info.tokenBalance < CURVE_BALANCE_THRESHOLD*/) {
+            _lockCurveAndDeposit(token, info);
+        }
+    }
+
+    /**
+     * @notice Registers the referral for a user in ReferralManager
      * @param referrer The referrer address
      * @param user The user address
      */
@@ -324,20 +331,18 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Forwards the referral fee to ReferralManager
+     * @notice Calculates and forwards the referral fee to ReferralManager
      * @param user The user address making the trade
-     * @param amount The amount to forward
+     * @param token The base token address
+     * @param amount The base amount to calculate the fee on
      */
-    function _forwardReferralFee(address user, uint256 amount) internal {
-        referralManager.receiveReferral{value: amount}(user);
-    }
+    function _collectReferralFee(address user, address token, uint256 amount) internal returns (uint256 referralFee) {
+        uint256 bps = referralManager.getReferralBpsFor(user);
 
-    /**
-     * @notice Returns the basis points from ReferralManager to deduct for referrals
-     * @param user The user address
-     * @return bps The basis points to deduct
-     */
-    function _getBpsToDeductForReferrals(address user) internal view returns (uint256 bps) {
-        bps = referralManager.getReferralBpsFor(user);
+        if (bps > 0) {
+            referralFee = (amount * bps) / 1e4;
+            IERC20(token).approve(address(referralManager), referralFee);
+            referralManager.receiveReferral(user, token, referralFee);
+        }
     }
 }

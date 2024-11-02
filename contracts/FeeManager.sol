@@ -69,11 +69,10 @@ contract FeeManager is Ownable, IFeeManager {
      * @notice Collects the trading fee from the sender
      * @dev Approval needs to be given to this contract prior to calling this function
      * @param token The token address
-     * @param amount The gross amount which the fee is calculated on
+     * @param amount The net fee amount to collect
      */
     function collectTradingFee(address token, uint256 amount) external {
-        uint256 fee = quoteTradingFee(amount);
-        if (fee > 0) _collect(token, fee);
+        _collect(token, amount);
     }
 
     /**

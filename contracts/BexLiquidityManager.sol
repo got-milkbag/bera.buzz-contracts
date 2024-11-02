@@ -21,7 +21,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
     /// @notice The amount of tokens to burn when adding liquidity
-    uint256 private constant BURN_AMOUNT = 1 ether;
+    uint256 private constant BURN_AMOUNT = 1e7;
     /// @notice The address of the wrapped Bera token
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
     /// @notice The address of the CrocSwap DEX
@@ -40,32 +40,34 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @dev The caller must approve the contract to transfer the token.
      * @param token The address of the token to add
      * @param amount The amount of tokens to add
-     * @param initPrice The initial price of the pool
      */
-    function createPoolAndAdd(address token, uint256 amount, uint256 initPrice) external payable {
+    function createPoolAndAdd(address token, uint256 amount) external payable {
         // Wrap Bera
         uint256 beraAmount = msg.value;
         WBERA.deposit{value: beraAmount}();
-
-        // Check for wrapped deposit success
-        if (IERC20(address(WBERA)).balanceOf(address(this)) == 0) revert WrappedDepositFailed();
 
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(token).safeApprove(address(crocSwapDex), amount);
         IERC20(address(WBERA)).safeApprove(address(crocSwapDex), beraAmount);
 
-        address base = address(WBERA);
-        address quote = token;
-        uint8 liqCode = 31; // Fixed liquidity based on base tokens
-        if (quote < base) {
+        address base;
+        address quote;
+        uint8 liqCode;
+
+        if (address(WBERA) < token) {
+            base = address(WBERA);
+            quote = token;
+            liqCode = 31; // Fixed liquidity based on base tokens
+        } 
+        else {
             base = token;
             quote = address(WBERA);
             liqCode = 32; // Fixed liquidity based on quote tokens
         }
 
-        // WIP - Init price is based on amount of quote tokens per base token.
-        uint128 _initPrice = SqrtMath.encodePriceSqrt(initPrice);
+        // Price should be in quote tokens per base token
+        uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, beraAmount);
         uint128 liquidity = uint128(beraAmount);
 
         // Create pool
@@ -76,6 +78,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // liquidity subcode (fixed in base tokens, fill-range liquidity)
         // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, res flags, lp conduit
         // because Bex burns a small insignificant amount of tokens, we reduce the liquidity by BURN_AMOUNT
+        // any token dust will be burned and any BERA dust shall be sent back to the treasury or to the user that triggered the migration as a reward
         bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, address(0));
 
         // Encode commands into a multipath call
@@ -85,6 +88,6 @@ contract BexLiquidityManager is IBexLiquidityManager {
         crocSwapDex.userCmd(6, encodedCmd);
 
         // Emit event
-        emit BexListed(token, beraAmount, initPrice);
+        emit BexListed(token, beraAmount, _initPrice);
     }
 }

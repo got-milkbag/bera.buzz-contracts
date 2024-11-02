@@ -5,8 +5,9 @@ uint256 constant Q64_64_PRECISION = 2**64;
 
 library SqrtMath{
     // Computes the sqrt of the u64x64 fixed point price given the AMM reserves
-    function encodePriceSqrt(uint256 price) internal pure returns (uint128) {
-        return uint128(sqrt((price * Q64_64_PRECISION)));
+    function encodePriceSqrt(uint256 reserve1, uint256 reserve0) internal pure returns (uint128) {
+        require(reserve0 > 0, "Division by zero");
+        return uint128(sqrt((reserve1 * Q64_64_PRECISION * Q64_64_PRECISION) / reserve0));
     }
 
     // Fast sqrt, taken from Solmate.

@@ -39,7 +39,7 @@ describe("BexLiquidityManager Tests", () => {
         it("should create a pool and add liquidity", async () => {
             await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("0.5"), {
+                .createPoolAndAdd(token.address, ethers.utils.parseEther("20000000"), {
                     value: ethers.utils.parseEther("2300"), // equivelant of 69k USD if 1 Bera = 30 USD
                 });
             console.log("Bera balance in pool after transition to Bex: ", await ethers.provider.getBalance(bexLiquidityManager.address));

@@ -214,7 +214,6 @@ abstract contract BuzzVault is ReentrancyGuard {
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 beraBalance = info.beraBalance;
-        uint256 lastBeraPrice = info.lastBeraPrice;
 
         info.beraBalance = 0;
         info.tokenBalance = 0;
@@ -231,7 +230,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD, lastBeraPrice);
+        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD);
 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {

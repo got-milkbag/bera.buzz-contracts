@@ -46,7 +46,7 @@ contract BuzzVaultLinear is BuzzVault {
         uint256 beraBalance = info.beraBalance;
         if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
 
-        uint256 totalSupply = TOTAL_SUPPLY_OF_TOKENS;
+        uint256 totalSupply = TOTAL_MINTED_SUPPLY;
 
         if (isBuyOrder) {
             (amountOut, pricePerToken, pricePerBera) = _calculateBuyPrice(amount, tokenBalance, beraBalance, totalSupply);
@@ -79,7 +79,7 @@ contract BuzzVaultLinear is BuzzVault {
             netBeraAmount,
             info.tokenBalance,
             info.beraBalance,
-            TOTAL_SUPPLY_OF_TOKENS
+            TOTAL_MINTED_SUPPLY
         );
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
@@ -114,7 +114,7 @@ contract BuzzVaultLinear is BuzzVault {
             tokenAmount,
             info.tokenBalance,
             info.beraBalance,
-            TOTAL_SUPPLY_OF_TOKENS
+            TOTAL_MINTED_SUPPLY
         );
         if (info.beraBalance < beraAmountSell) revert BuzzVault_InvalidReserves();
         if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();

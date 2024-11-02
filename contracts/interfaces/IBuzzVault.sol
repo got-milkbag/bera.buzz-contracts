@@ -8,7 +8,5 @@ interface IBuzzVault {
 
     function registerToken(address token, uint256 tokenBalance) external;
 
-    function getMarketCapFor(address token) external view returns (uint256 marketCap);
-
     function quote(address token, uint256 amount, bool isBuyOrder) external view returns (uint256 amountOut, uint256 pricePerToken);
 }

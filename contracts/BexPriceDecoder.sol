@@ -9,7 +9,7 @@ import "./interfaces/bex/ICrocQuery.sol";
 import "./interfaces/bex/ILPToken.sol";
 
 contract BexPriceDecoder is Ownable, IBexPriceDecoder {
-    using FixedPoint64 for uint160;
+    using FixedPoint64 for uint128;
 
     /// @notice Emitted when the LP token is set
     event LpTokenSet(address indexed baseToken, address indexed quoteToken, uint256 poolIdx);
@@ -46,7 +46,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     }
 
     /// @notice Tokens should have 18 decimals
-    function _getPriceFromSqrtPriceX64(uint160 sqrtPriceX64) internal pure returns (uint256 price) {
+    function _getPriceFromSqrtPriceX64(uint128 sqrtPriceX64) internal pure returns (uint256 price) {
         price = sqrtPriceX64.decodeSqrtPriceX64();
     }
 }

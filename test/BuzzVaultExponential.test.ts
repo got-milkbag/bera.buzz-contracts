@@ -52,17 +52,20 @@ describe("BuzzVaultExponential Tests", () => {
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
         create3Factory = await Create3Factory.connect(ownerSigner).deploy();
 
+        /*
         // Deploy mock BexLpToken
         const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
         bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
 
         //Deploy mock ICrocQuery
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
-        crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
+        crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));*/
 
+        const bexLpTokenAddress = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
+        const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
         // Deploy BexPriceDecoder
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpTokenAddress, crocQueryAddress);
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -267,6 +270,9 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
             const beraThreshold = tokenInfoBefore[4];
             console.log("Bera thresholdA: ", beraThreshold.toString());
+
+            const beraPrice = await expVault.getBeraUsdPrice();
+            console.log("Bera priceA: ", beraPrice.toString());
 
             await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
                 value: ethers.utils.parseEther("1500"),

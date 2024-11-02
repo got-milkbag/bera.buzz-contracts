@@ -53,6 +53,8 @@ abstract contract BuzzVault is ReentrancyGuard {
     uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
     /// @notice The DEX migration fee in basis points
     uint256 public constant DEX_MIGRATION_FEE_BPS = 420; // 420 -> 4.2%
+    /// @notice The percentage of total minted supply after BEX migration in bps
+    uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
     /// @notice The min ERC20 amount for bonding curve swaps
     uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
     /// @notice The total supply of tokens minted
@@ -272,7 +274,13 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
-        uint256 beraAmountNoFee = BERA_MARKET_CAP_LIQ / beraUsdPrice / 5;
+        uint256 beraAmountToBps = (BERA_MARKET_CAP_LIQ * MIGRATION_LIQ_RATIO_BPS) / 10000;
+        uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
+
         beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);
     }
+
+    function getBeraUsdPrice() external view returns (uint256 beraPrice) {
+        beraPrice = priceDecoder.getPrice();
+    }      
 }

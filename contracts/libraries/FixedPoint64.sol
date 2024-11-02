@@ -12,12 +12,13 @@ library FixedPoint64 {
         // Convert Q64.64 square root price to the actual price ratio
         // price = (sqrtPriceX64^2) / 2^64
 
+        uint256 sqrtPriceX64Uint = uint256(sqrtPriceX64);
+
         // Compute the square of the sqrtPriceX64 (to get back to the price ratio)
-        uint256 sq = (sqrtPriceX64) / Q64_64;
-        uint256 priceRatio = (sq * sq);
+        uint256 priceRatio = (sqrtPriceX64Uint * sqrtPriceX64Uint) / Q64_64;
 
         // Since both tokens have 18 decimals, we scale the price accordingly
-        price = priceRatio;
+        price = (priceRatio * DECIMALS) / Q64_64;
     }
 }
 

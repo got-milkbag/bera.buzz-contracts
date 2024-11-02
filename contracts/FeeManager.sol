@@ -33,11 +33,11 @@ contract FeeManager is Ownable, IFeeManager {
     /// @notice Event emitted when the migration fee is set
     event MigrationFeeSet(uint256 migrationFeeBps);
 
-    /// @notice The divisor used to calculate fees (one percent equals 1000)
-    uint256 public constant FEE_DIVISOR = 1e5;
-    /// @notice The trading fee in basis points. (one percent equals 1000)
+    /// @notice The divisor used to calculate fees (one percent equals 100)
+    uint256 public constant FEE_DIVISOR = 1e4;
+    /// @notice The trading fee in basis points. (one percent equals 100)
     uint256 public tradingFeeBps;
-    /// @notice The AMM migration fee in basis points. (one percent equals 1000)
+    /// @notice The AMM migration fee in basis points. (one percent equals 100)
     uint256 public migrationFeeBps;
     /// @notice The fixed listing fee amount in the native token that needs to be collected
     uint256 public listingFee;
@@ -47,9 +47,9 @@ contract FeeManager is Ownable, IFeeManager {
     /**
      * @notice Constructor
      * @param _treasury The treasury address where fees are sent
-     * @param _tradingFeeBps The trading fee in basis points (one percent equals 1000)
+     * @param _tradingFeeBps The trading fee in basis points (one percent equals 100)
      * @param _listingFee The listing fee amount
-     * @param _migrationFeeBps The AMM migration fee in basis points (one percent equals 1000)
+     * @param _migrationFeeBps The AMM migration fee in basis points (one percent equals 100)
      */
     constructor(address _treasury, uint256 _tradingFeeBps, uint256 _listingFee, uint256 _migrationFeeBps) {
         if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
@@ -128,7 +128,7 @@ contract FeeManager is Ownable, IFeeManager {
     /**
      * @notice Sets the trading fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The trading fee in basis points (one percent equals 1000)
+     * @param _feeBps The trading fee in basis points (one percent equals 100)
      */
     function setTradingFeeBps(uint256 _feeBps) external onlyOwner {
         if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();

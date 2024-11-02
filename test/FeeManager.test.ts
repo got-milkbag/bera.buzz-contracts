@@ -23,30 +23,30 @@ describe("FeeManager Tests", () => {
 
         // Deploy Fee Manager
         const FeeManager = await ethers.getContractFactory("FeeManager");
-        feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+        feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
     });
     describe("constructor", () => {
         it("should set the treasury", async () => {
             expect(await feeManager.treasury()).to.be.equal(treasury.address);
         });
         it("should set the tradingFeeBps", async () => {
-            expect(await feeManager.tradingFeeBps()).to.be.equal(1000);
+            expect(await feeManager.tradingFeeBps()).to.be.equal(100);
         });
         it("should set the listingFee", async () => {
             expect(await feeManager.listingFee()).to.be.equal(ethers.utils.parseEther("0.02"));
         });
         it("should set the migrationFeeBps", async () => {
-            expect(await feeManager.migrationFeeBps()).to.be.equal(2000);
+            expect(await feeManager.migrationFeeBps()).to.be.equal(200);
         });
     });
     describe("quoteTradingFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
-            const feeAmount = BigNumber.from(amount.mul(1000).div(100000));
+            const feeAmount = BigNumber.from(amount.mul(100).div(10000));
             const quote = await feeManager.quoteTradingFee(amount);
 
             expect(quote).to.be.equal(feeAmount);
@@ -62,11 +62,11 @@ describe("FeeManager Tests", () => {
     describe("quoteMigrationFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
-            const feeAmount = BigNumber.from(amount.mul(2000).div(100000));
+            const feeAmount = BigNumber.from(amount.mul(200).div(10000));
             const quote = await feeManager.quoteMigrationFee(amount);
 
             expect(quote).to.be.equal(feeAmount);
@@ -82,7 +82,7 @@ describe("FeeManager Tests", () => {
     describe("collectTradingFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
@@ -90,7 +90,7 @@ describe("FeeManager Tests", () => {
 
             const balanceBefore = await token.balanceOf(treasury.address);
             await token.approve(feeManager.address, quote);
-            await feeManager.collectTradingFee(token.address, amount);
+            await feeManager.collectTradingFee(token.address, quote);
             const balanceAfter = await token.balanceOf(treasury.address);
             expect(balanceAfter.sub(balanceBefore)).to.be.equal(quote);
         });
@@ -99,18 +99,7 @@ describe("FeeManager Tests", () => {
             const quote = await feeManager.quoteTradingFee(amount);
 
             await token.approve(feeManager.address, quote);
-            await expect(feeManager.collectTradingFee(token.address, amount)).to.emit(feeManager, "FeeReceived").withArgs(token.address, quote);
-        });
-        it("should not transfer tokens if quote is zero", async () => {
-            // Set fee to 0
-            await feeManager.setTradingFeeBps(0);
-            const amount = ethers.utils.parseEther("100");
-
-            const balanceBefore = await token.balanceOf(treasury.address);
-            await token.approve(feeManager.address, amount);
-            await feeManager.collectTradingFee(token.address, amount);
-            const balanceAfter = await token.balanceOf(treasury.address);
-            expect(balanceAfter).to.be.equal(balanceBefore);
+            await expect(feeManager.collectTradingFee(token.address, quote)).to.emit(feeManager, "FeeReceived").withArgs(token.address, quote);
         });
         it("should revert if the fee is not approved", async () => {
             const amount = ethers.utils.parseEther("100");
@@ -120,7 +109,7 @@ describe("FeeManager Tests", () => {
     describe("collectListingFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should collect and redirect the fee to the treasury", async () => {
             const fee = await feeManager.listingFee();
@@ -130,29 +119,31 @@ describe("FeeManager Tests", () => {
             const balanceAfter = await ethers.provider.getBalance(treasury.address);
             expect(balanceAfter.sub(balanceBefore)).to.be.equal(fee);
         });
-        it("should emit a FeeReceived event", async () => {
+        it("should emit a NativeFeeReceived event", async () => {
             const fee = await feeManager.listingFee();
 
             await token.approve(feeManager.address, fee);
-            await expect(feeManager.collectListingFee(token.address)).to.emit(feeManager, "FeeReceived").withArgs(token.address, fee);
+            await expect(feeManager.collectListingFee({value: fee}))
+                .to.emit(feeManager, "NativeFeeReceived")
+                .withArgs(fee);
         });
         it("should not transfer tokens if listingFee is zero", async () => {
             // Set fee to 0
             await feeManager.setListingFee(0);
 
             const balanceBefore = await token.balanceOf(treasury.address);
-            await feeManager.collectListingFee(token.address);
+            await feeManager.collectListingFee();
             const balanceAfter = await token.balanceOf(treasury.address);
             expect(balanceAfter).to.be.equal(balanceBefore);
         });
-        it("should revert if the fee is not approved", async () => {
-            await expect(feeManager.collectListingFee(token.address)).to.be.revertedWith("ERC20: insufficient allowance");
+        it("should revert if the fee is not sent", async () => {
+            await expect(feeManager.collectListingFee()).to.be.revertedWithCustomError(feeManager, "FeeManager_InsufficientFee");
         });
     });
     describe("collectMigrationFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
@@ -190,14 +181,14 @@ describe("FeeManager Tests", () => {
     describe("setTradingFeeBps", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should set the fee", async () => {
-            await feeManager.setTradingFeeBps(5000);
-            expect(await feeManager.tradingFeeBps()).to.be.equal(5000);
+            await feeManager.setTradingFeeBps(500);
+            expect(await feeManager.tradingFeeBps()).to.be.equal(500);
         });
         it("should emit a TradingFeeSet event", async () => {
-            await expect(feeManager.setTradingFeeBps(5000)).to.emit(feeManager, "TradingFeeSet").withArgs(5000);
+            await expect(feeManager.setTradingFeeBps(500)).to.emit(feeManager, "TradingFeeSet").withArgs(500);
         });
         it("should revert if the fee is greater than FEE_DIVISOR", async () => {
             const FEE_DIVISOR = await feeManager.FEE_DIVISOR();
@@ -207,13 +198,13 @@ describe("FeeManager Tests", () => {
             );
         });
         it("should revert if the caller is not the owner", async () => {
-            await expect(feeManager.connect(treasury).setTradingFeeBps(1000)).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(feeManager.connect(treasury).setTradingFeeBps(100)).to.be.revertedWith("Ownable: caller is not the owner");
         });
     });
     describe("setListingFee", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should set the fee", async () => {
             await feeManager.setListingFee(ethers.utils.parseEther("0.01"));
@@ -233,14 +224,14 @@ describe("FeeManager Tests", () => {
     describe("setMigrationFeeBps", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should set the fee", async () => {
-            await feeManager.setMigrationFeeBps(5000);
-            expect(await feeManager.migrationFeeBps()).to.be.equal(5000);
+            await feeManager.setMigrationFeeBps(500);
+            expect(await feeManager.migrationFeeBps()).to.be.equal(500);
         });
         it("should emit a MigrationFeeSet event", async () => {
-            await expect(feeManager.setMigrationFeeBps(5000)).to.emit(feeManager, "MigrationFeeSet").withArgs(5000);
+            await expect(feeManager.setMigrationFeeBps(500)).to.emit(feeManager, "MigrationFeeSet").withArgs(500);
         });
         it("should revert if the fee is greater than FEE_DIVISOR", async () => {
             const FEE_DIVISOR = await feeManager.FEE_DIVISOR();
@@ -250,13 +241,13 @@ describe("FeeManager Tests", () => {
             );
         });
         it("should revert if the caller is not the owner", async () => {
-            await expect(feeManager.connect(treasury).setMigrationFeeBps(1000)).to.be.revertedWith("Ownable: caller is not the owner");
+            await expect(feeManager.connect(treasury).setMigrationFeeBps(100)).to.be.revertedWith("Ownable: caller is not the owner");
         });
     });
     describe("setTreasury", () => {
         beforeEach(async () => {
             const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 1000, ethers.utils.parseEther("0.02"), 2000);
+            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
         });
         it("should set the treasury", async () => {
             await feeManager.setTreasury(ownerSigner.address);

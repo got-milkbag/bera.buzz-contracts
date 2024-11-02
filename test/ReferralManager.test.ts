@@ -8,12 +8,11 @@ import {formatBytes32String} from "ethers/lib/utils";
 
 describe("ReferralManager Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-    let feeRecipient: string;
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
-    let user3Signer: SignerWithAddress;
+    let treasury: SignerWithAddress;
 
     let factory: Contract;
     let vault: Contract;
@@ -26,10 +25,12 @@ describe("ReferralManager Tests", () => {
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
+    let wBera: Contract;
+    let feeManager: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
-    const listingFee = ethers.utils.parseEther("0.002");
+    const listingFee = ethers.utils.parseEther("0.02");
     const payoutThreshold = 0;
     const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
     let validUntil: number;
@@ -37,8 +38,7 @@ describe("ReferralManager Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer, user3Signer] = await ethers.getSigners();
-        feeRecipient = ownerSigner.address;
+        [ownerSigner, user1Signer, user2Signer, treasury] = await ethers.getSigners();
 
         // Deploy mock create3Factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
@@ -60,13 +60,27 @@ describe("ReferralManager Tests", () => {
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
 
+        //Deploy WBera Mock
+        const WBera = await ethers.getContractFactory("WBERA");
+        wBera = await WBera.connect(ownerSigner).deploy();
+
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
-        referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
+        referralManager = await ReferralManager.connect(ownerSigner).deploy(
+            directRefFeeBps,
+            indirectRefFeeBps,
+            validUntil,
+            [wBera.address],
+            [payoutThreshold]
+        );
+
+        // Deploy FeeManager
+        const FeeManager = await ethers.getContractFactory("FeeManager");
+        feeManager = await FeeManager.connect(ownerSigner).deploy(treasury.address, 100, listingFee, 500);
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
         // Deploy Linear Vault
         //const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         //vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);
@@ -74,32 +88,41 @@ describe("ReferralManager Tests", () => {
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
         expVault = await ExpVault.connect(ownerSigner).deploy(
-            feeRecipient,
+            feeManager.address,
             factory.address,
             referralManager.address,
             bexPriceDecoder.address,
-            bexLiquidityManager.address
+            bexLiquidityManager.address,
+            wBera.address
         );
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
-        await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
-        //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
-
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-            value: listingFee,
-        });
+        const tx = await factory.createToken(
+            ["TEST", "TST"],
+            [wBera.address, expVault.address, ethers.constants.AddressZero],
+            0,
+            formatBytes32String("12345"),
+            ethers.utils.parseEther("0"),
+            {
+                value: listingFee,
+            }
+        );
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 
         // Get token contract
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
+
+        // Get some WBEra
+        await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
+        await wBera.approve(referralManager.address, ethers.utils.parseEther("1"));
     });
     describe("constructor", () => {
         it("should set the directRefFeeBps", async () => {
@@ -112,12 +135,26 @@ describe("ReferralManager Tests", () => {
             expect(await referralManager.validUntil()).to.be.equal(validUntil);
         });
         it("should set the payoutThreshold", async () => {
-            expect(await referralManager.payoutThreshold()).to.be.equal(payoutThreshold);
+            expect(await referralManager.payoutThreshold(wBera.address)).to.be.equal(payoutThreshold);
+        });
+        describe("constructor - invalid parameters", () => {
+            it("should revert if there is an array mismatch", async () => {
+                const ReferralManager = await ethers.getContractFactory("ReferralManager");
+                await expect(
+                    ReferralManager.connect(ownerSigner).deploy(
+                        directRefFeeBps,
+                        indirectRefFeeBps,
+                        validUntil,
+                        [wBera.address],
+                        [payoutThreshold, payoutThreshold]
+                    )
+                ).to.be.revertedWithCustomError(referralManager, "ReferralManager_ArrayLengthMismatch");
+            });
         });
     });
     describe("setReferral", () => {
         beforeEach(async () => {
-            tx = await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -137,27 +174,23 @@ describe("ReferralManager Tests", () => {
         });
         it("should not update the referral if one is already set", async () => {
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
-            await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
+            await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
         });
         it("should not set the referral if it's the same as msg.sender", async () => {
-            await expVault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
         });
-        it("should increase the referralCount counter", async () => {
-            const referrerInfo = await referralManager.referrerInfo(user1Signer.address);
-            expect(referrerInfo[2]).to.be.equal(1);
-        });
         it("should emit a ReferralSet event", async () => {
-            await expect(tx).to.emit(referralManager, "ReferralSet");
+            await expect(tx).to.emit(referralManager, "ReferralSet").withArgs(user1Signer.address, ownerSigner.address);
         });
         describe("setReferral - indirect referral", () => {
             beforeEach(async () => {
-                tx = await expVault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                tx = await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
@@ -167,18 +200,16 @@ describe("ReferralManager Tests", () => {
             it("should set the direct referral", async () => {
                 expect(await referralManager.referredBy(user2Signer.address)).to.be.equal(ownerSigner.address);
             });
-            it("should increase the indirectReferrer counter", async () => {
-                const referrerInfo = await referralManager.referrerInfo(user1Signer.address);
-                expect(referrerInfo[3]).to.be.equal(1);
-            });
             it("should emit an IndirectReferralSet event", async () => {
-                await expect(tx).to.emit(referralManager, "IndirectReferralSet");
+                await expect(tx)
+                    .to.emit(referralManager, "IndirectReferralSet")
+                    .withArgs(user1Signer.address, user2Signer.address, ownerSigner.address);
             });
         });
     });
     describe("getReferralBpsFor", () => {
         beforeEach(async () => {
-            tx = await expVault.connect(ownerSigner).buy(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -194,7 +225,7 @@ describe("ReferralManager Tests", () => {
         });
         describe("getReferralBpsFor - indirect referral", () => {
             beforeEach(async () => {
-                await expVault.connect(user2Signer).buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
@@ -209,95 +240,84 @@ describe("ReferralManager Tests", () => {
         });
         it("should revert if the caller is not the vault", async () => {
             await expect(
-                referralManager.connect(user1Signer).receiveReferral(user2Signer.address, {
-                    value: ethers.utils.parseEther("0.01"),
-                })
+                referralManager.connect(user1Signer).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01"))
             ).to.be.revertedWithCustomError(referralManager, "ReferralManager_Unauthorised");
         });
         it("should revert if the referrer is not set", async () => {
             await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
 
             await expect(
-                referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, {
-                    value: ethers.utils.parseEther("0.01"),
-                })
+                referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01"))
             ).to.be.revertedWithCustomError(referralManager, "ReferralManager_AddressZero");
         });
         it("should allocate the received fee to the user", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, {
-                value: ethers.utils.parseEther("0.01"),
-            });
-            const referrerInfo = await referralManager.referrerInfo(ownerSigner.address);
-            expect(referrerInfo[0]).to.be.equal(ethers.utils.parseEther("0.01"));
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            const referrerBalance = await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address);
+            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.01"));
         });
         it("should allocate the received fee to the direct and indirect referral", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
-            await referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, {
-                value: ethers.utils.parseEther("0.01"),
-            });
-            const referrerInfo = await referralManager.referrerInfo(user1Signer.address);
-            expect(referrerInfo[0]).to.be.equal(ethers.utils.parseEther("0.0099"));
+            await referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            const referrerBalance = await referralManager.getReferralRewardFor(user1Signer.address, wBera.address);
+            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.0099"));
 
-            const indirectReferrerInfo = await referralManager.referrerInfo(ownerSigner.address);
-            expect(indirectReferrerInfo[0]).to.be.equal(ethers.utils.parseEther("0.0001"));
+            const indirectReferrerInfo = await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address);
+            expect(indirectReferrerInfo).to.be.equal(ethers.utils.parseEther("0.0001"));
         });
         it("should emit a ReferralReceived event for the direct referral", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
-            await expect(
-                referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, {
-                    value: ethers.utils.parseEther("0.01"),
-                })
-            )
+            await expect(referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
                 .to.emit(referralManager, "ReferralRewardReceived")
-                .withArgs(ownerSigner.address, ethers.utils.parseEther("0.01"));
+                .withArgs(ownerSigner.address, wBera.address, ethers.utils.parseEther("0.01"), true);
+        });
+        it("should emit a ReferralReceived event for the indirect referral", async () => {
+            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
+            await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
+            await expect(referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
+                .to.emit(referralManager, "ReferralRewardReceived")
+                .withArgs(ownerSigner.address, wBera.address, ethers.utils.parseEther("0.0001"), false);
         });
     });
+
     describe("claimReferralReward", () => {
         beforeEach(async () => {
             await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
         });
         it("should revert if reward is below threshold ", async () => {
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, {
-                value: ethers.utils.parseEther("0.01"),
-            });
-            await referralManager.connect(ownerSigner).setPayoutThreshold(ethers.utils.parseEther("0.02"));
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            await referralManager.connect(ownerSigner).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.02")]);
 
-            await expect(referralManager.connect(user2Signer).claimReferralReward()).to.be.revertedWithCustomError(
+            await expect(referralManager.connect(user2Signer).claimReferralReward(wBera.address)).to.be.revertedWithCustomError(
                 referralManager,
                 "ReferralManager_PayoutBelowThreshold"
             );
         });
         it("should revert if reward is zero", async () => {
-            await expect(referralManager.connect(user2Signer).claimReferralReward()).to.be.revertedWithCustomError(
+            await expect(referralManager.connect(user2Signer).claimReferralReward(wBera.address)).to.be.revertedWithCustomError(
                 referralManager,
                 "ReferralManager_ZeroPayout"
             );
         });
         it("should payout any reward", async () => {
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, {
-                value: ethers.utils.parseEther("0.01"),
-            });
+            const referralAmount = ethers.utils.parseEther("0.01");
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
             // store user ether balance
-            const userBalanceBefore = await ethers.provider.getBalance(ownerSigner.address);
-            const tx = await referralManager.connect(ownerSigner).claimReferralReward();
+            const userBalanceBefore = await wBera.balanceOf(ownerSigner.address);
+            const tx = await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
 
             // check event
-            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, ethers.utils.parseEther("0.01"));
+            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, wBera.address, referralAmount);
             // check user ether balance
-            expect(await ethers.provider.getBalance(ownerSigner.address)).to.be.gt(userBalanceBefore);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
         });
         it("should update the accounting", async () => {
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, {
-                value: ethers.utils.parseEther("0.01"),
-            });
-            await referralManager.connect(ownerSigner).claimReferralReward();
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
 
-            const referrerInfo = await referralManager.referrerInfo(ownerSigner.address);
-            expect(referrerInfo[0]).to.be.equal(0);
-            expect(referrerInfo[1]).to.be.equal(ethers.utils.parseEther("0.01"));
+            expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
         });
     });
     describe("setDirectRefFeeBps", () => {
@@ -330,13 +350,13 @@ describe("ReferralManager Tests", () => {
     });
     describe("setPayoutThreshold", () => {
         it("should revert if caller is not owner", async () => {
-            await expect(referralManager.connect(user1Signer).setPayoutThreshold(ethers.utils.parseEther("0.01"))).to.be.revertedWith(
-                "Ownable: caller is not the owner"
-            );
+            await expect(
+                referralManager.connect(user1Signer).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.01")])
+            ).to.be.revertedWith("Ownable: caller is not the owner");
         });
         it("should update the payoutThreshold", async () => {
-            await referralManager.connect(ownerSigner).setPayoutThreshold(ethers.utils.parseEther("1"));
-            expect(await referralManager.payoutThreshold()).to.be.equal(ethers.utils.parseEther("1"));
+            await referralManager.connect(ownerSigner).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("1")]);
+            expect(await referralManager.payoutThreshold(wBera.address)).to.be.equal(ethers.utils.parseEther("1"));
         });
     });
     describe("setWhitelistedVault", () => {
@@ -347,7 +367,7 @@ describe("ReferralManager Tests", () => {
         });
         it("should update the whitelisted vault", async () => {
             await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
-            expect(await referralManager.whitelistedVaults(ownerSigner.address)).to.be.equal(true);
+            expect(await referralManager.whitelistedVault(ownerSigner.address)).to.be.equal(true);
         });
     });
 });

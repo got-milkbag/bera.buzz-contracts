@@ -25,8 +25,8 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     /// @notice Error emitted when the array lengths do not match
     error ReferralManager_ArrayLengthMismatch();
 
-    event ReferralSet(address indexed referrer, address indexed user);
-    event IndirectReferralSet(address indexed referrer, address indexed user, address indexed indirectReferrer);
+    event ReferralSet(address indexed referrer, address indexed referredUser);
+    event IndirectReferralSet(address indexed indirectReferrer, address indexed referredUser, address indexed directReferrer);
     event ReferralRewardReceived(address indexed referrer, address indexed token, uint256 reward, bool isDirect);
     event ReferralPaidOut(address indexed referrer, address indexed token, uint256 reward);
     event DirectRefFeeBpsSet(uint256 directRefFeeBps);

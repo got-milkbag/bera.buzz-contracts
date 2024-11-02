@@ -274,7 +274,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
-        uint256 beraAmountToBps = (BERA_MARKET_CAP_LIQ * MIGRATION_LIQ_RATIO_BPS) / 10000;
+        uint256 beraAmountToBps = (BERA_MARKET_CAP_LIQ * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
         uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
 
         beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);

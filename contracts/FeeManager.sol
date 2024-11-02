@@ -1,23 +1,29 @@
-// SPDX-License-Identifier: BUSL-1.1
+// SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 
+import "./interfaces/IFeeManager.sol";
+
 /**
  * @title FeeManager
- * @notice This contract collects a fee % in any ERC20 token and sends it to a treasury address
+ * @notice This contract collects and forwards to the treasury the different types of fees in the protocol
  */
-contract FeeManager is Ownable {
+contract FeeManager is Ownable, IFeeManager {
     using SafeERC20 for IERC20;
 
     /// @notice Error thrown when treasury is the zero address
     error FeeManager_TreasuryZeroAddress();
     /// @notice Error thrown when the amount is above the fee divisor
     error FeeManager_AmountAboveFeeDivisor();
+    /// @notice Error thrown when the fee is insufficient
+    error FeeManager_InsufficientFee();
 
-    /// @notice Event emitted when a fee is received
+    /// @notice Event emitted when an ERC20 fee is received
     event FeeReceived(address indexed token, uint256 amount);
+    /// @notice Event emitted when a native currency fee is received
+    event NativeFeeReceived(uint256 amount);
     /// @notice Event emitted when the treasury address is set
     event TreasurySet(address indexed treasury);
     /// @notice Event emitted when the trading fee is set
@@ -33,7 +39,7 @@ contract FeeManager is Ownable {
     uint256 public tradingFeeBps;
     /// @notice The AMM migration fee in basis points. (one percent equals 1000)
     uint256 public migrationFeeBps;
-    /// @notice The fixed listing fee amount that needs to be collected
+    /// @notice The fixed listing fee amount in the native token that needs to be collected
     uint256 public listingFee;
     /// @notice The treasury address where fees are sent
     address public treasury;
@@ -71,12 +77,15 @@ contract FeeManager is Ownable {
     }
 
     /**
-     * @notice Collects the listing fee from the sender
-     * @dev Approval needs to be given to this contract prior to calling this function
-     * @param token The token address
+     * @notice Collects the listing fee in native currency from the sender
      */
-    function collectListingFee(address token) external {
-        if (listingFee > 0) _collect(token, listingFee);
+    function collectListingFee() external payable {
+        if (listingFee > 0) {
+            if (msg.value != listingFee) revert FeeManager_InsufficientFee();
+            (bool success, ) = treasury.call{value: listingFee}("");
+            if (!success) revert FeeManager_InsufficientFee();
+            emit NativeFeeReceived(listingFee);
+        }
     }
 
     /**
@@ -164,7 +173,7 @@ contract FeeManager is Ownable {
     // Internal functions
 
     /**
-     * @notice Internal function to collect the fee in the token and sends it to the treasury
+     * @notice Internal function to collect an ERC20 fee and send it to the treasury
      * @param token The token address
      * @param amount The amount to collect
      */
@@ -172,4 +181,7 @@ contract FeeManager is Ownable {
         IERC20(token).safeTransferFrom(_msgSender(), treasury, amount);
         emit FeeReceived(token, amount);
     }
+
+    // Fallback function
+    receive() external payable {}
 }

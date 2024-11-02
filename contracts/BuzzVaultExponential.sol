@@ -14,19 +14,20 @@ contract BuzzVaultExponential is BuzzVault {
 
     /**
      * @notice Constructor for a new BuzzVaultExponential contract
-     * @param _feeRecipient The address that receives the protocol fee
+     * @param _feeManager The address of the fee manager contract collecting fees
      * @param _factory The factory contract that can register tokens
      * @param _referralManager The referral manager contract
      * @param _priceDecoder The price decoder contract
      * @param _liquidityManager The liquidity manager contract
      */
     constructor(
-        address payable _feeRecipient,
+        address _feeManager,
         address _factory,
         address _referralManager,
         address _priceDecoder,
-        address _liquidityManager
-    ) BuzzVault(_feeRecipient, _factory, _referralManager, _priceDecoder, _liquidityManager) {}
+        address _liquidityManager,
+        address _wbera
+    ) BuzzVault(_feeManager, _factory, _referralManager, _priceDecoder, _liquidityManager, _wbera) {}
 
     /**
      * @notice Quote the amount of tokens that can be bought or sold at the current curve
@@ -46,8 +47,8 @@ contract BuzzVaultExponential is BuzzVault {
         if (info.bexListed) revert BuzzVault_BexListed();
 
         uint256 tokenBalance = info.tokenBalance;
-        uint256 beraBalance = info.beraBalance;
-        if (tokenBalance == 0 && beraBalance == 0) revert BuzzVault_UnknownToken();
+        uint256 baseBalance = info.baseBalance;
+        if (tokenBalance == 0 && baseBalance == 0) revert BuzzVault_UnknownToken();
 
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - tokenBalance;
 
@@ -57,31 +58,34 @@ contract BuzzVaultExponential is BuzzVault {
             //if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
         } else {
             (amountOut, pricePerToken, pricePerBera) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
-            if (amountOut > beraBalance) revert BuzzVault_InvalidReserves();
+            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
         }
     }
 
     /**
-     * @notice Buy tokens from the bonding curve with Bera
+     * @notice Buy tokens from the bonding curve
      * @param token The token address
-     * @param minTokens The minimum amount of tokens to buy
+     * @param baseAmount The base amount of tokens used to buy with
+     * @param minTokensOut The minimum amount of tokens to buy
      * @param info The token info struct
      * @return tokenAmount The amount of tokens bought
      */
-    function _buy(address token, uint256 minTokens, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
+    function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
-        uint256 beraAmount = msg.value;
-        uint256 beraAmountPrFee = (beraAmount * PROTOCOL_FEE_BPS) / 10000;
-        uint256 beraAmountAfFee;
+        // Collect fee
+        uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
+        IERC20(info.baseToken).approve(address(feeManager), tradingFee);
+        feeManager.collectMigrationFee(info.baseToken, baseAmount);
 
+        uint256 beraAmountAfFee;
         /// TODO: Implement fee rounding refund
         uint256 bps = _getBpsToDeductForReferrals(msg.sender);
         if (bps > 0) {
-            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
-            beraAmountPrFee -= beraAmountAfFee;
+            beraAmountAfFee = (tradingFee * bps) / 10000;
+            tradingFee -= beraAmountAfFee;
         }
 
-        uint256 netBeraAmount = beraAmount - beraAmountPrFee - beraAmountAfFee;
+        uint256 netBeraAmount = baseAmount - tradingFee - beraAmountAfFee;
         (uint256 tokenAmountBuy, uint256 beraPerToken, uint256 tokenPerBera) = _calculateBuyPrice(
             circulatingSupply,
             netBeraAmount,
@@ -90,24 +94,21 @@ contract BuzzVaultExponential is BuzzVault {
         );
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-        if (tokenAmountBuy < minTokens) revert BuzzVault_SlippageExceeded();
+        if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
         if (tokenAmountBuy > info.tokenBalance) revert BuzzVault_InvalidReserves();
         //if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
 
         // Update balances
-        info.beraBalance += netBeraAmount;
+        info.baseBalance += netBeraAmount;
         info.tokenBalance -= tokenAmountBuy;
 
         // Update prices
         info.lastPrice = beraPerToken;
         info.lastBeraPrice = tokenPerBera;
 
-        // Transfer the protocol fee
-        _transferFee(feeRecipient, beraAmountPrFee);
-
         // Transfer the affiliate fee
         if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
-        
+
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
 
@@ -115,14 +116,21 @@ contract BuzzVaultExponential is BuzzVault {
     }
 
     /**
-     * @notice Sell tokens to the bonding curve for Bera
+     * @notice Sell tokens to the bonding curve for base token
      * @param token The token address
      * @param tokenAmount The amount of tokens to sell
-     * @param minBera The minimum amount of Bera to receive
+     * @param minAmountOut The minimum amount of base tokens to receive
      * @param info The token info struct
-     * @return netBeraAmount The amount of Bera after fees
+     * @param unwrap True if the base token should be unwrapped (only if base token in WBera)
+     * @return netBeraAmount The amount of base tokens after fees
      */
-    function _sell(address token, uint256 tokenAmount, uint256 minBera, TokenInfo storage info) internal override returns (uint256 netBeraAmount) {
+    function _sell(
+        address token,
+        uint256 tokenAmount,
+        uint256 minAmountOut,
+        TokenInfo storage info,
+        bool unwrap
+    ) internal override returns (uint256 netBeraAmount) {
         uint256 circulatingSupply = TOTAL_SUPPLY_OF_TOKENS - info.tokenBalance;
         (uint256 beraAmountSell, uint256 beraPerToken, uint256 tokenPerBera) = _calculateSellPrice(
             circulatingSupply,
@@ -131,36 +139,48 @@ contract BuzzVaultExponential is BuzzVault {
             CURVE_BETA
         );
 
-        if (info.beraBalance < beraAmountSell) revert BuzzVault_InvalidReserves();
-        if (beraAmountSell < minBera) revert BuzzVault_SlippageExceeded();
+        if (info.baseBalance < beraAmountSell) revert BuzzVault_InvalidReserves();
+        if (beraAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
         if (beraAmountSell == 0) revert BuzzVault_QuoteAmountZero();
 
-        uint256 beraAmountPrFee = (beraAmountSell * PROTOCOL_FEE_BPS) / 10000;
+        // Collect fee
+        uint256 tradingFee = feeManager.quoteTradingFee(beraAmountSell);
+        IERC20(info.baseToken).approve(address(feeManager), tradingFee);
+        feeManager.collectMigrationFee(info.baseToken, beraAmountSell);
+
         uint256 beraAmountAfFee;
 
         uint256 bps = _getBpsToDeductForReferrals(msg.sender);
         if (bps > 0) {
-            beraAmountAfFee = (beraAmountPrFee * bps) / 10000;
-            beraAmountPrFee -= beraAmountAfFee;
+            beraAmountAfFee = (tradingFee * bps) / 10000;
+            tradingFee -= beraAmountAfFee;
         }
 
         // Update balances
-        info.beraBalance -= beraAmountSell;
+        info.baseBalance -= beraAmountSell;
         info.tokenBalance += tokenAmount;
 
         // Update prices
         info.lastPrice = beraPerToken;
         info.lastBeraPrice = tokenPerBera;
 
-        netBeraAmount = beraAmountSell - beraAmountPrFee - beraAmountAfFee;
+        netBeraAmount = beraAmountSell - tradingFee - beraAmountAfFee;
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-        _transferFee(feeRecipient, beraAmountPrFee);
-
         if (beraAmountAfFee > 0) _forwardReferralFee(msg.sender, beraAmountAfFee);
 
-        _transferFee(payable(msg.sender), netBeraAmount);
+        // TODO: Unwrap
+        if (unwrap) {
+            uint256 balancePrior = address(this).balance;
+            wbera.approve(address(wbera), netBeraAmount);
+            wbera.withdraw(netBeraAmount);
+            uint256 amount = address(this).balance - balancePrior;
+            if (amount != netBeraAmount) revert BuzzVault_WBeraConversionFailed();
+            _transferEther(payable(msg.sender), netBeraAmount);
+        } else {
+            IERC20(info.baseToken).safeTransfer(msg.sender, netBeraAmount);
+        }
     }
 
     /**

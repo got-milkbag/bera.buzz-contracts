@@ -2,13 +2,17 @@
 pragma solidity ^0.8.19;
 
 interface IBuzzVault {
-    function buy(address token, uint256 minTokens, address affiliate) external payable;
+    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external;
 
-    function sell(address token, uint256 tokenAmount, uint256 minBera, address affiliate) external;
+    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable;
 
-    function registerToken(address token, uint256 tokenBalance) external;
+    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external;
 
-    function getMarketCapFor(address token) external view returns (uint256 marketCap);
+    function registerToken(address token, address baseToken, uint256 tokenBalance) external;
 
-    function quote(address token, uint256 amount, bool isBuyOrder) external view returns (uint256 amountOut, uint256 pricePerToken);
+    function quote(
+        address token,
+        uint256 amount,
+        bool isBuyOrder
+    ) external view returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBera);
 }

@@ -125,10 +125,9 @@ describe("FeeManager Tests", () => {
         it("should collect and redirect the fee to the treasury", async () => {
             const fee = await feeManager.listingFee();
 
-            const balanceBefore = await token.balanceOf(treasury.address);
-            await token.approve(feeManager.address, fee);
-            await feeManager.collectListingFee(token.address);
-            const balanceAfter = await token.balanceOf(treasury.address);
+            const balanceBefore = await ethers.provider.getBalance(treasury.address);
+            await feeManager.collectListingFee({value: fee});
+            const balanceAfter = await ethers.provider.getBalance(treasury.address);
             expect(balanceAfter.sub(balanceBefore)).to.be.equal(fee);
         });
         it("should emit a FeeReceived event", async () => {

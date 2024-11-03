@@ -11,7 +11,6 @@ import "./BuzzToken.sol";
 import "./interfaces/IBuzzTokenFactory.sol";
 import "./interfaces/IBuzzVault.sol";
 import "./interfaces/IFeeManager.sol";
-import "hardhat/console.sol";
 
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     using SafeERC20 for IERC20;

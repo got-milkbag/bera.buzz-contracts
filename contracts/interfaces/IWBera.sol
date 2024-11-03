@@ -7,4 +7,8 @@ interface IWBera {
     function transfer(address to, uint value) external returns (bool);
 
     function withdraw(uint) external;
+
+    function approve(address spender, uint value) external returns (bool);
+
+    function balanceOf(address) external view returns (uint256);
 }

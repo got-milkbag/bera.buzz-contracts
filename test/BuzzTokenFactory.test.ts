@@ -7,12 +7,11 @@ import {formatBytes32String} from "ethers/lib/utils";
 
 describe("BuzzTokenFactory Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-    let feeRecipient: string;
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
-    let feeRecipientSigner: SignerWithAddress;
+    let treasury: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
     let token: Contract;
@@ -24,6 +23,8 @@ describe("BuzzTokenFactory Tests", () => {
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let treasuryBalanceBefore: BigNumber;
+    let feeManager: Contract;
+    let wBera: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -35,8 +36,7 @@ describe("BuzzTokenFactory Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer, feeRecipientSigner] = await ethers.getSigners();
-        feeRecipient = feeRecipientSigner.address;
+        [ownerSigner, user1Signer, user2Signer, treasury] = await ethers.getSigners();
 
         // Deploy mock create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
@@ -54,13 +54,28 @@ describe("BuzzTokenFactory Tests", () => {
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
         bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
+        //Deploy WBera Mock
+        const WBera = await ethers.getContractFactory("WBERA");
+        wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy FeeManager
+        const FeeManager = await ethers.getContractFactory("FeeManager");
+        feeManager = await FeeManager.connect(ownerSigner).deploy(treasury.address, 100, listingFee, 420);
+
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
-        referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
+        referralManager = await ReferralManager.connect(ownerSigner).deploy(
+            directRefFeeBps,
+            indirectRefFeeBps,
+            validUntil,
+            [wBera.address],
+            [payoutThreshold]
+        );
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
@@ -79,11 +94,12 @@ describe("BuzzTokenFactory Tests", () => {
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
         expVault = await ExpVault.connect(ownerSigner).deploy(
-            feeRecipient,
+            feeManager.address,
             factory.address,
             referralManager.address,
             bexPriceDecoder.address,
-            bexLiquidityManager.address
+            bexLiquidityManager.address,
+            wBera.address
         );
 
         // Admin: Set Vault in the ReferralManager
@@ -104,11 +120,8 @@ describe("BuzzTokenFactory Tests", () => {
             const ownerRoleHash = await factory.OWNER_ROLE();
             expect(await factory.hasRole(ownerRoleHash, ownerSigner.address)).to.be.equal(true);
         });
-        it("should set the treasury", async () => {
-            expect(await factory.treasury()).to.be.equal(feeRecipient);
-        });
-        it("should set the listingFee", async () => {
-            expect(await factory.listingFee()).to.be.equal(listingFee);
+        it("should set the feeManager", async () => {
+            expect(await factory.feeManager()).to.be.equal(feeManager.address);
         });
     });
     describe("createToken", () => {
@@ -116,56 +129,106 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-                    value: listingFee,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
+                    {
+                        value: listingFee,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", user1Signer.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-                    value: listingFee,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, user1Signer.address, ethers.constants.AddressZero],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
+                    {
+                        value: listingFee,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
         it("should revert if the listing fee is not sent", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-                    value: 0,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
+                    {
+                        value: 0,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
         });
         it("should revert if the max tax for the token is exceeded", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("10000"), {
-                    value: listingFee,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, user1Signer.address],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("10000"),
+                    {
+                        value: listingFee,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxTooHigh");
         });
         it("should revert on taxTo not being addr 0 but tax gt 0", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-                    value: listingFee,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, user1Signer.address],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
+                    {
+                        value: listingFee,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
         });
         it("should revert on taxTo being addr 0 but tax == 0", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), BigNumber.from(1000), {
-                    value: listingFee,
-                })
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
+                    formatBytes32String("12345"),
+                    BigNumber.from(1000),
+                    {
+                        value: listingFee,
+                    }
+                )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
         });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
-            const tx = await factory.createToken(name, symbol, expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-                value: listingFee,
-            });
+            const tx = await factory.createToken(
+                [name, symbol],
+                [wBera.address, expVault.address, ethers.constants.AddressZero],
+                0,
+                formatBytes32String("12345"),
+                ethers.utils.parseEther("0"),
+                {
+                    value: listingFee,
+                }
+            );
             const receipt = await tx.wait();
             const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
             expect(tokenCreatedEvent.args.name).to.be.equal(name);
             expect(tokenCreatedEvent.args.symbol).to.be.equal(symbol);
+            expect(tokenCreatedEvent.args.baseToken).to.be.equal(wBera.address);
             expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
             expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
 
@@ -175,12 +238,11 @@ describe("BuzzTokenFactory Tests", () => {
         });
         describe("_deployToken", () => {
             beforeEach(async () => {
-                treasuryBalanceBefore = await ethers.provider.getBalance(feeRecipient);
+                treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);
                 const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    expVault.address,
-                    ethers.constants.AddressZero,
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
                     formatBytes32String("123457"),
                     ethers.utils.parseEther("0"),
                     {
@@ -194,7 +256,7 @@ describe("BuzzTokenFactory Tests", () => {
             });
             it("should create a token with the correct metadata", async () => {
                 expect(await token.name()).to.be.equal("TEST");
-                expect(await token.symbol()).to.be.equal("TEST");
+                expect(await token.symbol()).to.be.equal("TST");
             });
             it("should create a token with the storred contract supply", async () => {
                 const totalSupply = await factory.INITIAL_SUPPLY();
@@ -207,19 +269,19 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
             });
             it("should transfer the listingFee to the treasury", async () => {
-                expect(await ethers.provider.getBalance(feeRecipient)).to.be.equal(treasuryBalanceBefore.add(listingFee));
+                expect(await ethers.provider.getBalance(treasury.address)).to.be.equal(treasuryBalanceBefore.add(listingFee));
             });
         });
         describe("buy on deployment", () => {
             beforeEach(async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
                 const tax = BigNumber.from(1000);
+
                 const tx = await factory.createToken(
-                    "TEST",
-                    "TEST",
-                    expVault.address,
-                    user2Signer.address,
-                    formatBytes32String("123456"),
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, user2Signer.address],
+                    ethers.utils.parseEther("0.01"),
+                    formatBytes32String("12345"),
                     tax,
                     {
                         value: listingFeeAndBuyAmount,
@@ -242,16 +304,16 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await token.TAX()).to.be.equal(tax);
             });
             it("should revert if the initial buy is bigger than 5% of the total supply", async () => {
+                const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("100"));
                 await expect(
                     factory.createToken(
-                        "TEST",
-                        "TEST",
-                        expVault.address,
-                        ethers.constants.AddressZero,
+                        ["TEST", "TST"],
+                        [wBera.address, expVault.address, ethers.constants.AddressZero],
+                        ethers.utils.parseEther("100"),
                         formatBytes32String("123456006"),
                         BigNumber.from(0),
                         {
-                            value: ethers.utils.parseEther("100"),
+                            value: listingFeeAndBuyAmount,
                         }
                     )
                 ).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
@@ -301,33 +363,20 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(factory.connect(ownerSigner).setAllowTokenCreation(false)).to.emit(factory, "TokenCreationSet").withArgs(false);
         });
     });
-    describe("setListingFee", () => {
+    describe("setFeeManager", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setListingFee(ethers.utils.parseEther("0.003"))).to.be.reverted;
-        });
-        it("should set the listing fee", async () => {
-            await factory.connect(ownerSigner).setListingFee(ethers.utils.parseEther("0.003"));
-            expect(await factory.listingFee()).to.be.equal(ethers.utils.parseEther("0.003"));
-        });
-        it("should emit a ListingFeeSet event", async () => {
-            expect(await factory.listingFee()).to.be.equal(listingFee);
-            await expect(factory.connect(ownerSigner).setListingFee(ethers.utils.parseEther("0.003")))
-                .to.emit(factory, "ListingFeeSet")
-                .withArgs(ethers.utils.parseEther("0.003"));
-        });
-    });
-    describe("setTreasury", () => {
-        it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setTreasury(user1Signer.address)).to.be.reverted;
+            await expect(factory.connect(user1Signer).setFeeManager(user1Signer.address)).to.be.reverted;
         });
         it("should set the treasury", async () => {
-            expect(await factory.treasury()).to.be.equal(feeRecipient);
-            await factory.connect(ownerSigner).setTreasury(user1Signer.address);
-            expect(await factory.treasury()).to.be.equal(user1Signer.address);
+            expect(await factory.feeManager()).to.be.equal(feeManager.address);
+            await factory.connect(ownerSigner).setFeeManager(user1Signer.address);
+            expect(await factory.feeManager()).to.be.equal(user1Signer.address);
         });
         it("should emit a TreasurySet event", async () => {
-            expect(await factory.treasury()).to.be.equal(feeRecipient);
-            await expect(factory.connect(ownerSigner).setTreasury(user1Signer.address)).to.emit(factory, "TreasurySet").withArgs(user1Signer.address);
+            expect(await factory.feeManager()).to.be.equal(feeManager.address);
+            await expect(factory.connect(ownerSigner).setFeeManager(user1Signer.address))
+                .to.emit(factory, "FeeManagerSet")
+                .withArgs(user1Signer.address);
         });
     });
 });

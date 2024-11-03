@@ -11,6 +11,7 @@ import "./BuzzToken.sol";
 import "./interfaces/IBuzzTokenFactory.sol";
 import "./interfaces/IBuzzVault.sol";
 import "./interfaces/IFeeManager.sol";
+import "hardhat/console.sol";
 
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
@@ -40,6 +41,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// TODO: Fix indexed limit
     event TokenCreated(
         address indexed token,
+        address baseToken,
         address indexed vault,
         address indexed deployer,
         address taxTo,
@@ -109,8 +111,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if ((addr[2] == address(0) && tax > 0) || (addr[2] != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
 
         uint256 listingFee = feeManager.listingFee();
-        if (listingFee > 0) feeManager.collectListingFee{value: listingFee}();
-
+        if (listingFee > 0) {
+            if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
+            feeManager.collectListingFee{value: listingFee}();
+        }
         token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], addr[2], salt, tax);
 
         if (baseAmount > 0) {
@@ -133,7 +137,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
 
-        emit TokenCreated(token, addr[1], msg.sender, addr[2], metadata[0], metadata[1], tax);
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, addr[2], metadata[0], metadata[1], tax);
     }
 
     /**

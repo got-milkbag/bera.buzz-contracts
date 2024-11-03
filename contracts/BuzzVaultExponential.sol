@@ -159,7 +159,6 @@ contract BuzzVaultExponential is BuzzVault {
         netBaseAmount = baseAmountSell - tradingFee - referralFee;
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
-
         if (unwrap) {
             uint256 balancePrior = address(this).balance;
             wbera.approve(address(wbera), netBaseAmount);

@@ -250,7 +250,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 baseBalance = info.baseBalance;
-        uint256 lastBasePrice = info.lastBasePrice;
 
         info.baseBalance = 0;
         info.tokenBalance = 0;
@@ -263,12 +262,13 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 dexFee = feeManager.quoteMigrationFee(baseBalance);
         IERC20(info.baseToken).approve(address(feeManager), dexFee);
         feeManager.collectMigrationFee(info.baseToken, baseBalance);
-        uint256 netBeraAmount = baseBalance - dexFee;
+        uint256 netBaseAmount = baseBalance - dexFee;
 
         IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD);
+        IERC20(info.baseToken).safeApprove(address(liquidityManager), netBaseAmount);
+        liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {

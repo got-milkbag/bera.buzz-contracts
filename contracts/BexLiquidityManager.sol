@@ -5,7 +5,6 @@ import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
 import "./interfaces/IBexLiquidityManager.sol";
-import "./interfaces/IWBera.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "./libraries/SqrtMath.sol";
 
@@ -22,8 +21,6 @@ contract BexLiquidityManager is IBexLiquidityManager {
     uint256 private constant _poolIdx = 36002;
     /// @notice The amount of tokens to burn when adding liquidity
     uint256 private constant BURN_AMOUNT = 1e7;
-    /// @notice The address of the wrapped Bera token
-    IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
     /// @notice The address of the CrocSwap DEX
     ICrocSwapDex public crocSwapDex;
 
@@ -36,39 +33,36 @@ contract BexLiquidityManager is IBexLiquidityManager {
     }
 
     /**
-     * @notice Create a new pool with WBera and a specified token in Bex and add liquidity to it. Bera needs to be passed as msg.value
-     * @dev The caller must approve the contract to transfer the token.
+     * @notice Create a new pool with two erc20 tokens (base and quote tokens) in Bex and add liquidity to it.
+     * @dev The caller must approve the contract to transfer both tokens.
      * @param token The address of the token to add
+     * @param baseToken The address of the base token
+     * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
      */
-    function createPoolAndAdd(address token, uint256 amount) external payable {
-        // Wrap Bera
-        uint256 beraAmount = msg.value;
-        WBERA.deposit{value: beraAmount}();
-
+    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(token).safeApprove(address(crocSwapDex), amount);
-        IERC20(address(WBERA)).safeApprove(address(crocSwapDex), beraAmount);
+        IERC20(baseToken).safeApprove(address(crocSwapDex), baseAmount);
 
         address base;
         address quote;
         uint8 liqCode;
 
-        if (address(WBERA) < token) {
-            base = address(WBERA);
+        if (baseToken < token) {
+            base = baseToken;
             quote = token;
             liqCode = 31; // Fixed liquidity based on base tokens
-        } 
-        else {
+        } else {
             base = token;
-            quote = address(WBERA);
+            quote = baseToken;
             liqCode = 32; // Fixed liquidity based on quote tokens
         }
 
         // Price should be in quote tokens per base token
-        uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, beraAmount);
-        uint128 liquidity = uint128(beraAmount);
+        uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, baseAmount);
+        uint128 liquidity = uint128(baseAmount);
 
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
@@ -88,6 +82,6 @@ contract BexLiquidityManager is IBexLiquidityManager {
         crocSwapDex.userCmd(6, encodedCmd);
 
         // Emit event
-        emit BexListed(token, beraAmount, _initPrice);
+        emit BexListed(token, baseAmount, _initPrice);
     }
 }

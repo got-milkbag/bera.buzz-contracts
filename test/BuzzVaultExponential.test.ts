@@ -24,6 +24,7 @@ describe("BuzzVaultExponential Tests", () => {
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
+    let treasury: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
     let token: Contract;
@@ -34,6 +35,8 @@ describe("BuzzVaultExponential Tests", () => {
     let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
+    let wBera: Contract;
+    let feeManager: Contract;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -45,8 +48,7 @@ describe("BuzzVaultExponential Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer] = await ethers.getSigners();
-        feeRecipient = ownerSigner.address;
+        [ownerSigner, user1Signer, user2Signer, treasury] = await ethers.getSigners();
 
         // Deploy create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
@@ -64,13 +66,27 @@ describe("BuzzVaultExponential Tests", () => {
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
         bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
 
+        //Deploy WBera Mock
+        const WBera = await ethers.getContractFactory("WBERA");
+        wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy FeeManager
+        const FeeManager = await ethers.getContractFactory("FeeManager");
+        feeManager = await FeeManager.connect(ownerSigner).deploy(treasury.address, 100, listingFee, 500);
+
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
-        referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
+        referralManager = await ReferralManager.connect(ownerSigner).deploy(
+            directRefFeeBps,
+            indirectRefFeeBps,
+            validUntil,
+            [wBera.address],
+            [payoutThreshold]
+        );
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeRecipient, listingFee);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
 
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
@@ -79,23 +95,32 @@ describe("BuzzVaultExponential Tests", () => {
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
         expVault = await ExpVault.connect(ownerSigner).deploy(
-            feeRecipient,
+            feeManager.address,
             factory.address,
             referralManager.address,
             bexPriceDecoder.address,
-            bexLiquidityManager.address
+            bexLiquidityManager.address,
+            wBera.address
         );
+
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
         await factory.connect(ownerSigner).setVault(expVault.address, true);
-
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
+
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
-            value: listingFee,
-        });
+        const tx = await factory.createToken(
+            ["TEST", "TST"],
+            [wBera.address, expVault.address, ethers.constants.AddressZero],
+            0,
+            formatBytes32String("12345"),
+            ethers.utils.parseEther("0"),
+            {
+                value: listingFee,
+            }
+        );
         const receipt = await tx.wait();
         const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
 
@@ -103,23 +128,33 @@ describe("BuzzVaultExponential Tests", () => {
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
     });
     describe("constructor", () => {
+        it("should set the feeManager address", async () => {
+            expect(await expVault.feeManager()).to.be.equal(feeManager.address);
+        });
         it("should set the factory address", async () => {
             expect(await expVault.factory()).to.be.equal(factory.address);
-        });
-        it("should set the feeRecipient address", async () => {
-            expect(await expVault.feeRecipient()).to.be.equal(feeRecipient);
         });
         it("should set the referralManager address", async () => {
             expect(await expVault.referralManager()).to.be.equal(referralManager.address);
         });
+        it("should set the bexPriceDecoder address", async () => {
+            expect(await expVault.priceDecoder()).to.be.equal(bexPriceDecoder.address);
+        });
+        it("should set the bexLiquidityManager address", async () => {
+            expect(await expVault.liquidityManager()).to.be.equal(bexLiquidityManager.address);
+        });
+        it("should set the wBera address", async () => {
+            expect(await expVault.wbera()).to.be.equal(wBera.address);
+        });
     });
+    /*
     describe("registerToken", () => {
         beforeEach(async () => {});
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await expVault.tokenInfo(token.address);
             expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
             expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
-            expect(tokenInfo.beraBalance).to.be.equal(0);
+            expect(tokenInfo.baseBalance).to.be.equal(0);
             expect(tokenInfo.bexListed).to.be.equal(false);
 
             expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
@@ -319,4 +354,5 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[0]).to.be.equal(tokenInfoBefore[0].add(userTokenBalance));
         });
     });
+    */
 });

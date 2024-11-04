@@ -23,10 +23,14 @@ contract BexLiquidityManager is IBexLiquidityManager {
     uint256 private constant _poolIdx = 36002;
     /// @notice The amount of tokens to burn when adding liquidity
     uint256 private constant BURN_AMOUNT = 1e7;
+    /// @notice The init code hash of the LP conduit
+    bytes private constant LP_CONDUIT_INIT_CODE_HASH = hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
     /// @notice The address of the wrapped Bera token
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
     /// @notice The address of the CrocSwap DEX
     ICrocSwapDex public crocSwapDex;
+    /// @notice The address of the LP conduit
+    address public lpConduit;
     
 
     /**
@@ -72,7 +76,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, beraAmount);
         uint128 liquidity = uint128(beraAmount);
 
-        address lpConduit = _predictConduitAddress(base, quote);
+        lpConduit = _predictConduitAddress(base, quote);
 
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
@@ -109,14 +113,8 @@ contract BexLiquidityManager is IBexLiquidityManager {
             bytes1(0xff),
             address(crocSwapDex),
             salt,
-            keccak256(bytecode)
+            LP_CONDUIT_INIT_CODE_HASH
         )))));
-
-        //address lpConduit;
-        /*
-        assembly {
-            lpConduit := create2(0, add(bytecode, 32), mload(bytecode), salt)
-        }*/
 
         return predictedAddress;
     }

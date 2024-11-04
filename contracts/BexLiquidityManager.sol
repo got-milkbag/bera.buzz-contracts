@@ -105,17 +105,15 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @param quote The address of the quote token
      * @return lpConduit The address of the LP conduit
      */
-    function _predictConduitAddress(address base, address quote) internal view returns (address) {
+    function _predictConduitAddress(address base, address quote) internal view returns (address lpConduit) {
         bytes memory bytecode = type(CrocLpErc20).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(base, quote));
         
-        address predictedAddress = address(uint160(uint256(keccak256(abi.encodePacked(
+        lpConduit = address(uint160(uint256(keccak256(abi.encodePacked(
             bytes1(0xff),
             address(crocSwapDex),
             salt,
             LP_CONDUIT_INIT_CODE_HASH
         )))));
-
-        return predictedAddress;
     }
 }

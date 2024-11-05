@@ -96,7 +96,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
             value: listingFee,
         });
         const receipt = await tx.wait();
@@ -128,7 +128,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
         });
         it("should revert if caller is not factory", async () => {
-            await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
+            await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"), ethers.utils.parseEther("69420"))).to.be.revertedWithCustomError(
                 expVault,
                 "BuzzVault_Unauthorized"
             );

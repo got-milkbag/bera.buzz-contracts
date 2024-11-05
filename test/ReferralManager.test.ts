@@ -92,7 +92,7 @@ describe("ReferralManager Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
             value: listingFee,
         });
         const receipt = await tx.wait();

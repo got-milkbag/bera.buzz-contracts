@@ -116,42 +116,42 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenCreationDisabled");
         });
         it("should revert if the vault is not previously whitelisted", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", user1Signer.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+                factory.createToken("TEST", "TEST", user1Signer.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
         it("should revert if the listing fee is not sent", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
                     value: 0,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
         });
         it("should revert if the max tax for the token is exceeded", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("10000"), {
+                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("10000"), ethers.utils.parseEther("69420"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxTooHigh");
         });
         it("should revert on taxTo not being addr 0 but tax gt 0", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+                factory.createToken("TEST", "TEST", expVault.address, user1Signer.address, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
         });
         it("should revert on taxTo being addr 0 but tax == 0", async () => {
             await expect(
-                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), BigNumber.from(1000), {
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), BigNumber.from(1000), ethers.utils.parseEther("69420"), {
                     value: listingFee,
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
@@ -159,7 +159,7 @@ describe("BuzzTokenFactory Tests", () => {
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
-            const tx = await factory.createToken(name, symbol, expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+            const tx = await factory.createToken(name, symbol, expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
                 value: listingFee,
             });
             const receipt = await tx.wait();
@@ -183,6 +183,7 @@ describe("BuzzTokenFactory Tests", () => {
                     ethers.constants.AddressZero,
                     formatBytes32String("123457"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -221,6 +222,7 @@ describe("BuzzTokenFactory Tests", () => {
                     user2Signer.address,
                     formatBytes32String("123456"),
                     tax,
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFeeAndBuyAmount,
                     }
@@ -250,6 +252,7 @@ describe("BuzzTokenFactory Tests", () => {
                         ethers.constants.AddressZero,
                         formatBytes32String("123456006"),
                         BigNumber.from(0),
+                        ethers.utils.parseEther("69420"),
                         {
                             value: ethers.utils.parseEther("100"),
                         }

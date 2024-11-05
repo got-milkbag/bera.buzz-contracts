@@ -8,6 +8,7 @@ interface IBuzzTokenFactory {
         address vault,
         address taxTo,
         bytes32 salt,
-        uint256 tax
+        uint256 tax,
+        uint256 marketCap
     ) external payable returns (address token);
 }

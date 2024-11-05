@@ -17,7 +17,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
     error WrappedDepositFailed();
 
     /// @notice Event emitted when liquidity is migrated to BEX
-    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice);
+    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
@@ -29,8 +29,6 @@ contract BexLiquidityManager is IBexLiquidityManager {
     IWBera public constant WBERA = IWBera(0x7507c1dc16935B82698e4C63f2746A2fCf994dF8);
     /// @notice The address of the CrocSwap DEX
     ICrocSwapDex public crocSwapDex;
-    /// @notice The address of the LP conduit
-    address public lpConduit;
     
 
     /**
@@ -46,8 +44,9 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @dev The caller must approve the contract to transfer the token.
      * @param token The address of the token to add
      * @param amount The amount of tokens to add
+     * @return lpConduit The address of the LP conduit
      */
-    function createPoolAndAdd(address token, uint256 amount) external payable {
+    function createPoolAndAdd(address token, uint256 amount) external payable returns (address) {
         // Wrap Bera
         uint256 beraAmount = msg.value;
         WBERA.deposit{value: beraAmount}();
@@ -76,7 +75,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, beraAmount);
         uint128 liquidity = uint128(beraAmount);
 
-        lpConduit = _predictConduitAddress(base, quote);
+        address lpConduit = _predictConduitAddress(base, quote);
 
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
@@ -95,8 +94,13 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // Execute multipath call
         crocSwapDex.userCmd(6, encodedCmd);
 
+        // burn LP tokens - will use the conduit in the future for partnerships
+        IERC20(lpConduit).safeTransfer(address(0x1), IERC20(lpConduit).balanceOf(address(this)));
+
         // Emit event
-        emit BexListed(token, beraAmount, _initPrice);
+        emit BexListed(token, beraAmount, _initPrice, lpConduit);
+
+        return lpConduit;
     }
 
     /**

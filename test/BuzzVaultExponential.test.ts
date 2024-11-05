@@ -96,7 +96,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
         // Create a token
-        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), {
+        const tx = await factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("69420"), {
             value: listingFee,
         });
         const receipt = await tx.wait();
@@ -128,7 +128,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
         });
         it("should revert if caller is not factory", async () => {
-            await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"))).to.be.revertedWithCustomError(
+            await expect(expVault.connect(user1Signer).registerToken(factory.address, ethers.utils.parseEther("100"), ethers.utils.parseEther("69420"))).to.be.revertedWithCustomError(
                 expVault,
                 "BuzzVault_Unauthorized"
             );
@@ -287,8 +287,26 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenBalance = tokenInfoAfter[0];
             console.log("Token balanceA: ", tokenBalance.toString());
 
+            const beraBalance = tokenInfoAfter[1];
+            const lastPrice = tokenInfoAfter[2];
+            const lastBeraPrice = tokenInfoAfter[3];
+            const beraThresholdAfter = tokenInfoAfter[4];
+            const bexListed = tokenInfoAfter[5];
+            const lpConduit = tokenInfoAfter[6];
+
+            console.log("Lp conduit address: ", lpConduit);
+
+            // Get LP token contract
+            const lpToken = await ethers.getContractAt("CrocLpErc20", lpConduit);
+
             // check balances
-            expect(tokenInfoAfter[5]).to.be.equal(true);
+            expect(tokenBalance).to.be.equal(0);
+            expect(beraBalance).to.be.equal(0);
+            expect(lastPrice).to.be.equal(0);
+            expect(lastBeraPrice).to.be.equal(0);
+            expect(beraThresholdAfter).to.be.equal(0);
+            expect(bexListed).to.be.equal(true);
+            expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
         });
     });
     describe("sell", () => {

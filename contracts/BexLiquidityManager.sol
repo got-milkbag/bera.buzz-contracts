@@ -17,7 +17,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
     error WrappedDepositFailed();
 
     /// @notice Event emitted when liquidity is migrated to BEX
-    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice);
+    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
@@ -98,7 +98,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         IERC20(lpConduit).safeTransfer(address(0x1), IERC20(lpConduit).balanceOf(address(this)));
 
         // Emit event
-        emit BexListed(token, beraAmount, _initPrice);
+        emit BexListed(token, beraAmount, _initPrice, lpConduit);
 
         return lpConduit;
     }

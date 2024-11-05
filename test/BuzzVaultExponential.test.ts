@@ -294,6 +294,8 @@ describe("BuzzVaultExponential Tests", () => {
             const bexListed = tokenInfoAfter[5];
             const lpConduit = tokenInfoAfter[6];
 
+            console.log("Lp conduit address: ", lpConduit);
+
             // Get LP token contract
             const lpToken = await ethers.getContractAt("CrocLpErc20", lpConduit);
 

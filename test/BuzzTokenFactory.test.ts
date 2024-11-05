@@ -156,6 +156,13 @@ describe("BuzzTokenFactory Tests", () => {
                 })
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
         });
+        it("should revert if the market cap is under the minimum", async () => {
+            await expect(
+                factory.createToken("TEST", "TEST", expVault.address, ethers.constants.AddressZero, formatBytes32String("12345"), ethers.utils.parseEther("0"), ethers.utils.parseEther("0"), {
+                    value: listingFee,
+                })
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_MarketCapUnderMin");
+        });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";

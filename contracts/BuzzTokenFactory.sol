@@ -32,8 +32,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_TaxMismatch();
     /// @notice Error code emitted when the max initial buy is exceeded
     error BuzzToken_MaxInitialBuyExceeded();
-    /// @notice Error code emitted when the market cap is 0
-    error BuzzToken_ZeroMarketCap();
     /// @notice Error code emitted when the market cap is under the minimum
     error BuzzToken_MarketCapUnderMin();
     
@@ -116,7 +114,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
         if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
         if ((taxTo == address(0) && tax > 0) || (taxTo != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
-        if (marketCap == 0) revert BuzzToken_ZeroMarketCap();
         if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
 
         _transferFee(listingFee);

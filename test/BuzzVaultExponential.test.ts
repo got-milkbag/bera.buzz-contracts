@@ -287,8 +287,24 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenBalance = tokenInfoAfter[0];
             console.log("Token balanceA: ", tokenBalance.toString());
 
+            const beraBalance = tokenInfoAfter[1];
+            const lastPrice = tokenInfoAfter[2];
+            const lastBeraPrice = tokenInfoAfter[3];
+            const beraThresholdAfter = tokenInfoAfter[4];
+            const bexListed = tokenInfoAfter[5];
+            const lpConduit = tokenInfoAfter[6];
+
+            // Get LP token contract
+            const lpToken = await ethers.getContractAt("CrocLpErc20", lpConduit);
+
             // check balances
-            expect(tokenInfoAfter[5]).to.be.equal(true);
+            expect(tokenBalance).to.be.equal(0);
+            expect(beraBalance).to.be.equal(0);
+            expect(lastPrice).to.be.equal(0);
+            expect(lastBeraPrice).to.be.equal(0);
+            expect(beraThresholdAfter).to.be.equal(0);
+            expect(bexListed).to.be.equal(true);
+            expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
         });
     });
     describe("sell", () => {

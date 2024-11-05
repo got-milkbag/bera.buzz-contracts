@@ -94,6 +94,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 lastBeraPrice;
         uint256 beraThreshold;
         bool bexListed;
+        address lpConduit;
     }
 
     /// @notice Map token address to token info
@@ -182,7 +183,7 @@ abstract contract BuzzVault is ReentrancyGuard {
         uint256 reserveBera = _getBeraAmountForMarketCap();
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(tokenBalance, 0, 0, 0, reserveBera, false);
+        tokenInfo[token] = TokenInfo(tokenBalance, 0, 0, 0, reserveBera, false, address(0));
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
@@ -230,7 +231,9 @@ abstract contract BuzzVault is ReentrancyGuard {
         IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
-        liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD);
+        address lpConduit = liquidityManager.createPoolAndAdd{value: netBeraAmount}(token, CURVE_BALANCE_THRESHOLD);
+
+        info.lpConduit = lpConduit;
 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {

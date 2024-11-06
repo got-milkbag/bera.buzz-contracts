@@ -48,7 +48,7 @@ contract FeeManager is Ownable, IFeeManager {
      * @notice Constructor
      * @param _treasury The treasury address where fees are sent
      * @param _tradingFeeBps The trading fee in basis points (one percent equals 100)
-     * @param _listingFee The listing fee amount
+     * @param _listingFee The listing fee amount in wei (in the native token)
      * @param _migrationFeeBps The AMM migration fee in basis points (one percent equals 100)
      */
     constructor(address _treasury, uint256 _tradingFeeBps, uint256 _listingFee, uint256 _migrationFeeBps) {
@@ -66,7 +66,7 @@ contract FeeManager is Ownable, IFeeManager {
     }
 
     /**
-     * @notice Collects the trading fee from the sender
+     * @notice Collects the trading fee from the sender. Fee should be quoted before calling this function
      * @dev Approval needs to be given to this contract prior to calling this function
      * @param token The token address
      * @param amount The net fee amount to collect
@@ -91,6 +91,7 @@ contract FeeManager is Ownable, IFeeManager {
      * @notice Collects the AMM migration fee from the sender
      * @dev Approval needs to be given to this contract prior to calling this function
      * @param token The token address
+     * @param amount The amount to calculate the fee on
      */
     function collectMigrationFee(address token, uint256 amount) external {
         uint256 fee = quoteMigrationFee(amount);
@@ -137,7 +138,7 @@ contract FeeManager is Ownable, IFeeManager {
     }
 
     /**
-     * @notice Sets the listing fee amount
+     * @notice Sets the listing fee amount in the native currency
      * @dev Only the owner can call this function
      * @param _listingFee The listing fee amount
      */
@@ -147,9 +148,9 @@ contract FeeManager is Ownable, IFeeManager {
     }
 
     /**
-     * @notice Sets the AMM migration fee amount
+     * @notice Sets the AMM migration fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The migration fee amount
+     * @param _feeBps The migration fee in basis points (one percent equals 100)
      */
     function setMigrationFeeBps(uint256 _feeBps) external onlyOwner {
         if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();

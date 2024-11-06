@@ -40,10 +40,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("quoteTradingFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
             const feeAmount = BigNumber.from(amount.mul(100).div(10000));
@@ -60,10 +57,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("quoteMigrationFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
             const feeAmount = BigNumber.from(amount.mul(200).div(10000));
@@ -80,10 +74,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectTradingFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
             const quote = await feeManager.quoteTradingFee(amount);
@@ -107,10 +98,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectListingFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should collect and redirect the fee to the treasury", async () => {
             const fee = await feeManager.listingFee();
 
@@ -141,10 +129,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectMigrationFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
             const quote = await feeManager.quoteMigrationFee(amount);
@@ -179,10 +164,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setTradingFeeBps", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should set the fee", async () => {
             await feeManager.setTradingFeeBps(500);
             expect(await feeManager.tradingFeeBps()).to.be.equal(500);
@@ -202,10 +184,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setListingFee", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should set the fee", async () => {
             await feeManager.setListingFee(ethers.utils.parseEther("0.01"));
             expect(await feeManager.listingFee()).to.be.equal(ethers.utils.parseEther("0.01"));
@@ -222,10 +201,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setMigrationFeeBps", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should set the fee", async () => {
             await feeManager.setMigrationFeeBps(500);
             expect(await feeManager.migrationFeeBps()).to.be.equal(500);
@@ -245,10 +221,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setTreasury", () => {
-        beforeEach(async () => {
-            const FeeManager = await ethers.getContractFactory("FeeManager");
-            feeManager = await FeeManager.deploy(treasury.address, 100, ethers.utils.parseEther("0.02"), 200);
-        });
+        beforeEach(async () => {});
         it("should set the treasury", async () => {
             await feeManager.setTreasury(ownerSigner.address);
             expect(await feeManager.treasury()).to.be.equal(ownerSigner.address);

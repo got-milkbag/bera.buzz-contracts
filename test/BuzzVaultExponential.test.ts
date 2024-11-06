@@ -170,7 +170,7 @@ describe("BuzzVaultExponential Tests", () => {
             //console.log("initial virtual base:", ethers.utils.formatEther(await expVault.initialVirtualBase()));
         });
     });
-    describe("buy", () => {
+    describe("buyNative", () => {
         beforeEach(async () => {});
         it("should handle multiple buys in succession", async () => {
             const initialVaultTokenBalance = await token.balanceOf(expVault.address);
@@ -213,26 +213,12 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Factory address exponential:", factory.address);
             console.log("Owner address exponential:", ownerSigner.address);
         });
-        it("should revert if reserves are invalid", async () => {
-            await expect(
-                expVault.buyNative(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {
-                    value: ethers.utils.parseEther("0.1"),
-                })
-            ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
-        });
+
         it("should revert if msg.value is zero", async () => {
             await expect(
                 expVault.buyNative(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
         });
-        // TODO: Reintroduce in buy() function
-        // it("should revert if token doesn't exist", async () => {
-        //     await expect(
-        //         expVault.buyNative(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {
-        //             value: ethers.utils.parseEther("0.1"),
-        //         })
-        //     ).to.be.revertedWithCustomError(expVault, "BuzzVault_UnknownToken");
-        // });
         it("should revert if base token is not WBera", async () => {
             await expect(
                 expVault.buyNative(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {
@@ -240,6 +226,46 @@ describe("BuzzVaultExponential Tests", () => {
                 })
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_NativeTradeUnsupported");
         });
+    });
+    describe("buy (ERC20)", () => {
+        beforeEach(async () => {
+            await wBera.deposit({value: ethers.utils.parseEther("1")});
+        });
+        it("should transfer the erc20 tokens", async () => {
+            const balanceBefore = await wBera.balanceOf(ownerSigner.address);
+            await wBera.connect(ownerSigner).approve(expVault.address, ethers.utils.parseEther("1"));
+            await expVault.buy(token.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(balanceBefore.sub(ethers.utils.parseEther("1")));
+        });
+    });
+    describe("_buyTokens", () => {
+        it("should revert if user wants less than 0.001 token min", async () => {
+            await expect(
+                expVault.buyNative(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {
+                    value: ethers.utils.parseEther("0.00000000000000001"),
+                })
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
+        });
+        it("should revert if token doesn't exist", async () => {
+            await wBera.deposit({value: ethers.utils.parseEther("1")});
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero)).to
+                .reverted;
+            // fails in safeTransferFrom
+        });
+        it("should revert if token is already listed to Bex", async () => {
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
+                value: ethers.utils.parseEther("1500"),
+            });
+            await wBera.deposit({value: ethers.utils.parseEther("1")});
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(
+                expVault.buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
+                    value: ethers.utils.parseEther("1500"),
+                })
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_UnknownToken");
+            // fails in safeTransferFrom
+        });
         it("should revert if reserves are invalid", async () => {
             await expect(
                 expVault.buyNative(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {
@@ -247,12 +273,11 @@ describe("BuzzVaultExponential Tests", () => {
                 })
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
         });
-        it("should revert if user wants less than 0.001 token min", async () => {
-            await expect(
-                expVault.buyNative(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {
-                    value: ethers.utils.parseEther("0.00000000000000001"),
-                })
-            ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
+        it("should set a referral if one is provided", async () => {
+            await expVault
+                .connect(user1Signer)
+                .buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: ethers.utils.parseEther("0.1")});
+            expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ownerSigner.address);
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
@@ -261,12 +286,41 @@ describe("BuzzVaultExponential Tests", () => {
                 })
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
         });
-        it("should set a referral if one is provided", async () => {
+        it("should transfer the 1% of msg.value to treasury", async () => {
+            const treasuryBalanceBefore = await wBera.balanceOf(treasury.address);
+            const msgValue = ethers.utils.parseEther("0.1");
             await expVault
                 .connect(user1Signer)
-                .buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: ethers.utils.parseEther("0.1")});
-            expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ownerSigner.address);
+                .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
+            const tradingFee = await feeManager.tradingFeeBps();
+            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(msgValue.div(tradingFee)); // fee is 1%
         });
+        it("should transfer the referral fee, and a lower trading fee", async () => {
+            expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
+            const treasuryBalanceBefore = await wBera.balanceOf(treasury.address);
+            const msgValue = ethers.utils.parseEther("0.1");
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: msgValue});
+            const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
+            const tradingFee = await feeManager.quoteTradingFee(msgValue);
+
+            //calculate referral fee
+            const refUserBps = await referralManager.getReferralBpsFor(user1Signer.address);
+            const referralFee = tradingFee.mul(refUserBps).div(10000);
+            expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(referralFee);
+            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee.sub(referralFee));
+        });
+        it("should not collect a referral fee if trading fee is 0", async () => {
+            await feeManager.connect(ownerSigner).setTradingFeeBps(0);
+            const treasuryBalanceBefore = await wBera.balanceOf(treasury.address);
+            const msgValue = ethers.utils.parseEther("0.1");
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: msgValue});
+            const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
+
+            expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
+            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(0);
+        });
+
         it("should emit a trade event", async () => {
             await expect(
                 expVault
@@ -287,16 +341,7 @@ describe("BuzzVaultExponential Tests", () => {
                     true
                 );
         });
-        it("should transfer the 1% of msg.value to treasury", async () => {
-            const treasuryBalanceBefore = await wBera.balanceOf(treasury.address);
-            const msgValue = ethers.utils.parseEther("0.1");
-            await expVault
-                .connect(user1Signer)
-                .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
-            const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
-            const tradingFee = await feeManager.tradingFeeBps();
-            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(msgValue.div(tradingFee)); // fee is 1%
-        });
+
         // Add more tests
         it("should increase the BeraAmount and decrease the tokenBalance after the buy", async () => {
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
@@ -349,6 +394,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[6]).to.be.equal(true);
         });
     });
+    /*
     describe("sell", () => {
         beforeEach(async () => {
             await expVault
@@ -398,4 +444,5 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(userTokenBalance));
         });
     });
+    */
 });

@@ -160,12 +160,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
         if (unwrap) {
-            uint256 balancePrior = address(this).balance;
-            wbera.approve(address(wbera), netBaseAmount);
-            wbera.withdraw(netBaseAmount);
-            uint256 amount = address(this).balance - balancePrior;
-            if (amount != netBaseAmount) revert BuzzVault_WBeraConversionFailed();
-            _transferEther(payable(msg.sender), netBaseAmount);
+            _unwrap(msg.sender, netBaseAmount);
         } else {
             IERC20(info.baseToken).safeTransfer(msg.sender, netBaseAmount);
         }

@@ -354,7 +354,19 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);
     }
 
+    function _unwrap(address to, uint256 amount) internal {
+        uint256 balancePrior = address(this).balance;
+        wbera.approve(address(wbera), amount);
+        wbera.withdraw(amount);
+        uint256 withdrawal = address(this).balance - balancePrior;
+        if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
+        _transferEther(payable(to), amount);
+    }
+
     function getBeraUsdPrice() external view returns (uint256 beraPrice) {
         beraPrice = priceDecoder.getPrice();
     }
+
+    // Fallback function
+    receive() external payable {}
 }

@@ -14,7 +14,7 @@ contract BuzzToken is ERC20, AccessControl {
     /// @notice The tax rate in bps
     uint256 public immutable TAX;
     /// @notice The tax address receiving the tax. Defaults to address(0) if tax is 0.
-    address public immutable TAX_ADDRESS;
+    address public TAX_ADDRESS;
     
     uint8 private constant DECIMALS = 18;
 

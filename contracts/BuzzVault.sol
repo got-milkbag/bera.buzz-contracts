@@ -358,10 +358,12 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
-        wbera.safeApprove(address(wbera), amount);
+        IERC20(address(wbera)).safeApprove(address(wbera), amount);
+
         wbera.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
+        
         _transferEther(payable(to), amount);
     }
 

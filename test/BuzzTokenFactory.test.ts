@@ -4,6 +4,7 @@ import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {BigNumber, Contract} from "ethers";
 import {formatBytes32String} from "ethers/lib/utils";
+import {anyValue} from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("BuzzTokenFactory Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -25,6 +26,7 @@ describe("BuzzTokenFactory Tests", () => {
     let treasuryBalanceBefore: BigNumber;
     let feeManager: Contract;
     let wBera: Contract;
+    let tokenCreatedEvent: any;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
@@ -111,6 +113,9 @@ describe("BuzzTokenFactory Tests", () => {
         await factory.connect(ownerSigner).setVault(expVault.address, true);
 
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
+
+        // Get some wBera
+        await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
     });
     describe("constructor", () => {
         it("should set the CREATE_DEPLOYER", async () => {
@@ -155,7 +160,21 @@ describe("BuzzTokenFactory Tests", () => {
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_VaultNotRegistered");
         });
-        it("should revert if the listing fee is not sent", async () => {
+        // it("should revert if the base token address is the zero address", async () => {
+        //     await expect(
+        //         factory.createToken(
+        //             ["TEST", "TST"],
+        //             [ethers.constants.AddressZero, user1Signer.address, ethers.constants.AddressZero],
+        //             0,
+        //             formatBytes32String("12345"),
+        //             ethers.utils.parseEther("0"),
+        //             {
+        //                 value: listingFee,
+        //             }
+        //         )
+        //     ).to.be.revertedWithCustomError(factory, "BuzzToken_AddressZero");
+        // });
+        it("should revert if the listing fee is less than required", async () => {
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
@@ -164,7 +183,7 @@ describe("BuzzTokenFactory Tests", () => {
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("0"),
                     {
-                        value: 0,
+                        value: listingFee.sub(1),
                     }
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
@@ -216,10 +235,10 @@ describe("BuzzTokenFactory Tests", () => {
             const symbol = "TST";
             const tx = await factory.createToken(
                 [name, symbol],
-                [wBera.address, expVault.address, ethers.constants.AddressZero],
+                [wBera.address, expVault.address, user2Signer.address],
                 0,
                 formatBytes32String("12345"),
-                ethers.utils.parseEther("0"),
+                BigNumber.from(1000),
                 {
                     value: listingFee,
                 }
@@ -231,6 +250,8 @@ describe("BuzzTokenFactory Tests", () => {
             expect(tokenCreatedEvent.args.baseToken).to.be.equal(wBera.address);
             expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
             expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
+            expect(tokenCreatedEvent.args.tax).to.be.equal(BigNumber.from(1000));
+            expect(tokenCreatedEvent.args.taxTo).to.be.equal(user2Signer.address);
 
             // Get token contract
             token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
@@ -288,7 +309,7 @@ describe("BuzzTokenFactory Tests", () => {
                     }
                 );
                 const receipt = await tx.wait();
-                const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
+                tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
                 // Get token contract
                 token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
             });
@@ -317,6 +338,91 @@ describe("BuzzTokenFactory Tests", () => {
                         }
                     )
                 ).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
+            });
+        });
+        describe("buy on deployment - native currency", () => {
+            beforeEach(async () => {});
+            it("should revert if the remaining value is not the same as the baseAmount", async () => {
+                // Deploy and buy token
+                const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
+                const tax = BigNumber.from(1000);
+
+                await expect(
+                    factory.createToken(
+                        ["TEST", "TST"],
+                        [wBera.address, expVault.address, user2Signer.address],
+                        ethers.utils.parseEther("0.02"),
+                        formatBytes32String("12345"),
+                        tax,
+                        {
+                            value: listingFeeAndBuyAmount,
+                        }
+                    )
+                ).to.be.revertedWithCustomError(factory, "BuzzToken_BaseAmountNotEnough");
+            });
+            it("should purchase the remaining value passed and emit", async () => {
+                // Deploy and buy token
+                const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
+                const tax = BigNumber.from(1000);
+
+                expect(
+                    await factory.createToken(
+                        ["TEST", "TST"],
+                        [wBera.address, expVault.address, user2Signer.address],
+                        ethers.utils.parseEther("0.01"),
+                        formatBytes32String("12345"),
+                        tax,
+                        {
+                            value: listingFeeAndBuyAmount,
+                        }
+                    )
+                )
+                    .to.emit(vault, "Trade")
+                    .withArgs(
+                        ownerSigner.address,
+                        token.address,
+                        wBera.address,
+                        anyValue,
+                        ethers.utils.parseEther("0.01"),
+                        anyValue,
+                        anyValue,
+                        anyValue,
+                        anyValue,
+                        true
+                    );
+            });
+        });
+        describe("buy on deployment - base token", () => {
+            beforeEach(async () => {});
+            it("should purchase the using base tokens and emit a trade event", async () => {
+                // Deploy and buy token
+                const tax = BigNumber.from(1000);
+                await wBera.approve(factory.address, ethers.utils.parseEther("0.1"));
+                expect(
+                    await factory.createToken(
+                        ["TEST", "TST"],
+                        [wBera.address, expVault.address, user2Signer.address],
+                        ethers.utils.parseEther("0.1"),
+                        formatBytes32String("12345"),
+                        tax,
+                        {
+                            value: listingFee,
+                        }
+                    )
+                )
+                    .to.emit(vault, "Trade")
+                    .withArgs(
+                        ownerSigner.address,
+                        token.address,
+                        wBera.address,
+                        anyValue,
+                        ethers.utils.parseEther("0.1"),
+                        anyValue,
+                        anyValue,
+                        anyValue,
+                        anyValue,
+                        true
+                    );
             });
         });
     });

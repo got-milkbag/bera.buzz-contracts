@@ -260,7 +260,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         // collect fee
         uint256 dexFee = feeManager.quoteMigrationFee(baseBalance);
-        IERC20(info.baseToken).approve(address(feeManager), dexFee);
+        IERC20(info.baseToken).safeApprove(address(feeManager), dexFee);
         feeManager.collectMigrationFee(info.baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
@@ -337,7 +337,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         if (bps > 0) {
             referralFee = (amount * bps) / 1e4;
-            IERC20(token).approve(address(referralManager), referralFee);
+            IERC20(token).safeApprove(address(referralManager), referralFee);
             referralManager.receiveReferral(user, token, referralFee);
         }
     }
@@ -358,7 +358,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
-        wbera.approve(address(wbera), amount);
+        wbera.safeApprove(address(wbera), amount);
         wbera.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();

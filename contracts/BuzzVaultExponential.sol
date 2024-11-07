@@ -79,7 +79,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (tradingFee > 0) {
             referralFee = _collectReferralFee(msg.sender, info.baseToken, tradingFee);
             tradingFee -= referralFee; // will never underflow because ref fee is a % of trading fee
-            IERC20(info.baseToken).approve(address(feeManager), tradingFee);
+            IERC20(info.baseToken).safeApprove(address(feeManager), tradingFee);
             feeManager.collectTradingFee(info.baseToken, tradingFee);
         }
 
@@ -144,7 +144,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (tradingFee > 0) {
             referralFee = _collectReferralFee(msg.sender, info.baseToken, tradingFee);
             tradingFee -= referralFee; // will never underflow because ref fee is a % of trading fee
-            IERC20(info.baseToken).approve(address(feeManager), tradingFee);
+            IERC20(info.baseToken).safeApprove(address(feeManager), tradingFee);
             feeManager.collectTradingFee(info.baseToken, tradingFee);
         }
 

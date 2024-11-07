@@ -105,9 +105,6 @@ contract FeeManager is Ownable, IFeeManager {
      * @return fee The fee amount
      */
     function quoteTradingFee(uint256 amount) public view returns (uint256 fee) {
-        if (tradingFeeBps == 0) {
-            fee = 0;
-        }
         fee = (amount * tradingFeeBps) / FEE_DIVISOR;
     }
 
@@ -118,9 +115,6 @@ contract FeeManager is Ownable, IFeeManager {
      * @return fee The fee amount
      */
     function quoteMigrationFee(uint256 amount) public view returns (uint256 fee) {
-        if (migrationFeeBps == 0) {
-            fee = 0;
-        }
         fee = (amount * migrationFeeBps) / FEE_DIVISOR;
     }
 

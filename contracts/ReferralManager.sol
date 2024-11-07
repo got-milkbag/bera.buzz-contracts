@@ -81,8 +81,6 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
         if (referrer == address(0)) revert ReferralManager_AddressZero();
         if (amount == 0) revert ReferralManager_ZeroPayout();
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
-
         if (indirectReferral[user] != address(0)) {
             // If there is an indirect referral
             uint256 indirectReferralAmount = (amount * indirectRefFeeBps) / MAX_FEE_BPS;
@@ -96,6 +94,8 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
             _referrerBalances[referrer][token] += amount;
             emit ReferralRewardReceived(referrer, token, amount, true);
         }
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function setReferral(address referrer, address user) external nonReentrant {

@@ -206,8 +206,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             abi.encode(name, symbol, INITIAL_SUPPLY, tax, address(this), taxTo, vault)
         );
 
-        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;
+        token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
         IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
         IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, marketCap);

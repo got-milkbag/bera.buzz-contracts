@@ -140,6 +140,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -154,6 +155,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -182,6 +184,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee.sub(1),
                     }
@@ -196,6 +199,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("10000"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -210,6 +214,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -224,11 +229,28 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("12345"),
                     BigNumber.from(1000),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
+        });
+        it("should revert if the market cap is under the minimum", async () => {
+            await expect(
+                factory.createToken(
+                    "TEST",
+                    "TEST",
+                    expVault.address,
+                    ethers.constants.AddressZero,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("0"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_MarketCapUnderMin");
         });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
@@ -239,6 +261,7 @@ describe("BuzzTokenFactory Tests", () => {
                 0,
                 formatBytes32String("12345"),
                 BigNumber.from(1000),
+                ethers.utils.parseEther("69420"),
                 {
                     value: listingFee,
                 }
@@ -266,6 +289,7 @@ describe("BuzzTokenFactory Tests", () => {
                     0,
                     formatBytes32String("123457"),
                     ethers.utils.parseEther("0"),
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
                     }
@@ -304,6 +328,7 @@ describe("BuzzTokenFactory Tests", () => {
                     ethers.utils.parseEther("0.01"),
                     formatBytes32String("12345"),
                     tax,
+                    ethers.utils.parseEther("69420"),
                     {
                         value: listingFeeAndBuyAmount,
                     }
@@ -333,6 +358,7 @@ describe("BuzzTokenFactory Tests", () => {
                         ethers.utils.parseEther("100"),
                         formatBytes32String("123456006"),
                         BigNumber.from(0),
+                        ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
                         }

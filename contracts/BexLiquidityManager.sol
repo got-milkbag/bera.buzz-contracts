@@ -7,6 +7,7 @@ import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "./libraries/SqrtMath.sol";
+import "./bex/CrocLpErc20.sol";
 
 contract BexLiquidityManager is IBexLiquidityManager {
     using SafeERC20 for IERC20;
@@ -15,12 +16,14 @@ contract BexLiquidityManager is IBexLiquidityManager {
     error WrappedDepositFailed();
 
     /// @notice Event emitted when liquidity is migrated to BEX
-    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice);
+    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
     /// @notice The amount of tokens to burn when adding liquidity
     uint256 private constant BURN_AMOUNT = 1e7;
+    /// @notice The init code hash of the LP conduit
+    bytes private constant LP_CONDUIT_INIT_CODE_HASH = hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
     /// @notice The address of the CrocSwap DEX
     ICrocSwapDex public crocSwapDex;
 
@@ -39,8 +42,13 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @param baseToken The address of the base token
      * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
+     * @return lpConduit The address of the LP conduit
      */
-    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
+    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external payable returns (address) {
+        // Wrap Bera
+        uint256 beraAmount = msg.value;
+        WBERA.deposit{value: beraAmount}();
+
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
@@ -65,6 +73,8 @@ contract BexLiquidityManager is IBexLiquidityManager {
         uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, baseAmount);
         uint128 liquidity = uint128(baseAmount);
 
+        address lpConduit = _predictConduitAddress(base, quote);
+
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
         bytes memory cmd1 = abi.encode(71, base, quote, _poolIdx, _initPrice);
@@ -74,7 +84,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, res flags, lp conduit
         // because Bex burns a small insignificant amount of tokens, we reduce the liquidity by BURN_AMOUNT
         // any token dust will be burned and any BERA dust shall be sent back to the treasury or to the user that triggered the migration as a reward
-        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, address(0));
+        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, lpConduit);
 
         // Encode commands into a multipath call
         bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);
@@ -82,7 +92,25 @@ contract BexLiquidityManager is IBexLiquidityManager {
         // Execute multipath call
         crocSwapDex.userCmd(6, encodedCmd);
 
+        // burn LP tokens - will use the conduit in the future for partnerships
+        IERC20(lpConduit).safeTransfer(address(0x1), IERC20(lpConduit).balanceOf(address(this)));
+
         // Emit event
-        emit BexListed(token, baseAmount, _initPrice);
+        emit BexListed(token, baseAmount, _initPrice, lpConduit);
+
+        return lpConduit;
+    }
+
+    /**
+     * @notice Predict the address of the LP conduit for a given pair of tokens
+     * @param base The address of the base token
+     * @param quote The address of the quote token
+     * @return lpConduit The address of the LP conduit
+     */
+    function _predictConduitAddress(address base, address quote) internal view returns (address lpConduit) {
+        bytes memory bytecode = type(CrocLpErc20).creationCode;
+        bytes32 salt = keccak256(abi.encodePacked(base, quote));
+
+        lpConduit = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(crocSwapDex), salt, LP_CONDUIT_INIT_CODE_HASH)))));
     }
 }

@@ -8,7 +8,7 @@ interface IBuzzVault {
 
     function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external;
 
-    function registerToken(address token, address baseToken, uint256 tokenBalance) external;
+    function registerToken(address token, address baseToken, uint256 tokenBalance, uint256 marketCap) external;
 
     function quote(
         address token,

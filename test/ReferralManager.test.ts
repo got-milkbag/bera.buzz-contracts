@@ -110,6 +110,7 @@ describe("ReferralManager Tests", () => {
             0,
             formatBytes32String("12345"),
             ethers.utils.parseEther("0"),
+            ethers.utils.parseEther("69420"),
             {
                 value: listingFee,
             }

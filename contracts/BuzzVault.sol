@@ -75,8 +75,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     uint256 public constant CURVE_ALPHA = 222970128658;
     /// @notice The bonding curve beta coefficient
     uint256 public constant CURVE_BETA = 3350000000;
-    /// @notice The market cap threshold
-    uint256 public constant BERA_MARKET_CAP_LIQ = 69420 ether;
 
     /// @notice The fee manager contract collecting protocol fees
     IFeeManager public immutable feeManager;
@@ -107,6 +105,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 lastBasePrice;
         uint256 beraThreshold;
         bool bexListed;
+        address lpConduit;
     }
 
     /// @notice Map token address to token info
@@ -204,15 +203,16 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @dev Only the factory can register tokens
      * @param token The token address
      * @param tokenBalance The token balance
+     * @param marketCap The market cap of the token
      */
-    function registerToken(address token, address baseToken, uint256 tokenBalance) external override {
+    function registerToken(address token, address baseToken, uint256 tokenBalance, uint256 marketCap) external override {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
 
-        uint256 reserveBera = _getBeraAmountForMarketCap();
+        uint256 reserveBera = _getBeraAmountForMarketCap(marketCap);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, false);
+        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, false, address(0));
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
@@ -268,7 +268,9 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
         IERC20(info.baseToken).safeApprove(address(liquidityManager), netBaseAmount);
-        liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
+        address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
+
+        info.lpConduit = lpConduit;
 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
@@ -344,11 +346,11 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
      * @return beraAmount The amount of BERA for market cap
      */
-    function _getBeraAmountForMarketCap() internal view returns (uint256 beraAmount) {
+    function _getBeraAmountForMarketCap(uint256 marketCap) internal view returns (uint256 beraAmount) {
         uint256 beraUsdPrice = priceDecoder.getPrice();
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
-        uint256 beraAmountToBps = (BERA_MARKET_CAP_LIQ * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
+        uint256 beraAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
         uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
 
         beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);

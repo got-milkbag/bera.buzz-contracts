@@ -2,8 +2,6 @@
 
 pragma solidity 0.8.19;
 
-import '../../libraries/Directives.sol';
-
 /* @title LP conduit interface
  * @notice Standard interface for contracts that accept and manage LP positions on behalf
  *         of end users. Typical example would be an ERC20 tracker for LP tokens. */

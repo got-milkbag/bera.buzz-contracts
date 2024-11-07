@@ -1,12 +1,15 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IReferralManager.sol";
 
 contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
+    using SafeERC20 for IERC20;
+
     /// @notice Error emitted when the caller is not authorized
     error ReferralManager_Unauthorised();
     /// @notice Error emitted when the payout is zero
@@ -19,16 +22,18 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     error ReferralManager_RewardTransferFailed();
     /// @notice Error emitted when the payout is below the threshold
     error ReferralManager_PayoutBelowThreshold();
+    /// @notice Error emitted when the array lengths do not match
+    error ReferralManager_ArrayLengthMismatch();
 
-    event ReferralSet(address indexed referrer, address indexed user);
-    event IndirectReferralSet(address indexed referrer, address indexed user, address indexed indirectReferrer);
-    event ReferralRewardReceived(address indexed referrer, uint256 reward);
-    event ReferralPaidOut(address indexed referrer, uint256 reward);
+    event ReferralSet(address indexed referrer, address indexed referredUser);
+    event IndirectReferralSet(address indexed indirectReferrer, address indexed referredUser, address indexed directReferrer);
+    event ReferralRewardReceived(address indexed referrer, address indexed token, uint256 reward, bool isDirect);
+    event ReferralPaidOut(address indexed referrer, address indexed token, uint256 reward);
     event DirectRefFeeBpsSet(uint256 directRefFeeBps);
     event IndirectRefFeeBpsSet(uint256 indirectRefFeeBps);
     event ReferralDeadlineSet(uint256 validUntil);
-    event PayoutThresholdSet(uint256 payoutThreshold);
-    event WhitelistedVaultSet(address indexed vault, bool status);
+    event PayoutThresholdSet(address token, uint256 payoutThreshold);
+    event whitelistedVaultSet(address indexed vault, bool status);
 
     uint256 public constant MAX_FEE_BPS = 10000;
 
@@ -37,70 +42,75 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     uint256 public indirectRefFeeBps; // eg 100 -> 1%
 
     uint256 public validUntil;
-    uint256 public payoutThreshold;
 
     mapping(address => address) public referredBy;
     mapping(address => address) public indirectReferral;
-    mapping(address => ReferrerInfo) public referrerInfo;
-    mapping(address => bool) public whitelistedVaults;
-
-    struct ReferrerInfo {
-        uint256 rewardToPayOut;
-        uint256 rewardPaidOut;
-        uint256 referralCount;
-        uint256 indirectReferralCount;
-    }
+    mapping(address => mapping(address => uint256)) private _referrerBalances;
+    mapping(address => bool) public whitelistedVault;
+    mapping(address => uint256) public payoutThreshold;
 
     /// @notice Fee bps is the % of the protocol fee that the referrer will receive
-    constructor(uint256 _directRefFeeBps, uint256 _indirectRefFeeBps, uint256 _validUntil, uint256 _payoutThreshold) {
+    constructor(
+        uint256 _directRefFeeBps,
+        uint256 _indirectRefFeeBps,
+        uint256 _validUntil,
+        address[] memory tokens,
+        uint256[] memory _payoutThresholds
+    ) {
         directRefFeeBps = _directRefFeeBps;
         indirectRefFeeBps = _indirectRefFeeBps;
         validUntil = _validUntil;
-        payoutThreshold = _payoutThreshold;
+
+        if (tokens.length > 0) {
+            if (tokens.length != _payoutThresholds.length) revert ReferralManager_ArrayLengthMismatch();
+            for (uint256 i = 0; i < tokens.length; i++) {
+                payoutThreshold[tokens[i]] = _payoutThresholds[i];
+                emit PayoutThresholdSet(tokens[i], _payoutThresholds[i]);
+            }
+        }
     }
 
     // Vault functions
 
     /// @notice Callable by the vault with the address of the referred user
-    function receiveReferral(address user) external payable nonReentrant {
-        if (!whitelistedVaults[msg.sender]) revert ReferralManager_Unauthorised();
+    function receiveReferral(address user, address token, uint256 amount) external nonReentrant {
+        if (!whitelistedVault[msg.sender]) revert ReferralManager_Unauthorised();
         address referrer = referredBy[user];
-        uint256 amount = msg.value;
 
         if (validUntil < block.timestamp) revert ReferralManager_ReferralExpired();
         if (referrer == address(0)) revert ReferralManager_AddressZero();
         if (amount == 0) revert ReferralManager_ZeroPayout();
 
-
         if (indirectReferral[user] != address(0)) {
+            // If there is an indirect referral
             uint256 indirectReferralAmount = (amount * indirectRefFeeBps) / MAX_FEE_BPS;
-            referrerInfo[indirectReferral[user]].rewardToPayOut += indirectReferralAmount;
-            emit ReferralRewardReceived(indirectReferral[user], indirectReferralAmount);
+            _referrerBalances[indirectReferral[user]][token] += indirectReferralAmount;
+            emit ReferralRewardReceived(indirectReferral[user], token, indirectReferralAmount, false);
 
             uint256 directReferralAmount = amount - indirectReferralAmount;
-            referrerInfo[referrer].rewardToPayOut += directReferralAmount;
-            emit ReferralRewardReceived(referrer, directReferralAmount);
+            _referrerBalances[referrer][token] += directReferralAmount;
+            emit ReferralRewardReceived(referrer, token, directReferralAmount, true);
         } else {
-            referrerInfo[referrer].rewardToPayOut += amount;
-            emit ReferralRewardReceived(referrer, amount);
+            _referrerBalances[referrer][token] += amount;
+            emit ReferralRewardReceived(referrer, token, amount, true);
         }
+
+        IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
     function setReferral(address referrer, address user) external nonReentrant {
-        if (!whitelistedVaults[msg.sender]) revert ReferralManager_Unauthorised();
+        if (!whitelistedVault[msg.sender]) revert ReferralManager_Unauthorised();
 
         if ((referredBy[user] != address(0)) || (referrer == user) || (referrer == address(0))) {
             return;
         }
 
         referredBy[user] = referrer;
-        referrerInfo[referrer].referralCount += 1;
         emit ReferralSet(referrer, user);
 
         address indirectReferrer = referredBy[referrer];
         if (indirectReferrer != address(0)) {
             indirectReferral[user] = indirectReferrer;
-            referrerInfo[indirectReferrer].indirectReferralCount += 1;
             emit IndirectReferralSet(indirectReferrer, user, referrer);
         }
     }
@@ -121,20 +131,16 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
     // User functions
 
-    function claimReferralReward() external nonReentrant {
-        ReferrerInfo storage info = referrerInfo[msg.sender];
-        uint256 reward = info.rewardToPayOut;
-        if (reward < payoutThreshold) revert ReferralManager_PayoutBelowThreshold();
+    function claimReferralReward(address token) external nonReentrant {
+        uint256 reward = _referrerBalances[msg.sender][token];
+
+        if (reward < payoutThreshold[token]) revert ReferralManager_PayoutBelowThreshold();
         if (reward == 0) revert ReferralManager_ZeroPayout();
 
-        // @dev come back here
-        info.rewardToPayOut = info.rewardToPayOut - reward;
-        info.rewardPaidOut += reward;
+        _referrerBalances[msg.sender][token] = 0;
+        IERC20(token).safeTransfer(msg.sender, reward);
 
-        (bool success, ) = msg.sender.call{value: reward}("");
-        if (!success) revert ReferralManager_RewardTransferFailed();
-        
-        emit ReferralPaidOut(msg.sender, reward);
+        emit ReferralPaidOut(msg.sender, token, reward);
     }
 
     // Admin functions
@@ -154,13 +160,23 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
         emit ReferralDeadlineSet(validUntil);
     }
 
-    function setPayoutThreshold(uint256 _payoutThreshold) external onlyOwner {
-        payoutThreshold = _payoutThreshold;
-        emit PayoutThresholdSet(payoutThreshold);
+    function setPayoutThreshold(address[] calldata tokens, uint256[] calldata thresholds) external onlyOwner {
+        if (tokens.length != thresholds.length) revert ReferralManager_ArrayLengthMismatch();
+
+        for (uint256 i = 0; i < tokens.length; i++) {
+            payoutThreshold[tokens[i]] = thresholds[i];
+            emit PayoutThresholdSet(tokens[i], thresholds[i]);
+        }
     }
 
     function setWhitelistedVault(address vault, bool enable) external onlyOwner {
-        whitelistedVaults[vault] = enable;
-        emit WhitelistedVaultSet(vault, enable);
+        whitelistedVault[vault] = enable;
+        emit whitelistedVaultSet(vault, enable);
+    }
+
+    // View functions
+
+    function getReferralRewardFor(address user, address token) external view returns (uint256 reward) {
+        reward = _referrerBalances[user][token];
     }
 }

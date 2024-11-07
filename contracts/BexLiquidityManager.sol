@@ -44,11 +44,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @param amount The amount of tokens to add
      * @return lpConduit The address of the LP conduit
      */
-    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external payable returns (address) {
-        // Wrap Bera
-        uint256 beraAmount = msg.value;
-        WBERA.deposit{value: beraAmount}();
-
+    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external returns (address) {
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);

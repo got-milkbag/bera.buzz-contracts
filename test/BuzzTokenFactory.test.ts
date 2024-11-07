@@ -239,13 +239,12 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if the market cap is under the minimum", async () => {
             await expect(
                 factory.createToken(
-                    "TEST",
-                    "TEST",
-                    expVault.address,
-                    ethers.constants.AddressZero,
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
                     formatBytes32String("12345"),
-                    ethers.utils.parseEther("0"),
-                    ethers.utils.parseEther("0"),
+                    0,
+                    0,
                     {
                         value: listingFee,
                     }
@@ -380,6 +379,7 @@ describe("BuzzTokenFactory Tests", () => {
                         ethers.utils.parseEther("0.02"),
                         formatBytes32String("12345"),
                         tax,
+                        ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
                         }
@@ -398,6 +398,7 @@ describe("BuzzTokenFactory Tests", () => {
                         ethers.utils.parseEther("0.01"),
                         formatBytes32String("12345"),
                         tax,
+                        ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
                         }
@@ -431,6 +432,7 @@ describe("BuzzTokenFactory Tests", () => {
                         ethers.utils.parseEther("0.1"),
                         formatBytes32String("12345"),
                         tax,
+                        ethers.utils.parseEther("69420"),
                         {
                             value: listingFee,
                         }
@@ -499,12 +501,12 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
             await expect(factory.connect(user1Signer).setFeeManager(user1Signer.address)).to.be.reverted;
         });
-        it("should set the treasury", async () => {
+        it("should set the feeManager", async () => {
             expect(await factory.feeManager()).to.be.equal(feeManager.address);
             await factory.connect(ownerSigner).setFeeManager(user1Signer.address);
             expect(await factory.feeManager()).to.be.equal(user1Signer.address);
         });
-        it("should emit a TreasurySet event", async () => {
+        it("should emit a FeeManagerSet event", async () => {
             expect(await factory.feeManager()).to.be.equal(feeManager.address);
             await expect(factory.connect(ownerSigner).setFeeManager(user1Signer.address))
                 .to.emit(factory, "FeeManagerSet")

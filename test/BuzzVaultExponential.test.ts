@@ -407,8 +407,8 @@ describe("BuzzVaultExponential Tests", () => {
             const lastPrice = tokenInfoAfter[2];
             const lastBeraPrice = tokenInfoAfter[3];
             const beraThresholdAfter = tokenInfoAfter[4];
-            const bexListed = tokenInfoAfter[5];
-            const lpConduit = tokenInfoAfter[6];
+            const bexListed = tokenInfoAfter[6];
+            const lpConduit = tokenInfoAfter[7];
 
             console.log("Lp conduit address: ", lpConduit);
 

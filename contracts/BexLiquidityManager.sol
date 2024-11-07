@@ -25,7 +25,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
     /// @notice The init code hash of the LP conduit
     bytes private constant LP_CONDUIT_INIT_CODE_HASH = hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
     /// @notice The address of the CrocSwap DEX
-    ICrocSwapDex public crocSwapDex;
+    ICrocSwapDex public immutable crocSwapDex;
 
     /**
      * @notice Constructor a new BexLiquidityManager

@@ -35,9 +35,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_MaxInitialBuyExceeded();
     /// @notice Error code emitted when the market cap is under the minimum
     error BuzzToken_MarketCapUnderMin();
-
     /// @notice Error code emitted when the base amount is not enough to complete the autobuy transaction
     error BuzzToken_BaseAmountNotEnough();
+    /// @notice Error code emitted when the base token address is not whitelisted
+    error BuzzToken_BaseTokenNotWhitelisted();
 
     /// TODO: Fix indexed limit
     event TokenCreated(
@@ -53,6 +54,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event FeeManagerSet(address indexed feeManager);
+    event BaseTokenWhitelisted(address indexed baseToken, bool enabled);
 
     /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 8e26;
@@ -72,7 +74,11 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
     bool public allowTokenCreation;
 
+    /// @notice A mapping of whitelisted vault addresses that can be used as vaults
     mapping(address => bool) public vaults;
+    /// @notice A mapping of whitelisted base token addresses that can be used to deploy tokens
+    mapping(address => bool) public whitelistedBaseTokens;
+    /// @notice A mapping of deployed tokens via this factory
     mapping(address => bool) public isDeployed;
 
     /**
@@ -115,6 +121,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
         if ((addr[2] == address(0) && tax > 0) || (addr[2] != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
         if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
+        if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
 
         uint256 listingFee = feeManager.listingFee();
         if (listingFee > 0) {
@@ -178,6 +185,17 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         feeManager = IFeeManager(_feeManager);
 
         emit FeeManagerSet(_feeManager);
+    }
+
+    /**
+     * @notice Enables or disables a base token address that can be used to deploy tokens
+     * @param baseToken The address of the base token
+     * @param enable True to whitelist, false to remove from the whitelist
+     */
+    function setAllowedBaseToken(address baseToken, bool enable) external onlyRole(OWNER_ROLE) {
+        whitelistedBaseTokens[baseToken] = enable;
+
+        emit BaseTokenWhitelisted(baseToken, enable);
     }
 
     /**

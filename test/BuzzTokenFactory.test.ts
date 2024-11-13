@@ -108,6 +108,9 @@ describe("BuzzTokenFactory Tests", () => {
         //await referralManager.connect(ownerSigner).setWhitelistedVault(vault.address, true);
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
+        // Admin: Whitelist base token in Factory
+        await factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, true);
+
         // Admin: Set Vault as the factory's vault & enable token creation
         //await factory.connect(ownerSigner).setVault(vault.address, true);
         await factory.connect(ownerSigner).setVault(expVault.address, true);
@@ -250,6 +253,22 @@ describe("BuzzTokenFactory Tests", () => {
                     }
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_MarketCapUnderMin");
+        });
+        it("should revert if the base token is not enabled", async () => {
+            await factory.setAllowedBaseToken(wBera.address, false);
+            await expect(
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    0,
+                    formatBytes32String("12345"),
+                    0,
+                    ethers.utils.parseEther("69420"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_BaseTokenNotWhitelisted");
         });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
@@ -511,6 +530,22 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(factory.connect(ownerSigner).setFeeManager(user1Signer.address))
                 .to.emit(factory, "FeeManagerSet")
                 .withArgs(user1Signer.address);
+        });
+    });
+    describe("setAllowedBaseToken", () => {
+        it("should revert if the caller doesn't have an owner role", async () => {
+            await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, true)).to.be.reverted;
+        });
+        it("should set the base token status", async () => {
+            expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(true);
+            await factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, false);
+            expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(false);
+        });
+        it("should emit an AllowedBaseToken event", async () => {
+            expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(true);
+            await expect(factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, false))
+                .to.emit(factory, "BaseTokenWhitelisted")
+                .withArgs(wBera.address, false);
         });
     });
 });

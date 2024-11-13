@@ -99,6 +99,9 @@ describe("ReferralManager Tests", () => {
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
+        // Admin: Whitelist base token in Factory
+        await factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, true);
+
         // Admin: Set Vault as the factory's vault & enable token creation
         await factory.connect(ownerSigner).setVault(expVault.address, true);
         await factory.connect(ownerSigner).setAllowTokenCreation(true);

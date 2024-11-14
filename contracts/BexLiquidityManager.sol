@@ -69,7 +69,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
         uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, baseAmount);
         uint128 liquidity = uint128(baseAmount);
 
-        address lpConduit = _predictConduitAddress(base, quote);
+        address lpConduit = predictConduitAddress(base, quote);
 
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
@@ -103,7 +103,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @param quote The address of the quote token
      * @return lpConduit The address of the LP conduit
      */
-    function _predictConduitAddress(address base, address quote) internal view returns (address lpConduit) {
+    function predictConduitAddress(address base, address quote) public view returns (address lpConduit) {
         bytes memory bytecode = type(CrocLpErc20).creationCode;
         bytes32 salt = keccak256(abi.encodePacked(base, quote));
 

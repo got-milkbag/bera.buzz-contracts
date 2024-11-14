@@ -26,7 +26,7 @@ const config: HardhatUserConfig = {
         hardhat: {
             // chainId: 31337,
             forking: {
-                url: process.env.BARTIO_RPC_URL || "https://bartio.rpc.berachain.com/",
+                url: "https://berachain-bartio.g.alchemy.com/v2/vyOEZETX2qPyU9t1aYB5a7mwyTIqEpkQ",
                 blockNumber: 4940400,
             },
         },

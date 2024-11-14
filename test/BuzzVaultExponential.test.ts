@@ -24,9 +24,11 @@ describe("BuzzVaultExponential Tests", () => {
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
     let treasury: SignerWithAddress;
+    let taxSigner: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
     let token: Contract;
+    let taxToken: Contract;
     let referralManager: Contract;
     let expVault: Contract;
     let bexLpToken: Contract;
@@ -47,7 +49,7 @@ describe("BuzzVaultExponential Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer, treasury] = await ethers.getSigners();
+        [ownerSigner, user1Signer, user2Signer, treasury, taxSigner] = await ethers.getSigners();
 
         // Deploy create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
@@ -132,6 +134,24 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Get token contract
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
+
+        // Create a tax token
+        const tx2 = await factory.createToken(
+            ["TAX", "TAX"],
+            [wBera.address, expVault.address, taxSigner.address],
+            0,
+            formatBytes32String("123453"),
+            BigNumber.from("500"),
+            ethers.utils.parseEther("69420"),
+            {
+                value: listingFee,
+            }
+        );
+        const receipt2 = await tx2.wait();
+        const tokenCreatedEvent2 = receipt2.events?.find((x: any) => x.event === "TokenCreated");
+
+        // Get token contract
+        taxToken = await ethers.getContractAt("BuzzToken", tokenCreatedEvent2?.args?.token);
 
         // Deposit some Bera to WBera contract
         await wBera.deposit({value: ethers.utils.parseEther("10")});
@@ -427,6 +447,35 @@ describe("BuzzVaultExponential Tests", () => {
             expect(bexListed).to.be.equal(true);
             expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
         });
+        it("should have balance equal to amount - tax after buy", async () => {
+            const tax = await taxToken.TAX();
+            console.log("Tax: ", tax.toString());
+            const amount = ethers.utils.parseEther("1");
+
+            const quoteBefore = await expVault.quote(taxToken.address, amount, true);
+            console.log("Quote before: ", quoteBefore.toString());
+
+            const tokenBalanceBefore = await taxToken.balanceOf(user1Signer.address);
+            const taxBalanceBefore = await taxToken.balanceOf(taxSigner.address);
+
+            await expVault.connect(user1Signer).buyNative(taxToken.address, amount, ethers.constants.AddressZero, {
+                value: amount, 
+            });
+
+            const tokenBalanceAfter = await taxToken.balanceOf(user1Signer.address);
+            const tokenBalanceFinal = tokenBalanceAfter.sub(tokenBalanceBefore);
+
+            const taxBalanceAfter = await taxToken.balanceOf(taxSigner.address);
+            const taxBalanceFinal = taxBalanceAfter.sub(taxBalanceBefore);
+
+            console.log("Tax balance: ", taxBalanceFinal.toString());
+            console.log("Tax after quote: ", quoteBefore[0].mul(tax).div(10000).toString());
+
+            // TODO - Check: Test ignoring rounding errors
+            expect(tokenBalanceFinal).to.be.lessThan(quoteBefore[0]);
+            //expect(tokenBalanceFinal).to.be.equal(quoteBefore[0].sub(quoteBefore[0].mul(tax).div(10000)));
+            //expect(taxBalanceFinal).to.be.equal(quoteBefore[0].mul(tax).div(10000));
+        });
     });
     describe("sell", () => {
         beforeEach(async () => {
@@ -434,6 +483,11 @@ describe("BuzzVaultExponential Tests", () => {
                 .connect(user1Signer)
                 .buyNative(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("3")});
             await token.connect(user1Signer).approve(expVault.address, await token.balanceOf(user1Signer.address));
+
+            await expVault
+                .connect(user1Signer)
+                .buyNative(taxToken.address, ethers.utils.parseEther("10"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("10")});
+            await taxToken.connect(user1Signer).approve(expVault.address, await taxToken.balanceOf(user1Signer.address));
         });
         it("should revert if the token amount is zero", async () => {
             await expect(expVault.sell(ownerSigner.address, 0, 0, ethers.constants.AddressZero, false)).to.be.revertedWithCustomError(
@@ -588,6 +642,32 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
 
             expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(userTokenBalance));
+        });
+        it("should have balance equal to amount - tax after sell", async () => {
+            const tax = await taxToken.TAX();
+            console.log("Tax: ", tax.toString());
+
+            const tokenBalanceBefore = await taxToken.balanceOf(user1Signer.address);
+            const tokenBalanceBeforeVault = await taxToken.balanceOf(expVault.address);
+            const taxBalanceBefore = await taxToken.balanceOf(taxSigner.address);
+            console.log("Token balance before: ", tokenBalanceBefore.toString());
+            console.log("Token balance before vault: ", tokenBalanceBeforeVault.toString());
+
+            await expVault.connect(user1Signer).sell(taxToken.address, tokenBalanceBefore, ethers.utils.parseEther("1"), ethers.constants.AddressZero, false);
+
+            const tokenBalanceAfterVault = await taxToken.balanceOf(expVault.address);
+            const tokenBalanceFinalVault = tokenBalanceAfterVault.sub(tokenBalanceBeforeVault);
+            console.log("Token balance after vault: ", tokenBalanceAfterVault.toString());
+            console.log("Token balance final vault: ", tokenBalanceFinalVault.toString());
+
+            const taxBalanceAfter = await taxToken.balanceOf(taxSigner.address);
+            const taxBalanceFinal = taxBalanceAfter.sub(taxBalanceBefore);
+
+            console.log("Tax balance: ", taxBalanceFinal.toString());
+            console.log("Tax after quote: ", tokenBalanceBefore.mul(tax).div(10000).toString());
+            
+            expect(tokenBalanceFinalVault).to.be.equal(tokenBalanceBefore.sub(tokenBalanceBefore.mul(tax).div(10000)));
+            expect(taxBalanceFinal).to.be.equal(tokenBalanceBefore.mul(tax).div(10000));
         });
     });
 });

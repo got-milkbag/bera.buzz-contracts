@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "solady/src/utils/FixedPointMathLib.sol";
 
 import "./BuzzVault.sol";
+import "./interfaces/IBuzzToken.sol";
 
 /// @title BuzzVaultExponential contract
 /// @notice A contract implementing an exponential bonding curve
@@ -98,7 +99,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Update balances
         info.baseBalance += netBaseAmount;
-        info.tokenBalance -= tokenAmountBuy;
+        info.tokenBalance -= tokenAmountBuy - ((tokenAmountBuy * IBuzzToken(token).TAX()) / 10000);
 
         // Update prices
         info.lastPrice = basePerToken;
@@ -150,7 +151,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Update balances
         info.baseBalance -= baseAmountSell;
-        info.tokenBalance += tokenAmount;
+        info.tokenBalance += tokenAmount - ((tokenAmount * IBuzzToken(token).TAX()) / 10000);
 
         // Update prices
         info.lastPrice = basePerToken;

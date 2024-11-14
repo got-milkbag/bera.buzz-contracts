@@ -13,6 +13,10 @@ contract BuzzToken is ERC20, AccessControl {
     bytes32 public immutable MINTER_ROLE;
     /// @notice The tax rate in bps
     uint256 public immutable TAX;
+    /// @notice The whitelisted factory address
+    address public immutable FACTORY_ADDRESS;
+    /// @notice The BEX pool address
+    address public bexPoolAddress;
     /// @notice The tax address receiving the tax. Defaults to address(0) if tax is 0.
     address public TAX_ADDRESS;
     
@@ -28,12 +32,6 @@ contract BuzzToken is ERC20, AccessControl {
         address _owner
     ) ERC20(name, symbol) {
         require(_tax <= MAX_TAX, "BuzzToken: tax exceeds MAX_TAX");
-        
-        TAX = _tax;
-        _mint(mintTo, _initialSupply);
-
-        MINTER_ROLE = keccak256("MINTER_ROLE");
-        _grantRole(MINTER_ROLE, _owner);
 
         if (_tax > 0 && taxTo != address(0)) {
             TAX_ADDRESS = taxTo;
@@ -41,6 +39,13 @@ contract BuzzToken is ERC20, AccessControl {
         else {
             TAX_ADDRESS = address(0);
         }
+        
+        TAX = _tax;
+        FACTORY_ADDRESS = mintTo;
+        _mint(mintTo, _initialSupply);
+
+        MINTER_ROLE = keccak256("MINTER_ROLE");
+        _grantRole(MINTER_ROLE, _owner);
     }
 
     function decimals() public pure override returns (uint8 _decimals) {
@@ -51,16 +56,25 @@ contract BuzzToken is ERC20, AccessControl {
         _mint(account, amount);
     }
 
+    function setBexPoolAddress(address poolAddress) external onlyRole(MINTER_ROLE) {
+        bexPoolAddress = poolAddress;
+    }
+
     function _transfer(address sender, address recipient, uint256 amount) internal virtual override {
         uint256 taxAmount = amount * TAX / 10000;
         uint256 amountAfterTax = amount - taxAmount;
 
-        super._transfer(sender, recipient, amountAfterTax);
-        
-        if (TAX_ADDRESS != address(0) && taxAmount > 0) {
+        if (
+            TAX_ADDRESS != address(0) 
+            && TAX > 0 
+            && sender != FACTORY_ADDRESS 
+            && sender != bexPoolAddress
+            && recipient != bexPoolAddress
+        ) {
+            amount = amountAfterTax;
             super._transfer(sender, TAX_ADDRESS, taxAmount);
         }
 
-        emit TaxedTransfer(sender, recipient, amount, taxAmount);
+        super._transfer(sender, recipient, amount);
     }
 }

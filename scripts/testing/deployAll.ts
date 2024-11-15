@@ -43,6 +43,7 @@ async function main() {
     // Deploy FeeManager
     const FeeManager = await ethers.getContractFactory("FeeManager");
     const feeManager = await FeeManager.deploy(feeRecipient, tradingFeeBps, listingFee, migrationFeeBps);
+    console.log("FeeManager deployed to:", feeManager.address);
 
     // Deploy ReferralManager
     const ReferralManager = await ethers.getContractFactory("ReferralManager");

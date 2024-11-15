@@ -1,10 +1,7 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-
-import {Contract, BigNumber} from "ethers";
-import {formatBytes32String} from "ethers/lib/utils";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Contract, BigNumber } from "ethers";
 
 describe("FeeManager Tests", () => {
     let ownerSigner: SignerWithAddress;
@@ -12,7 +9,6 @@ describe("FeeManager Tests", () => {
 
     let feeManager: Contract;
     let token: Contract;
-    let tx: any;
 
     beforeEach(async () => {
         [ownerSigner, treasury] = await ethers.getSigners();
@@ -40,7 +36,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("quoteTradingFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
             const feeAmount = BigNumber.from(amount.mul(100).div(10000));
@@ -57,7 +53,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("quoteMigrationFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should return the fee", async () => {
             const amount = ethers.utils.parseEther("100");
             const feeAmount = BigNumber.from(amount.mul(200).div(10000));
@@ -74,7 +70,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectTradingFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
             const quote = await feeManager.quoteTradingFee(amount);
@@ -98,12 +94,12 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectListingFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should collect and redirect the fee to the treasury", async () => {
             const fee = await feeManager.listingFee();
 
             const balanceBefore = await ethers.provider.getBalance(treasury.address);
-            await feeManager.collectListingFee({value: fee});
+            await feeManager.collectListingFee({ value: fee });
             const balanceAfter = await ethers.provider.getBalance(treasury.address);
             expect(balanceAfter.sub(balanceBefore)).to.be.equal(fee);
         });
@@ -111,7 +107,7 @@ describe("FeeManager Tests", () => {
             const fee = await feeManager.listingFee();
 
             await token.approve(feeManager.address, fee);
-            await expect(feeManager.collectListingFee({value: fee}))
+            await expect(feeManager.collectListingFee({ value: fee }))
                 .to.emit(feeManager, "NativeFeeReceived")
                 .withArgs(fee);
         });
@@ -129,7 +125,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("collectMigrationFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should collect and redirect the fee to the treasury", async () => {
             const amount = ethers.utils.parseEther("100");
             const quote = await feeManager.quoteMigrationFee(amount);
@@ -164,7 +160,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setTradingFeeBps", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should set the fee", async () => {
             await feeManager.setTradingFeeBps(500);
             expect(await feeManager.tradingFeeBps()).to.be.equal(500);
@@ -184,7 +180,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setListingFee", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should set the fee", async () => {
             await feeManager.setListingFee(ethers.utils.parseEther("0.01"));
             expect(await feeManager.listingFee()).to.be.equal(ethers.utils.parseEther("0.01"));
@@ -201,7 +197,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setMigrationFeeBps", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should set the fee", async () => {
             await feeManager.setMigrationFeeBps(500);
             expect(await feeManager.migrationFeeBps()).to.be.equal(500);
@@ -221,7 +217,7 @@ describe("FeeManager Tests", () => {
         });
     });
     describe("setTreasury", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should set the treasury", async () => {
             await feeManager.setTreasury(ownerSigner.address);
             expect(await feeManager.treasury()).to.be.equal(ownerSigner.address);

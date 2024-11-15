@@ -1,8 +1,8 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import {BigNumber, Contract} from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { formatBytes32String } from "ethers/lib/utils";
 
 // Function to calculate the price per token in ETH
@@ -19,7 +19,6 @@ function calculateTokenPrice(etherSpent: BigNumber, tokensReceived: BigNumber) {
 describe("BuzzVaultLinear Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
     let feeRecipient: string;
-
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let user2Signer: SignerWithAddress;
@@ -140,7 +139,7 @@ describe("BuzzVaultLinear Tests", () => {
         });
     });
     describe("registerToken", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should register token transferring totalSupply", async () => {
             const tokenInfo = await vault.tokenInfo(token.address);
             expect(await token.balanceOf(vault.address)).to.be.equal(await token.totalSupply());
@@ -157,7 +156,7 @@ describe("BuzzVaultLinear Tests", () => {
         });
     });
     describe("buy", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should handle multiple buys in succession", async () => {
             const initialVaultTokenBalance = await token.balanceOf(vault.address);
             const initialUser1Balance = await ethers.provider.getBalance(user1Signer.address);
@@ -166,7 +165,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 1: user1 buys a small amount of tokens
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.01") });
             const vaultTokenBalanceAfterFirstBuy = await token.balanceOf(vault.address);
             const user1BalanceAfterFirstBuy = await ethers.provider.getBalance(user1Signer.address);
             const tokenInfoAfterFirstBuy = await vault.tokenInfo(token.address);
@@ -180,7 +179,7 @@ describe("BuzzVaultLinear Tests", () => {
             // Buy 2: user2 buys using same BERA amount
             await vault
                 .connect(user2Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.01")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.01") });
             const vaultTokenBalanceAfterSecondBuy = await token.balanceOf(vault.address);
             const user2BalanceAfterSecondBuy = await ethers.provider.getBalance(user2Signer.address);
             const tokenInfoAfterSecondBuy = await vault.tokenInfo(token.address);
@@ -197,46 +196,46 @@ describe("BuzzVaultLinear Tests", () => {
         });
         it("should revert if msg.value is zero", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: 0})
+                vault.buy(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, { value: 0 })
             ).to.be.revertedWithCustomError(vault, "BuzzVault_QuoteAmountZero");
         });
         it("should revert if token doesn't exist", async () => {
             await expect(
-                vault.buy(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                vault.buy(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.1") })
             ).to.be.revertedWithCustomError(vault, "BuzzVault_UnknownToken");
         });
         it("should revert if reserves are invalid", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                vault.buy(token.address, ethers.utils.parseEther("1000000000000000000"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.1") })
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidReserves");
         });
         it("should revert if user wants less than 0.001 token min", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.0000000000000001")})
+                vault.buy(token.address, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.0000000000000001") })
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should revert if user will get less than 0.001 token", async () => {
             await expect(
-                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.000000000000000001")})
+                vault.buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.000000000000000001") })
             ).to.be.revertedWithCustomError(vault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should set a referral if one is provided", async () => {
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {value: ethers.utils.parseEther("0.1")});
+                .buy(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, { value: ethers.utils.parseEther("0.1") });
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ownerSigner.address);
         });
         it("should emit a trade event", async () => {
             await expect(
                 vault
                     .connect(user1Signer)
-                    .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("0.1")})
+                    .buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.1") })
             ).to.emit(eventTracker, "Trade");
         });
         it("should transfer the 1% of msg.value to feeRecipient", async () => {
             const feeRecipientBalanceBefore = await ethers.provider.getBalance(feeRecipient);
             const msgValue = ethers.utils.parseEther("0.1");
-            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: msgValue });
             const feeRecipientBalanceAfter = await ethers.provider.getBalance(feeRecipient);
             expect(feeRecipientBalanceAfter.sub(feeRecipientBalanceBefore)).to.be.equal(msgValue.div(100)); // fee is 1%
         });
@@ -244,7 +243,7 @@ describe("BuzzVaultLinear Tests", () => {
         it("should increase the BeraAmount and decrease the tokenBalance after the buy", async () => {
             const tokenInfoBefore = await vault.tokenInfo(token.address);
             const msgValue = ethers.utils.parseEther("0.01");
-            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, {value: msgValue});
+            await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: msgValue });
             const tokenInfoAfter = await vault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
             const msgValueAfterFee = msgValue.sub(msgValue.div(100));
@@ -260,7 +259,7 @@ describe("BuzzVaultLinear Tests", () => {
             const msgValue = ethers.utils.parseEther("3000");
 
             await vault.connect(user1Signer).buy(token.address, ethers.utils.parseEther("2800"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("3000"), 
+                value: ethers.utils.parseEther("3000"),
             });
 
             //const getMarket = await vault.getMarketCapFor(token.address);
@@ -283,7 +282,7 @@ describe("BuzzVaultLinear Tests", () => {
         beforeEach(async () => {
             await vault
                 .connect(user1Signer)
-                .buy(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, {value: ethers.utils.parseEther("3")});
+                .buy(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("3") });
         });
         it("should revert if token doesn't exist", async () => {
             await expect(

@@ -4,10 +4,9 @@ pragma solidity ^0.8.19;
 interface IBuzzTokenFactory {
     function createToken(
         string[2] calldata metadata, //name, symbol
-        address[3] calldata addr, //baseToken, vault, taxTo
+        address[2] calldata addr, //baseToken, vault
         uint256 baseAmount,
         bytes32 salt,
-        uint256 tax,
         uint256 marketCap
     ) external payable returns (address token);
 }

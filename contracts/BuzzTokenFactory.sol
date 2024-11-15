@@ -27,10 +27,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_InsufficientFee();
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
-    /// @notice Error code emitted when the tax is too high
-    error BuzzToken_TaxTooHigh();
-    /// @notice Error code emitted when there is a tax address but 0 tax or vice versa
-    error BuzzToken_TaxMismatch();
     /// @notice Error code emitted when the max initial buy is exceeded
     error BuzzToken_MaxInitialBuyExceeded();
     /// @notice Error code emitted when the market cap is under the minimum
@@ -46,10 +42,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address baseToken,
         address indexed vault,
         address indexed deployer,
-        address taxTo,
         string name,
-        string symbol,
-        uint256 tax
+        string symbol
     );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
@@ -58,8 +52,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
     /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 8e26;
-    /// @notice The maximum tax rate in bps (10%)
-    uint256 public constant MAX_TAX = 1000;
     /// @notice The maximum initial deployer buy (5% of the total 1B supply)
     uint256 public constant MAX_INITIAL_BUY = 5e25;
     /// @notice The minimum market cap for a token
@@ -101,25 +93,21 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @notice Deploys a new token
      * @dev Msg.value should be greater or equal to the listing fee.
      * @param metadata A string array containing the name and symbol of the token
-     * @param addr An address array containing the addresses for baseToken, vault, tax recipient
+     * @param addr An address array containing the addresses for baseToken and vault
      * @param baseAmount The amount of base token used to buy the new token after deployment
      * @param salt The salt for the CREATE3 deployment
-     * @param tax The tax rate in bps
      * @param marketCap The market cap of the token
      */
     function createToken(
         string[2] calldata metadata, //name, symbol
-        address[3] calldata addr, //baseToken, vault, taxTo
+        address[2] calldata addr, //baseToken, vault
         uint256 baseAmount,
         bytes32 salt,
-        uint256 tax,
         uint256 marketCap
     ) external payable nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
-        if (tax > MAX_TAX) revert BuzzToken_TaxTooHigh();
-        if ((addr[2] == address(0) && tax > 0) || (addr[2] != address(0) && tax == 0)) revert BuzzToken_TaxMismatch();
         if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
         if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
 
@@ -128,7 +116,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
             feeManager.collectListingFee{value: listingFee}();
         }
-        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], addr[2], salt, tax, marketCap);
+        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap);
 
         if (baseAmount > 0) {
             // Buy tokens after deployment
@@ -150,7 +138,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
 
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, addr[2], metadata[0], metadata[1], tax);
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1]);
     }
 
     /**
@@ -203,9 +191,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param name The name of the token
      * @param symbol The symbol of the token
      * @param vault The address of the vault
-     * @param taxTo The address of the tax recipient
      * @param salt The salt for the CREATE3 deployment
-     * @param tax The tax rate in bps
      * @param marketCap The market cap of the token
      * @return token The address of the deployed token
      */
@@ -214,14 +200,12 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         string calldata symbol,
         address baseToken,
         address vault,
-        address taxTo,
         bytes32 salt,
-        uint256 tax,
         uint256 marketCap
     ) internal returns (address token) {
         bytes memory bytecode = abi.encodePacked(
             type(BuzzToken).creationCode,
-            abi.encode(name, symbol, INITIAL_SUPPLY, tax, address(this), taxTo, vault)
+            abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault)
         );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);

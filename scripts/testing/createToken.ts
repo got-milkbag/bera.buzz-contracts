@@ -3,7 +3,7 @@ import {ethers} from "hardhat";
 const hre = require("hardhat");
 
 const CREATE_TOKEN_ABI = [
-    "function createToken (string calldata name, string calldata symbol, address vault, address taxTo, bytes32 salt, uint256 tax) external returns (address token)",
+    "function createToken (string calldata name, string calldata symbol, address vault, bytes32 salt) external returns (address token)",
 ];
 
 async function main() {
@@ -18,7 +18,7 @@ async function main() {
     const expVault = "0x2f39b10CdDF881E0eE96e4c4e8926D8dD7107307";
 
     const tokenFactoryContract = new ethers.Contract(tokenFactoryAddr, CREATE_TOKEN_ABI, deployer);
-    const tx = await tokenFactoryContract.createToken("Test Token", "TT", expVault, ethers.constants.AddressZero, salt, BigNumber.from(0));
+    const tx = await tokenFactoryContract.createToken("Test Token", "TT", expVault, salt);
     console.log(tx);
 }
 

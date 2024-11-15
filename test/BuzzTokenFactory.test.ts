@@ -1,17 +1,16 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import {BigNumber, Contract} from "ethers";
-import {formatBytes32String} from "ethers/lib/utils";
-import {anyValue} from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import { BigNumber, Contract } from "ethers";
+import { formatBytes32String } from "ethers/lib/utils";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("BuzzTokenFactory Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
-    let user2Signer: SignerWithAddress;
     let treasury: SignerWithAddress;
     let factory: Contract;
     let vault: Contract;
@@ -38,7 +37,7 @@ describe("BuzzTokenFactory Tests", () => {
     beforeEach(async () => {
         validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
 
-        [ownerSigner, user1Signer, user2Signer, treasury] = await ethers.getSigners();
+        [ownerSigner, user1Signer, treasury] = await ethers.getSigners();
 
         // Deploy mock create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
@@ -118,7 +117,7 @@ describe("BuzzTokenFactory Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Get some wBera
-        await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
+        await wBera.connect(ownerSigner).deposit({ value: ethers.utils.parseEther("10") });
     });
     describe("constructor", () => {
         it("should set the CREATE_DEPLOYER", async () => {
@@ -133,16 +132,15 @@ describe("BuzzTokenFactory Tests", () => {
         });
     });
     describe("createToken", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => { });
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    [wBera.address, expVault.address],
                     0,
                     formatBytes32String("12345"),
-                    ethers.utils.parseEther("0"),
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
@@ -154,10 +152,9 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, user1Signer.address, ethers.constants.AddressZero],
+                    [wBera.address, user1Signer.address],
                     0,
                     formatBytes32String("12345"),
-                    ethers.utils.parseEther("0"),
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
@@ -183,10 +180,9 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    [wBera.address, expVault.address],
                     0,
                     formatBytes32String("12345"),
-                    ethers.utils.parseEther("0"),
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFee.sub(1),
@@ -194,59 +190,13 @@ describe("BuzzTokenFactory Tests", () => {
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InsufficientFee");
         });
-        it("should revert if the max tax for the token is exceeded", async () => {
-            await expect(
-                factory.createToken(
-                    ["TEST", "TST"],
-                    [wBera.address, expVault.address, user1Signer.address],
-                    0,
-                    formatBytes32String("12345"),
-                    ethers.utils.parseEther("10000"),
-                    ethers.utils.parseEther("69420"),
-                    {
-                        value: listingFee,
-                    }
-                )
-            ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxTooHigh");
-        });
-        it("should revert on taxTo not being addr 0 but tax gt 0", async () => {
-            await expect(
-                factory.createToken(
-                    ["TEST", "TST"],
-                    [wBera.address, expVault.address, user1Signer.address],
-                    0,
-                    formatBytes32String("12345"),
-                    ethers.utils.parseEther("0"),
-                    ethers.utils.parseEther("69420"),
-                    {
-                        value: listingFee,
-                    }
-                )
-            ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
-        });
-        it("should revert on taxTo being addr 0 but tax == 0", async () => {
-            await expect(
-                factory.createToken(
-                    ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
-                    0,
-                    formatBytes32String("12345"),
-                    BigNumber.from(1000),
-                    ethers.utils.parseEther("69420"),
-                    {
-                        value: listingFee,
-                    }
-                )
-            ).to.be.revertedWithCustomError(factory, "BuzzToken_TaxMismatch");
-        });
         it("should revert if the market cap is under the minimum", async () => {
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    [wBera.address, expVault.address],
                     0,
                     formatBytes32String("12345"),
-                    0,
                     0,
                     {
                         value: listingFee,
@@ -259,10 +209,9 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(
                 factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    [wBera.address, expVault.address],
                     0,
                     formatBytes32String("12345"),
-                    0,
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
@@ -275,10 +224,9 @@ describe("BuzzTokenFactory Tests", () => {
             const symbol = "TST";
             const tx = await factory.createToken(
                 [name, symbol],
-                [wBera.address, expVault.address, user2Signer.address],
+                [wBera.address, expVault.address],
                 0,
                 formatBytes32String("12345"),
-                BigNumber.from(1000),
                 ethers.utils.parseEther("69420"),
                 {
                     value: listingFee,
@@ -291,8 +239,6 @@ describe("BuzzTokenFactory Tests", () => {
             expect(tokenCreatedEvent.args.baseToken).to.be.equal(wBera.address);
             expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
             expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
-            expect(tokenCreatedEvent.args.tax).to.be.equal(BigNumber.from(1000));
-            expect(tokenCreatedEvent.args.taxTo).to.be.equal(user2Signer.address);
 
             // Get token contract
             token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
@@ -303,10 +249,9 @@ describe("BuzzTokenFactory Tests", () => {
                 treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);
                 const tx = await factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, ethers.constants.AddressZero],
+                    [wBera.address, expVault.address],
                     0,
                     formatBytes32String("123457"),
-                    ethers.utils.parseEther("0"),
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFee,
@@ -338,14 +283,12 @@ describe("BuzzTokenFactory Tests", () => {
         describe("buy on deployment", () => {
             beforeEach(async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
-                const tax = BigNumber.from(1000);
 
                 const tx = await factory.createToken(
                     ["TEST", "TST"],
-                    [wBera.address, expVault.address, user2Signer.address],
+                    [wBera.address, expVault.address],
                     ethers.utils.parseEther("0.01"),
                     formatBytes32String("12345"),
-                    tax,
                     ethers.utils.parseEther("69420"),
                     {
                         value: listingFeeAndBuyAmount,
@@ -360,22 +303,14 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await token.balanceOf(factory.address)).to.be.equal(0);
                 expect(await token.balanceOf(ownerSigner.address)).to.be.gt(0);
             });
-            it("should give the tax address tax gt 0", async () => {
-                expect(await token.balanceOf(user2Signer.address)).to.be.gt(0);
-            });
-            it("should set the tax to the correct value", async () => {
-                const tax = BigNumber.from(1000);
-                expect(await token.TAX()).to.be.equal(tax);
-            });
             it("should revert if the initial buy is bigger than 5% of the total supply", async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("100"));
                 await expect(
                     factory.createToken(
                         ["TEST", "TST"],
-                        [wBera.address, expVault.address, ethers.constants.AddressZero],
+                        [wBera.address, expVault.address],
                         ethers.utils.parseEther("100"),
                         formatBytes32String("123456006"),
-                        BigNumber.from(0),
                         ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
@@ -385,19 +320,17 @@ describe("BuzzTokenFactory Tests", () => {
             });
         });
         describe("buy on deployment - native currency", () => {
-            beforeEach(async () => {});
+            beforeEach(async () => { });
             it("should revert if the remaining value is not the same as the baseAmount", async () => {
                 // Deploy and buy token
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
-                const tax = BigNumber.from(1000);
 
                 await expect(
                     factory.createToken(
                         ["TEST", "TST"],
-                        [wBera.address, expVault.address, user2Signer.address],
+                        [wBera.address, expVault.address],
                         ethers.utils.parseEther("0.02"),
                         formatBytes32String("12345"),
-                        tax,
                         ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
@@ -408,15 +341,13 @@ describe("BuzzTokenFactory Tests", () => {
             it("should purchase the remaining value passed and emit", async () => {
                 // Deploy and buy token
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
-                const tax = BigNumber.from(1000);
 
                 expect(
                     await factory.createToken(
                         ["TEST", "TST"],
-                        [wBera.address, expVault.address, user2Signer.address],
+                        [wBera.address, expVault.address],
                         ethers.utils.parseEther("0.01"),
                         formatBytes32String("12345"),
-                        tax,
                         ethers.utils.parseEther("69420"),
                         {
                             value: listingFeeAndBuyAmount,
@@ -439,18 +370,16 @@ describe("BuzzTokenFactory Tests", () => {
             });
         });
         describe("buy on deployment - base token", () => {
-            beforeEach(async () => {});
+            beforeEach(async () => { });
             it("should purchase the using base tokens and emit a trade event", async () => {
                 // Deploy and buy token
-                const tax = BigNumber.from(1000);
                 await wBera.approve(factory.address, ethers.utils.parseEther("0.1"));
                 expect(
                     await factory.createToken(
                         ["TEST", "TST"],
-                        [wBera.address, expVault.address, user2Signer.address],
+                        [wBera.address, expVault.address],
                         ethers.utils.parseEther("0.1"),
                         formatBytes32String("12345"),
-                        tax,
                         ethers.utils.parseEther("69420"),
                         {
                             value: listingFee,

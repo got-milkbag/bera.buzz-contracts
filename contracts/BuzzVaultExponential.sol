@@ -99,7 +99,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Update balances
         info.baseBalance += netBaseAmount;
-        info.tokenBalance -= tokenAmountBuy - ((tokenAmountBuy * IBuzzToken(token).TAX()) / 10000);
+        info.tokenBalance -= tokenAmountBuy;
 
         // Update prices
         info.lastPrice = basePerToken;
@@ -151,7 +151,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Update balances
         info.baseBalance -= baseAmountSell;
-        info.tokenBalance += tokenAmount - ((tokenAmount * IBuzzToken(token).TAX()) / 10000);
+        info.tokenBalance += tokenAmount;
 
         // Update prices
         info.lastPrice = basePerToken;

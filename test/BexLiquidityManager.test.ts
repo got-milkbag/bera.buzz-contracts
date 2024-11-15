@@ -1,9 +1,6 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import {formatBytes32String} from "ethers/lib/utils";
-import {BigNumber, Contract} from "ethers";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import { Contract } from "ethers";
 
 describe("BexLiquidityManager Tests", () => {
     const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
@@ -11,7 +8,6 @@ describe("BexLiquidityManager Tests", () => {
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
     let beraWhale: SignerWithAddress;
-    let factory: Contract;
     let bexLiquidityManager: Contract;
     let token: Contract;
     let wbera: Contract;
@@ -33,9 +29,7 @@ describe("BexLiquidityManager Tests", () => {
             "Test 1",
             "TST1",
             ethers.utils.parseEther("1000000000"),
-            ethers.utils.parseEther("0"),
             beraWhale.address,
-            ethers.constants.AddressZero,
             beraWhale.address
         );
 
@@ -44,7 +38,7 @@ describe("BexLiquidityManager Tests", () => {
         await token.connect(beraWhale).approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000000"));
 
         // Convert Bera to WBera
-        await wbera.connect(beraWhale).deposit({value: ethers.utils.parseEther("2300")});
+        await wbera.connect(beraWhale).deposit({ value: ethers.utils.parseEther("2300") });
         await wbera.connect(beraWhale).approve(bexLiquidityManager.address, ethers.utils.parseEther("2300"));
     });
     describe("constructor", () => {

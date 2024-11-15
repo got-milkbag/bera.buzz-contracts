@@ -1,10 +1,10 @@
-import {expect} from "chai";
-import {ethers} from "hardhat";
-import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
+import { expect } from "chai";
+import { ethers } from "hardhat";
+import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
-import {Contract} from "ethers";
-import {formatBytes32String} from "ethers/lib/utils";
+import { Contract } from "ethers";
+import { formatBytes32String } from "ethers/lib/utils";
 
 describe("ReferralManager Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -15,7 +15,6 @@ describe("ReferralManager Tests", () => {
     let treasury: SignerWithAddress;
 
     let factory: Contract;
-    let vault: Contract;
     let token: Contract;
     let referralManager: Contract;
     let expVault: Contract;
@@ -109,10 +108,9 @@ describe("ReferralManager Tests", () => {
         // Create a token
         const tx = await factory.createToken(
             ["TEST", "TST"],
-            [wBera.address, expVault.address, ethers.constants.AddressZero],
+            [wBera.address, expVault.address],
             0,
             formatBytes32String("12345"),
-            ethers.utils.parseEther("0"),
             ethers.utils.parseEther("69420"),
             {
                 value: listingFee,
@@ -125,7 +123,7 @@ describe("ReferralManager Tests", () => {
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
 
         // Get some WBEra
-        await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
+        await wBera.connect(ownerSigner).deposit({ value: ethers.utils.parseEther("10") });
         await wBera.approve(referralManager.address, ethers.utils.parseEther("1"));
     });
     describe("constructor", () => {

@@ -268,6 +268,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
         IERC20(info.baseToken).safeApprove(address(liquidityManager), netBaseAmount);
+
         address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
 
         info.lpConduit = lpConduit;

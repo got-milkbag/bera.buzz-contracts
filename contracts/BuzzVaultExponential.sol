@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import "solady/src/utils/FixedPointMathLib.sol";
 
 import "./BuzzVault.sol";
+import "./interfaces/IBuzzToken.sol";
 
 /// @title BuzzVaultExponential contract
 /// @notice A contract implementing an exponential bonding curve

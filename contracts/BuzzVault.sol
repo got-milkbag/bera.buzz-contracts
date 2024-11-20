@@ -104,6 +104,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 lastPrice;
         uint256 lastBasePrice;
         uint256 beraThreshold;
+        uint256 k;
+        uint256 growthRate;
         bool bexListed;
         address lpConduit;
     }
@@ -204,15 +206,24 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param token The token address
      * @param tokenBalance The token balance
      * @param marketCap The market cap of the token
+     * @param k The initial k of the token
+     * @param growthRate The growth rate of the token
      */
-    function registerToken(address token, address baseToken, uint256 tokenBalance, uint256 marketCap) external override {
+    function registerToken(
+        address token, 
+        address baseToken, 
+        uint256 tokenBalance, 
+        uint256 marketCap,
+        uint256 k,
+        uint256 growthRate
+    ) external override {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
 
         uint256 reserveBera = _getBeraAmountForMarketCap(marketCap);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, false, address(0));
+        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, k, growthRate, false, address(0));
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }

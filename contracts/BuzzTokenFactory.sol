@@ -35,6 +35,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_BaseAmountNotEnough();
     /// @notice Error code emitted when the base token address is not whitelisted
     error BuzzToken_BaseTokenNotWhitelisted();
+    /// @notice Error code emitted when the value of K is not valid
+    error BuzzToken_InvalidK();
+    /// @notice Error code emitted when the value of growth rate is not valid
+    error BuzzToken_InvalidGrowthRate();
 
     /// TODO: Fix indexed limit
     event TokenCreated(
@@ -112,6 +116,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
         if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
+        if (curveData[0] == 0) revert BuzzToken_InvalidK();
+        if (curveData[1] == 0) revert BuzzToken_InvalidGrowthRate();
 
         uint256 listingFee = feeManager.listingFee();
         if (listingFee > 0) {

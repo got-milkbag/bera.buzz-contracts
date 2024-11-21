@@ -109,7 +109,7 @@ describe("ReferralManager Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
-            [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+            [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
             0,
             formatBytes32String("12345"),
             ethers.utils.parseEther("69420"),

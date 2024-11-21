@@ -139,7 +139,7 @@ describe("BuzzTokenFactory Tests", () => {
                 factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("69420"),
@@ -154,7 +154,7 @@ describe("BuzzTokenFactory Tests", () => {
                 factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, user1Signer.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("69420"),
@@ -169,7 +169,7 @@ describe("BuzzTokenFactory Tests", () => {
         //         factory.createToken(
         //             ["TEST", "TST"],
         //             [ethers.constants.AddressZero, user1Signer.address, ethers.constants.AddressZero],
-        //             [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+        //             [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
         //             0,
         //             formatBytes32String("12345"),
         //             ethers.utils.parseEther("0"),
@@ -184,7 +184,7 @@ describe("BuzzTokenFactory Tests", () => {
                 factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("69420"),
@@ -199,7 +199,7 @@ describe("BuzzTokenFactory Tests", () => {
                 factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("12345"),
                     0,
@@ -215,7 +215,7 @@ describe("BuzzTokenFactory Tests", () => {
                 factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("69420"),
@@ -225,13 +225,43 @@ describe("BuzzTokenFactory Tests", () => {
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_BaseTokenNotWhitelisted");
         });
+        it("should revert if the value of K is 0", async () => {
+            await expect(
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address],
+                    [0, BigNumber.from("3350000000")],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("69420"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidK");
+        });
+        it("should revert if the value of growthRate is 0", async () => {
+            await expect(
+                factory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("2.22"), 0],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("69420"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidGrowthRate");
+        });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
             const tx = await factory.createToken(
                 [name, symbol],
                 [wBera.address, expVault.address],
-                [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                 0,
                 formatBytes32String("12345"),
                 ethers.utils.parseEther("69420"),
@@ -257,7 +287,7 @@ describe("BuzzTokenFactory Tests", () => {
                 const tx = await factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     0,
                     formatBytes32String("123457"),
                     ethers.utils.parseEther("69420"),
@@ -295,7 +325,7 @@ describe("BuzzTokenFactory Tests", () => {
                 const tx = await factory.createToken(
                     ["TEST", "TST"],
                     [wBera.address, expVault.address],
-                    [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                     ethers.utils.parseEther("0.01"),
                     formatBytes32String("12345"),
                     ethers.utils.parseEther("69420"),
@@ -318,7 +348,7 @@ describe("BuzzTokenFactory Tests", () => {
                     factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
-                        [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                        [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                         ethers.utils.parseEther("100"),
                         formatBytes32String("123456006"),
                         ethers.utils.parseEther("69420"),
@@ -339,7 +369,7 @@ describe("BuzzTokenFactory Tests", () => {
                     factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
-                        [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                        [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                         ethers.utils.parseEther("0.02"),
                         formatBytes32String("12345"),
                         ethers.utils.parseEther("69420"),
@@ -357,7 +387,7 @@ describe("BuzzTokenFactory Tests", () => {
                     await factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
-                        [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                        [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                         ethers.utils.parseEther("0.01"),
                         formatBytes32String("12345"),
                         ethers.utils.parseEther("69420"),
@@ -390,7 +420,7 @@ describe("BuzzTokenFactory Tests", () => {
                     await factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
-                        [BigNumber.from("222970128658"), BigNumber.from("3350000000")],
+                        [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
                         ethers.utils.parseEther("0.1"),
                         formatBytes32String("12345"),
                         ethers.utils.parseEther("69420"),

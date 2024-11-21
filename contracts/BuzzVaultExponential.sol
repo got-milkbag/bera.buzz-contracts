@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import "solady/src/utils/FixedPointMathLib.sol";
+import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
 
 import "./BuzzVault.sol";
 import "./interfaces/IBuzzToken.sol";
@@ -10,8 +10,6 @@ import "./interfaces/IBuzzToken.sol";
 /// @notice A contract implementing an exponential bonding curve
 contract BuzzVaultExponential is BuzzVault {
     using SafeERC20 for IERC20;
-    using FixedPointMathLib for uint256;
-    using FixedPointMathLib for int256;
 
     /**
      * @notice Constructor for a new BuzzVaultExponential contract
@@ -49,16 +47,19 @@ contract BuzzVaultExponential is BuzzVault {
 
         uint256 tokenBalance = info.tokenBalance;
         uint256 baseBalance = info.baseBalance;
+        uint256 k = info.k;
+        uint256 growthRate = info.growthRate;
+
         if (tokenBalance == 0 && baseBalance == 0) revert BuzzVault_UnknownToken();
 
         uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - tokenBalance;
 
         if (isBuyOrder) {
-            (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
+            (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(circulatingSupply, amount, k, growthRate);
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
             //if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
         } else {
-            (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
+            (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
             if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
         }
     }
@@ -72,8 +73,6 @@ contract BuzzVaultExponential is BuzzVault {
      * @return tokenAmount The amount of tokens bought
      */
     function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
-        uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - info.tokenBalance;
-
         // Collect trading and referral fee
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
         uint256 referralFee;
@@ -86,10 +85,10 @@ contract BuzzVaultExponential is BuzzVault {
 
         uint256 netBaseAmount = baseAmount - tradingFee - referralFee;
         (uint256 tokenAmountBuy, uint256 basePerToken, uint256 tokenPerBase) = _calculateBuyPrice(
-            circulatingSupply,
+            info.baseBalance,
             netBaseAmount,
-            CURVE_ALPHA,
-            CURVE_BETA
+            info.k,
+            info.growthRate
         );
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
@@ -131,8 +130,8 @@ contract BuzzVaultExponential is BuzzVault {
         (uint256 baseAmountSell, uint256 basePerToken, uint256 tokenPerBase) = _calculateSellPrice(
             circulatingSupply,
             tokenAmount,
-            CURVE_ALPHA,
-            CURVE_BETA
+            info.k,
+            info.growthRate
         );
 
         if (info.baseBalance < baseAmountSell) revert BuzzVault_InvalidReserves();
@@ -169,61 +168,72 @@ contract BuzzVaultExponential is BuzzVault {
 
     /**
      * @notice Calculate the amount of quote tokens that can be bought at the current curve
-     * @param circulatingSupply The circulating supply of the quote token
+     * @param baseBalance The balance of base token
      * @param baseAmountIn The amount of base tokens to buy with
-     * @param curveAlpha The alpha coefficient of the curve
-     * @param curveBeta The beta coefficient of the curve
+     * @param k The k coefficient of the curve
+     * @param growthFactor The growth coefficient of the curve
      * @return amountOut The amount of quote tokens that will be bought
      * @return pricePerToken The price per quote token, scalend by 1e18
      * @return pricePerBase The price per base token, scaled by 1e18
      */
     function _calculateBuyPrice(
-        uint256 circulatingSupply,
+        uint256 baseBalance,
         uint256 baseAmountIn,
-        uint256 curveAlpha,
-        uint256 curveBeta
+        uint256 k,
+        uint256 growthFactor
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         if (baseAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
-        // calculate exp(b*x0)
-        uint256 exp_b_x0 = uint256((int256(curveBeta.mulWad(circulatingSupply))).expWad());
+        UD60x18 baseBalanceFixed = ud(baseBalance);
+        UD60x18 baseAmountFixed = ud(baseAmountIn);
+        UD60x18 kFixed = ud(k);
+        UD60x18 growthFactorFixed = ud(growthFactor);
 
-        // calculate exp(b*x0) + (dy*b/a)
-        uint256 exp_b_x1 = exp_b_x0 + baseAmountIn.fullMulDiv(curveBeta, curveAlpha);
+        // Calculate tokensBefore = ln((totalRaised / k) + 1) / growthRate
+        UD60x18 tokensBefore = baseBalanceFixed.div(kFixed).add(ud(1e18)).ln().div(growthFactorFixed);
 
-        amountOut = uint256(int256(exp_b_x1).lnWad()).divWad(curveBeta) - circulatingSupply;
+        // Calculate tokensAfter = ln(((totalRaised + baseAmount) / k) + 1) / growthRate
+        UD60x18 tokensAfter = baseBalanceFixed.add(baseAmountFixed).div(kFixed).add(ud(1e18)).ln().div(growthFactorFixed);
+
+        // Return the difference in tokens
+        amountOut = tokensAfter.sub(tokensBefore).unwrap();
         pricePerToken = (baseAmountIn * 1e18) / amountOut;
         pricePerBase = (amountOut * 1e18) / baseAmountIn;
     }
 
     /**
      * @notice Calculate the amount of base tokens that can be received for selling quote tokens
-     * @param circulatingSupply The circulating supply of the quote token
-     * @param tokenAmountIn The amount of quote tokens to sell
-     * @param curveAlpha The alpha coefficient of the curve
-     * @param curveBeta The beta coefficient of the curve
+     * @param quoteBalance The balance of quote tokens
+     * @param quoteAmountIn The amount of quote tokens to sell
+     * @param k The k coefficient of the curve
+     * @param growthFactor The growth coefficient of the curve
      * @return amountOut The amount of base tokens that will be received
      * @return pricePerToken The price per quote token, scalend by 1e18
      * @return pricePerBase The price per base token, scaled by 1e18
      */
     function _calculateSellPrice(
-        uint256 circulatingSupply,
-        uint256 tokenAmountIn,
-        uint256 curveAlpha,
-        uint256 curveBeta
+        uint256 quoteBalance,
+        uint256 quoteAmountIn,
+        uint256 k,
+        uint256 growthFactor
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
-        if (tokenAmountIn == 0) revert BuzzVault_QuoteAmountZero();
+        if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
+        require(quoteBalance >= quoteAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
+        
+        UD60x18 quoteBalanceFixed = ud(quoteBalance);
+        UD60x18 quoteAmountFixed = ud(quoteAmountIn);
+        UD60x18 kFixed = ud(k);
+        UD60x18 growthFactorFixed = ud(growthFactor);
 
-        require(circulatingSupply >= tokenAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
-        // calculate exp(b*x0), exp(b*x1)
-        int256 exp_b_x0 = (int256(curveBeta.mulWad(circulatingSupply))).expWad();
-        int256 exp_b_x1 = (int256(curveBeta.mulWad(circulatingSupply - tokenAmountIn))).expWad();
+        // Calculate baseBefore = k * (exp(growthFactor * tokensSold) - 1)
+        UD60x18 baseBefore = kFixed.mul(growthFactorFixed.mul(quoteBalanceFixed).exp()).sub(kFixed);
 
-        // calculate deltaY = (a/b)*(exp(b*x0) - exp(b*x1))
-        uint256 delta = uint256(exp_b_x0 - exp_b_x1);
+        // Calculate baseAfter = k * (exp(growthFactor * (tokensSold - tokenAmount)) - 1)
+        UD60x18 baseAfter = kFixed.mul(growthFactorFixed.mul(quoteBalanceFixed.sub(quoteAmountFixed)).exp()).sub(kFixed);
 
-        amountOut = curveAlpha.fullMulDiv(delta, curveBeta);
-        pricePerToken = (amountOut * 1e18) / tokenAmountIn;
-        pricePerBase = (tokenAmountIn * 1e18) / amountOut;
+        // Return the difference in Wei
+        amountOut = baseBefore.sub(baseAfter).unwrap();
+        pricePerToken = (amountOut * 1e18) / quoteAmountIn;
+        pricePerBase = (quoteAmountIn * 1e18) / amountOut;
     }
 }

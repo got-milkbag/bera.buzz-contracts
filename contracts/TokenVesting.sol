@@ -4,14 +4,13 @@ pragma solidity ^0.8.19;
 
 // OpenZeppelin dependencies
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
-import {Owned} from "solmate/src/auth/Owned.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
 import {ReentrancyGuard} from "solmate/src/utils/ReentrancyGuard.sol";
 
 /**
  * @title TokenVesting
  */
-contract TokenVesting is Owned, ReentrancyGuard {
+contract TokenVesting is ReentrancyGuard {
     struct VestingSchedule {
         // beneficiary of tokens after they are released
         address beneficiary;
@@ -28,6 +27,21 @@ contract TokenVesting is Owned, ReentrancyGuard {
         // amount of tokens released
         uint256 released;
     }
+
+    event VestingScheduleCreated(
+        bytes32 indexed vestingScheduleId,
+        address indexed beneficiary,
+        uint256 cliff,
+        uint256 start,
+        uint256 duration,
+        uint256 slicePeriodSeconds,
+        uint256 amountTotal
+    );
+    event TokensReleased(
+        bytes32 indexed vestingScheduleId,
+        address indexed beneficiary,
+        uint256 amount
+    );
 
     // address of the ERC20 token
     ERC20 private immutable _token;
@@ -49,7 +63,7 @@ contract TokenVesting is Owned, ReentrancyGuard {
      * @dev Creates a vesting contract.
      * @param token_ address of the ERC20 token contract
      */
-    constructor(address token_) Owned(msg.sender) {
+    constructor(address token_) {
         // Check that the token address is not 0x0.
         require(token_ != address(0x0));
         // Set the token address.
@@ -83,11 +97,7 @@ contract TokenVesting is Owned, ReentrancyGuard {
         uint256 _duration,
         uint256 _slicePeriodSeconds,
         uint256 _amount
-    ) external onlyOwner {
-        require(
-            getWithdrawableAmount() >= _amount,
-            "TokenVesting: cannot create vesting schedule because not sufficient tokens"
-        );
+    ) external {
         require(_duration > 0, "TokenVesting: duration must be > 0");
         require(_amount > 0, "TokenVesting: amount must be > 0");
         require(
@@ -112,53 +122,46 @@ contract TokenVesting is Owned, ReentrancyGuard {
         vestingSchedulesIds.push(vestingScheduleId);
         uint256 currentVestingCount = holdersVestingCount[_beneficiary];
         holdersVestingCount[_beneficiary] = currentVestingCount + 1;
-    }
 
-    /**
-     * @notice Withdraw the specified amount if possible.
-     * @param amount the amount to withdraw
-     */
-    function withdraw(uint256 amount) external nonReentrant onlyOwner {
-        require(
-            getWithdrawableAmount() >= amount,
-            "TokenVesting: not enough withdrawable funds"
+        SafeTransferLib.safeTransferFrom(_token, msg.sender, address(this), _amount);
+
+        emit VestingScheduleCreated(
+            vestingScheduleId,
+            _beneficiary,
+            cliff,
+            _start,
+            _duration,
+            _slicePeriodSeconds,
+            _amount
         );
-        /*
-         * @dev Replaced owner() with msg.sender => address of WITHDRAWER_ROLE
-         */
-        SafeTransferLib.safeTransfer(_token, msg.sender, amount);
     }
 
     /**
      * @notice Release vested amount of tokens.
      * @param vestingScheduleId the vesting schedule identifier
-     * @param amount the amount to release
      */
     function release(
-        bytes32 vestingScheduleId,
-        uint256 amount
+        bytes32 vestingScheduleId
     ) public nonReentrant onlyIfVestingScheduleExists(vestingScheduleId) {
         VestingSchedule storage vestingSchedule = vestingSchedules[
             vestingScheduleId
         ];
         bool isBeneficiary = msg.sender == vestingSchedule.beneficiary;
 
-        bool isReleasor = (msg.sender == owner);
         require(
-            isBeneficiary || isReleasor,
-            "TokenVesting: only beneficiary and owner can release vested tokens"
+            isBeneficiary,
+            "TokenVesting: only beneficiary can release vested tokens"
         );
         uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
-        require(
-            vestedAmount >= amount,
-            "TokenVesting: cannot release tokens, not enough vested tokens"
-        );
-        vestingSchedule.released = vestingSchedule.released + amount;
+
+        vestingSchedule.released = vestingSchedule.released + vestedAmount;
         address payable beneficiaryPayable = payable(
             vestingSchedule.beneficiary
         );
-        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - amount;
-        SafeTransferLib.safeTransfer(_token, beneficiaryPayable, amount);
+        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - vestedAmount;
+        SafeTransferLib.safeTransfer(_token, beneficiaryPayable, vestedAmount);
+
+        emit TokensReleased(vestingScheduleId, vestingSchedule.beneficiary, vestedAmount);
     }
 
     /**
@@ -248,14 +251,6 @@ contract TokenVesting is Owned, ReentrancyGuard {
         bytes32 vestingScheduleId
     ) public view returns (VestingSchedule memory) {
         return vestingSchedules[vestingScheduleId];
-    }
-
-    /**
-     * @dev Returns the amount of tokens that can be withdrawn by the owner.
-     * @return the amount of tokens
-     */
-    function getWithdrawableAmount() public view returns (uint256) {
-        return _token.balanceOf(address(this)) - vestingSchedulesTotalAmount;
     }
 
     /**

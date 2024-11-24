@@ -68,6 +68,10 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
                 emit PayoutThresholdSet(tokens[i], _payoutThresholds[i]);
             }
         }
+
+        emit DirectRefFeeBpsSet(_directRefFeeBps);
+        emit IndirectRefFeeBpsSet(_indirectRefFeeBps);
+        emit ReferralDeadlineSet(_validUntil);
     }
 
     // Vault functions

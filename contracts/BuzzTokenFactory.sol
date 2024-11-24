@@ -43,7 +43,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address indexed vault,
         address indexed deployer,
         string name,
-        string symbol
+        string symbol,
+        uint256 marketCap
     );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
@@ -117,6 +118,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             feeManager.collectListingFee{value: listingFee}();
         }
         token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap);
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
 
         if (baseAmount > 0) {
             // Buy tokens after deployment
@@ -137,8 +139,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
-
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1]);
     }
 
     /**
@@ -203,10 +203,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         bytes32 salt,
         uint256 marketCap
     ) internal returns (address token) {
-        bytes memory bytecode = abi.encodePacked(
-            type(BuzzToken).creationCode,
-            abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault)
-        );
+        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;

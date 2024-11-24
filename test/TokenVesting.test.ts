@@ -127,12 +127,16 @@ describe("TokenVesting", function () {
           .computeReleasableAmount(vestingScheduleId)
       ).to.be.equal(50);
 
-      // beneficiary release vested tokens
+      // beneficiary release vested tokens (and check for Release event)
       await expect(
         tokenVesting.connect(beneficiary).release(vestingScheduleId)
       )
-        .to.emit(testToken, "Transfer")
-        .withArgs(tokenVesting.address, beneficiary.address, 50);
+        .to.emit(tokenVesting, "TokensReleased")
+        .withArgs(vestingScheduleId, beneficiary.address, 50);
+
+      vestingSchedule = await tokenVesting.getVestingSchedule(
+        vestingScheduleId
+      );
 
       // check that the number of released tokens is 100
       expect(vestingSchedule.released).to.be.equal(100);
@@ -260,7 +264,7 @@ describe("TokenVesting", function () {
         .withArgs(
           vestingScheduleId, 
           beneficiary.address,
-          cliff,
+          startTime + cliff,
           startTime,
           duration,
           slicePeriodSeconds,

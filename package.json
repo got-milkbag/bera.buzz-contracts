@@ -25,6 +25,6 @@
     "@openzeppelin/contracts": "^4.9.3",
     "dotenv": "^16.4.5",
     "solady": "^0.0.256",
-    "solmate": "^6.2.0"
+    "solmate": "^6.8.0"
   }
 }

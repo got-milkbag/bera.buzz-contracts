@@ -59,10 +59,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         bool isBuyOrder
     );
 
-    /// @notice The protocol fee in basis points
-    uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
-    /// @notice The DEX migration fee in basis points
-    uint256 public constant DEX_MIGRATION_FEE_BPS = 420; // 420 -> 4.2%
     /// @notice The percentage of total minted supply after BEX migration in bps
     uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
     /// @notice The min ERC20 amount for bonding curve swaps
@@ -354,7 +350,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 beraAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
         uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
 
-        beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);
+        beraAmount = beraAmountNoFee + feeManager.quoteMigrationFee(beraAmountNoFee);
     }
 
     function _unwrap(address to, uint256 amount) internal {
@@ -364,7 +360,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         wbera.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
-        
+
         _transferEther(payable(to), amount);
     }
 

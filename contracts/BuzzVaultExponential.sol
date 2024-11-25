@@ -52,14 +52,15 @@ contract BuzzVaultExponential is BuzzVault {
         if (tokenBalance == 0 && baseBalance == 0) revert BuzzVault_UnknownToken();
 
         uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - tokenBalance;
-        uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
 
         if (isBuyOrder) {
+            uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
             (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(circulatingSupply, amountAfterFee, CURVE_ALPHA, CURVE_BETA);
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
         } else {
-            (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amountAfterFee, CURVE_ALPHA, CURVE_BETA);
+            (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, CURVE_ALPHA, CURVE_BETA);
             if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
+            amountOut -= feeManager.quoteTradingFee(amountOut);
         }
     }
 

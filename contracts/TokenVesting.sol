@@ -14,6 +14,8 @@ contract TokenVesting is ReentrancyGuard {
     struct VestingSchedule {
         // beneficiary of tokens after they are released
         address beneficiary;
+        // address of the token
+        address token;
         // cliff time of the vesting start in seconds since the UNIX epoch
         uint256 cliff;
         // start time of the vesting period in seconds since the UNIX epoch
@@ -31,6 +33,7 @@ contract TokenVesting is ReentrancyGuard {
     event VestingScheduleCreated(
         bytes32 indexed vestingScheduleId,
         address indexed beneficiary,
+        address indexed token,
         uint256 cliff,
         uint256 start,
         uint256 duration,
@@ -43,31 +46,18 @@ contract TokenVesting is ReentrancyGuard {
         uint256 amount
     );
 
-    // address of the ERC20 token
-    ERC20 private immutable _token;
-
     bytes32[] private vestingSchedulesIds;
-    mapping(bytes32 => VestingSchedule) private vestingSchedules;
+    mapping(address => mapping(bytes32 => VestingSchedule)) private vestingSchedules;
     uint256 private vestingSchedulesTotalAmount;
+    mapping(address => uint256) private vestingSchedulesTotalAmountByToken;
     mapping(address => uint256) private holdersVestingCount;
 
     /**
      * @dev Reverts if the vesting schedule does not exist
      */
-    modifier onlyIfVestingScheduleExists(bytes32 vestingScheduleId) {
-        require(vestingSchedules[vestingScheduleId].duration > 0);
+    modifier onlyIfVestingScheduleExists(address token, bytes32 vestingScheduleId) {
+        require(vestingSchedules[token][vestingScheduleId].duration > 0);
         _;
-    }
-
-    /**
-     * @dev Creates a vesting contract.
-     * @param token_ address of the ERC20 token contract
-     */
-    constructor(address token_) {
-        // Check that the token address is not 0x0.
-        require(token_ != address(0x0));
-        // Set the token address.
-        _token = ERC20(token_);
     }
 
     /**
@@ -84,6 +74,7 @@ contract TokenVesting is ReentrancyGuard {
     /**
      * @notice Creates a new vesting schedule for a beneficiary.
      * @param _beneficiary address of the beneficiary to whom vested tokens are transferred
+     * @param _token address of the ERC20 token
      * @param _start start time of the vesting period
      * @param _cliff duration in seconds of the cliff in which tokens will begin to vest
      * @param _duration duration in seconds of the period in which the tokens will vest
@@ -92,6 +83,7 @@ contract TokenVesting is ReentrancyGuard {
      */
     function createVestingSchedule(
         address _beneficiary,
+        address _token,
         uint256 _start,
         uint256 _cliff,
         uint256 _duration,
@@ -105,12 +97,15 @@ contract TokenVesting is ReentrancyGuard {
             "TokenVesting: slicePeriodSeconds must be >= 1"
         );
         require(_duration >= _cliff, "TokenVesting: duration must be >= cliff");
+        require(_beneficiary != address(0), "TokenVesting: beneficiary cannot be the zero address");
+        require(_token != address(0), "TokenVesting: token cannot be the zero address");
         bytes32 vestingScheduleId = computeNextVestingScheduleIdForHolder(
             _beneficiary
         );
         uint256 cliff = _start + _cliff;
-        vestingSchedules[vestingScheduleId] = VestingSchedule(
+        vestingSchedules[_token][vestingScheduleId] = VestingSchedule(
             _beneficiary,
+            _token,
             cliff,
             _start,
             _duration,
@@ -119,15 +114,17 @@ contract TokenVesting is ReentrancyGuard {
             0
         );
         vestingSchedulesTotalAmount = vestingSchedulesTotalAmount + _amount;
+        vestingSchedulesTotalAmountByToken[_token] = vestingSchedulesTotalAmountByToken[_token] + _amount;
         vestingSchedulesIds.push(vestingScheduleId);
         uint256 currentVestingCount = holdersVestingCount[_beneficiary];
         holdersVestingCount[_beneficiary] = currentVestingCount + 1;
 
-        SafeTransferLib.safeTransferFrom(_token, msg.sender, address(this), _amount);
+        SafeTransferLib.safeTransferFrom(ERC20(_token), msg.sender, address(this), _amount);
 
         emit VestingScheduleCreated(
             vestingScheduleId,
             _beneficiary,
+            _token,
             cliff,
             _start,
             _duration,
@@ -138,12 +135,14 @@ contract TokenVesting is ReentrancyGuard {
 
     /**
      * @notice Release vested amount of tokens.
+     * @param token the address of the token
      * @param vestingScheduleId the vesting schedule identifier
      */
     function release(
+        address token,
         bytes32 vestingScheduleId
-    ) public nonReentrant onlyIfVestingScheduleExists(vestingScheduleId) {
-        VestingSchedule storage vestingSchedule = vestingSchedules[
+    ) public nonReentrant onlyIfVestingScheduleExists(token, vestingScheduleId) {
+        VestingSchedule storage vestingSchedule = vestingSchedules[token][
             vestingScheduleId
         ];
         bool isBeneficiary = msg.sender == vestingSchedule.beneficiary;
@@ -159,7 +158,7 @@ contract TokenVesting is ReentrancyGuard {
             vestingSchedule.beneficiary
         );
         vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - vestedAmount;
-        SafeTransferLib.safeTransfer(_token, beneficiaryPayable, vestedAmount);
+        SafeTransferLib.safeTransfer(ERC20(token), beneficiaryPayable, vestedAmount);
 
         emit TokensReleased(vestingScheduleId, vestingSchedule.beneficiary, vestedAmount);
     }
@@ -189,15 +188,19 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the vesting schedule information for a given holder and index.
+     * @notice Returns the vesting schedule information for a given token, holder and index.
+     * @param token the address of the token
+     * @param holder the address of the holder
      * @return the vesting schedule structure information
      */
     function getVestingScheduleByAddressAndIndex(
+        address token,
         address holder,
         uint256 index
     ) external view returns (VestingSchedule memory) {
         return
             getVestingSchedule(
+                token,
                 computeVestingScheduleIdForAddressAndIndex(holder, index)
             );
     }
@@ -211,13 +214,6 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the address of the ERC20 token managed by the vesting contract.
-     */
-    function getToken() external view returns (address) {
-        return address(_token);
-    }
-
-    /**
      * @dev Returns the number of vesting schedules managed by this contract.
      * @return the number of vesting schedules
      */
@@ -226,31 +222,45 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @notice Computes the vested amount of tokens for the given vesting schedule identifier.
+     * @notice Returns the total amount of vesting schedules by token.
+     * @return the total amount of vesting schedules
+     */
+    function getVestingSchedulesTotalAmountByToken(address token) external view returns (uint256) {
+        return vestingSchedulesTotalAmountByToken[token];
+    }
+
+    /**
+     * @notice Computes the vested amount of tokens for the given token address and vesting schedule identifier.
+     * @param token the address of the token
+     * @param vestingScheduleId the vesting schedule identifier
      * @return the vested amount
      */
     function computeReleasableAmount(
+        address token,
         bytes32 vestingScheduleId
     )
         external
         view
-        onlyIfVestingScheduleExists(vestingScheduleId)
+        onlyIfVestingScheduleExists(token, vestingScheduleId)
         returns (uint256)
     {
-        VestingSchedule storage vestingSchedule = vestingSchedules[
+        VestingSchedule storage vestingSchedule = vestingSchedules[token][
             vestingScheduleId
         ];
         return _computeReleasableAmount(vestingSchedule);
     }
 
     /**
-     * @notice Returns the vesting schedule information for a given identifier.
+     * @notice Returns the vesting schedule information for a given identifier and token address.
+     * @param token the address of the token
+     * @param vestingScheduleId the vesting schedule identifier
      * @return the vesting schedule structure information
      */
     function getVestingSchedule(
+        address token,
         bytes32 vestingScheduleId
     ) public view returns (VestingSchedule memory) {
-        return vestingSchedules[vestingScheduleId];
+        return vestingSchedules[token][vestingScheduleId];
     }
 
     /**
@@ -267,13 +277,14 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the last vesting schedule for a given holder address.
+     * @dev Returns the last vesting schedule for a given token and holder addresses.
      */
     function getLastVestingScheduleForHolder(
+        address token,
         address holder
     ) external view returns (VestingSchedule memory) {
         return
-            vestingSchedules[
+            vestingSchedules[token][
                 computeVestingScheduleIdForAddressAndIndex(
                     holder,
                     holdersVestingCount[holder] - 1

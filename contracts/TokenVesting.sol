@@ -49,6 +49,7 @@ contract TokenVesting is ReentrancyGuard {
     bytes32[] private vestingSchedulesIds;
     mapping(address => mapping(bytes32 => VestingSchedule)) private vestingSchedules;
     uint256 private vestingSchedulesTotalAmount;
+    mapping(address => uint256) private vestingSchedulesTotalAmountByToken;
     mapping(address => uint256) private holdersVestingCount;
 
     /**
@@ -113,6 +114,7 @@ contract TokenVesting is ReentrancyGuard {
             0
         );
         vestingSchedulesTotalAmount = vestingSchedulesTotalAmount + _amount;
+        vestingSchedulesTotalAmountByToken[_token] = vestingSchedulesTotalAmountByToken[_token] + _amount;
         vestingSchedulesIds.push(vestingScheduleId);
         uint256 currentVestingCount = holdersVestingCount[_beneficiary];
         holdersVestingCount[_beneficiary] = currentVestingCount + 1;
@@ -217,6 +219,14 @@ contract TokenVesting is ReentrancyGuard {
      */
     function getVestingSchedulesCount() public view returns (uint256) {
         return vestingSchedulesIds.length;
+    }
+
+    /**
+     * @notice Returns the total amount of vesting schedules by token.
+     * @return the total amount of vesting schedules
+     */
+    function getVestingSchedulesTotalAmountByToken(address token) external view returns (uint256) {
+        return vestingSchedulesTotalAmountByToken[token];
     }
 
     /**

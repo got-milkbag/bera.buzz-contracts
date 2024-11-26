@@ -131,6 +131,7 @@ contract TokenVesting is ReentrancyGuard {
 
     /**
      * @notice Release vested amount of tokens.
+     * @param token the address of the token
      * @param vestingScheduleId the vesting schedule identifier
      */
     function release(
@@ -183,7 +184,9 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the vesting schedule information for a given holder and index.
+     * @notice Returns the vesting schedule information for a given token, holder and index.
+     * @param token the address of the token
+     * @param holder the address of the holder
      * @return the vesting schedule structure information
      */
     function getVestingScheduleByAddressAndIndex(
@@ -215,7 +218,9 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @notice Computes the vested amount of tokens for the given vesting schedule identifier.
+     * @notice Computes the vested amount of tokens for the given token address and vesting schedule identifier.
+     * @param token the address of the token
+     * @param vestingScheduleId the vesting schedule identifier
      * @return the vested amount
      */
     function computeReleasableAmount(
@@ -234,7 +239,9 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @notice Returns the vesting schedule information for a given identifier.
+     * @notice Returns the vesting schedule information for a given identifier and token address.
+     * @param token the address of the token
+     * @param vestingScheduleId the vesting schedule identifier
      * @return the vesting schedule structure information
      */
     function getVestingSchedule(
@@ -258,7 +265,7 @@ contract TokenVesting is ReentrancyGuard {
     }
 
     /**
-     * @dev Returns the last vesting schedule for a given holder address.
+     * @dev Returns the last vesting schedule for a given token and holder addresses.
      */
     function getLastVestingScheduleForHolder(
         address token,

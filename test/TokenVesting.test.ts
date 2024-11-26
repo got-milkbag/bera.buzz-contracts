@@ -229,6 +229,28 @@ describe("TokenVesting", function () {
           0
         )
       ).to.be.revertedWith("TokenVesting: amount must be > 0");
+      await expect(
+        tokenVesting.createVestingSchedule(
+          ethers.constants.AddressZero,
+          testToken.address,
+          time,
+          1,
+          1,
+          1,
+          1
+        )
+      ).to.be.revertedWith("TokenVesting: beneficiary cannot be the zero address");
+      await expect(
+        tokenVesting.createVestingSchedule(
+          addr1.address,
+          ethers.constants.AddressZero,
+          time,
+          1,
+          1,
+          1,
+          1
+        )
+      ).to.be.revertedWith("TokenVesting: token cannot be the zero address");
     });
 
     it("Should not release tokens before cliff", async function () {

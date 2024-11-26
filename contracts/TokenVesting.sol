@@ -96,6 +96,8 @@ contract TokenVesting is ReentrancyGuard {
             "TokenVesting: slicePeriodSeconds must be >= 1"
         );
         require(_duration >= _cliff, "TokenVesting: duration must be >= cliff");
+        require(_beneficiary != address(0), "TokenVesting: beneficiary cannot be the zero address");
+        require(_token != address(0), "TokenVesting: token cannot be the zero address");
         bytes32 vestingScheduleId = computeNextVestingScheduleIdForHolder(
             _beneficiary
         );

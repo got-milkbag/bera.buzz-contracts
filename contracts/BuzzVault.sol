@@ -352,13 +352,12 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      */
     function _getBeraAmountForMarketCap(uint256 marketCap) internal view returns (uint256 beraAmount) {
         uint256 beraUsdPrice = priceDecoder.getPrice();
-        uint256 migrationFee = feeManager.migrationFeeBps();
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
         uint256 beraAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
         uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
 
-        beraAmount = beraAmountNoFee + ((beraAmountNoFee * migrationFee) / 10000);
+        beraAmount = beraAmountNoFee + feeManager.quoteMigrationFee(beraAmountNoFee);
     }
 
     function _unwrap(address to, uint256 amount) internal {
@@ -368,7 +367,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         wbera.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
-        
+
         _transferEther(payable(to), amount);
     }
 

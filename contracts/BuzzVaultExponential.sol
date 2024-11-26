@@ -56,9 +56,10 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (isBuyOrder) {
             uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
+
             (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(info.baseBalance, amountAfterFee, k, growthRate);
+
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
-            //if (tokenBalance - amountOut < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
             if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
@@ -223,6 +224,16 @@ contract BuzzVaultExponential is BuzzVault {
         amountOut = baseBefore.sub(baseAfter).unwrap();
         pricePerToken = (amountOut * 1e18) / quoteAmountIn;
         pricePerBase = (quoteAmountIn * 1e18) / amountOut;
+    }
+
+    function _collectFees(address token, address user, uint256 amount) internal returns (uint256 tradingFee, uint256 referralFee) {
+        tradingFee = feeManager.quoteTradingFee(amount);
+        if (tradingFee > 0) {
+            referralFee = _collectReferralFee(user, token, tradingFee);
+            tradingFee -= referralFee; // will never underflow because ref fee is a % of trading fee
+            IERC20(token).safeApprove(address(feeManager), tradingFee);
+            feeManager.collectTradingFee(token, tradingFee);
+        }
     }
 
     function _collectFees(address token, address user, uint256 amount) internal returns (uint256 tradingFee, uint256 referralFee) {

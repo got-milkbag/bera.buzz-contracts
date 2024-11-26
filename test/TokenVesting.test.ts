@@ -30,11 +30,9 @@ describe("TokenVesting", function () {
 
     it("Should vest tokens gradually", async function () {
       // deploy vesting contract
-      const tokenVesting = await TokenVesting.deploy(testToken.address);
+      const tokenVesting = await TokenVesting.deploy();
       await tokenVesting.deployed();
-      expect((await tokenVesting.getToken()).toString()).to.equal(
-        testToken.address
-      );
+
       // approve tokens to vesting contract
       await expect(testToken.approve(tokenVesting.address, 1000))
         .to.emit(testToken, "Approval")
@@ -54,6 +52,7 @@ describe("TokenVesting", function () {
       // create new vesting schedule
       await tokenVesting.createVestingSchedule(
         beneficiary.address,
+        testToken.address,
         startTime,
         cliff,
         duration,
@@ -76,7 +75,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is 0
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to half the vesting period
@@ -87,19 +86,19 @@ describe("TokenVesting", function () {
       expect(
         await tokenVesting
           .connect(beneficiary)
-          .computeReleasableAmount(vestingScheduleId)
+          .computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(50);
 
       // check that only beneficiary can try to release vested tokens
       await expect(
-        tokenVesting.connect(addr2).release(vestingScheduleId)
+        tokenVesting.connect(addr2).release(testToken.address, vestingScheduleId)
       ).to.be.revertedWith(
         "TokenVesting: only beneficiary can release vested tokens"
       );
 
       // release tokens and check that a Transfer event is emitted with a value of 50
       await expect(
-        tokenVesting.connect(beneficiary).release(vestingScheduleId)
+        tokenVesting.connect(beneficiary).release(testToken.address, vestingScheduleId)
       )
         .to.emit(testToken, "Transfer")
         .withArgs(tokenVesting.address, beneficiary.address, 50);
@@ -108,9 +107,10 @@ describe("TokenVesting", function () {
       expect(
         await tokenVesting
           .connect(beneficiary)
-          .computeReleasableAmount(vestingScheduleId)
+          .computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
       let vestingSchedule = await tokenVesting.getVestingSchedule(
+        testToken.address,
         vestingScheduleId
       );
 
@@ -124,17 +124,18 @@ describe("TokenVesting", function () {
       expect(
         await tokenVesting
           .connect(beneficiary)
-          .computeReleasableAmount(vestingScheduleId)
+          .computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(50);
 
       // beneficiary release vested tokens (and check for Release event)
       await expect(
-        tokenVesting.connect(beneficiary).release(vestingScheduleId)
+        tokenVesting.connect(beneficiary).release(testToken.address, vestingScheduleId)
       )
         .to.emit(tokenVesting, "TokensReleased")
         .withArgs(vestingScheduleId, beneficiary.address, 50);
 
       vestingSchedule = await tokenVesting.getVestingSchedule(
+        testToken.address,
         vestingScheduleId
       );
 
@@ -145,7 +146,7 @@ describe("TokenVesting", function () {
       expect(
         await tokenVesting
           .connect(beneficiary)
-          .computeReleasableAmount(vestingScheduleId)
+          .computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       /*
@@ -169,7 +170,7 @@ describe("TokenVesting", function () {
     });
 
     it("Should compute vesting schedule index", async function () {
-      const tokenVesting = await TokenVesting.deploy(testToken.address);
+      const tokenVesting = await TokenVesting.deploy();
       await tokenVesting.deployed();
       const expectedVestingScheduleId =
         "0xa279197a1d7a4b7398aa0248e95b8fcc6cdfb43220ade05d01add9c5468ea097";
@@ -191,13 +192,14 @@ describe("TokenVesting", function () {
     });
 
     it("Should check input parameters for createVestingSchedule method", async function () {
-      const tokenVesting = await TokenVesting.deploy(testToken.address);
+      const tokenVesting = await TokenVesting.deploy();
       await tokenVesting.deployed();
       await testToken.approve(tokenVesting.address, 1000);
       const time = Date.now();
       await expect(
         tokenVesting.createVestingSchedule(
           addr1.address,
+          testToken.address,
           time,
           0,
           0,
@@ -208,6 +210,7 @@ describe("TokenVesting", function () {
       await expect(
         tokenVesting.createVestingSchedule(
           addr1.address,
+          testToken.address,
           time,
           0,
           1,
@@ -218,6 +221,7 @@ describe("TokenVesting", function () {
       await expect(
         tokenVesting.createVestingSchedule(
           addr1.address,
+          testToken.address,
           time,
           0,
           1,
@@ -229,7 +233,7 @@ describe("TokenVesting", function () {
 
     it("Should not release tokens before cliff", async function () {
       // deploy vesting contract
-      const tokenVesting = await TokenVesting.deploy(testToken.address);
+      const tokenVesting = await TokenVesting.deploy();
       await tokenVesting.deployed();
 
       // approve tokens to vesting contract
@@ -255,6 +259,7 @@ describe("TokenVesting", function () {
       // create new vesting schedule (and check event emission)
       await expect(tokenVesting.createVestingSchedule(
         beneficiary.address,
+        testToken.address,
         startTime,
         cliff,
         duration,
@@ -264,6 +269,7 @@ describe("TokenVesting", function () {
         .withArgs(
           vestingScheduleId, 
           beneficiary.address,
+          testToken.address,
           startTime + cliff,
           startTime,
           duration,
@@ -273,7 +279,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is 0 before cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to just before the cliff
@@ -282,7 +288,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is still 0 just before the cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to the cliff
@@ -290,13 +296,13 @@ describe("TokenVesting", function () {
 
       // check that vested amount is greater than 0 at the cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(20);
     });
 
     it("Should vest tokens correctly with a 6-months cliff and 12-months duration", async function () {
       // deploy vesting contract
-      const tokenVesting = await TokenVesting.deploy(testToken.address);
+      const tokenVesting = await TokenVesting.deploy();
       await tokenVesting.deployed();
 
       // approve tokens to vesting contract
@@ -315,6 +321,7 @@ describe("TokenVesting", function () {
       // create new vesting schedule
       await tokenVesting.createVestingSchedule(
         beneficiary.address,
+        testToken.address,
         startTime,
         cliff,
         duration,
@@ -331,7 +338,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is 0 before cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to just before the cliff (5 months)
@@ -340,7 +347,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is still 0 just before the cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to the cliff (6 months)
@@ -348,7 +355,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is equal to the total amount at the cliff
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(0);
 
       // set time to halfway through the vesting period (12 months)
@@ -357,7 +364,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is greater than 0
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.gt(400);
 
       // set time to the end of the vesting period (18 months)
@@ -366,7 +373,7 @@ describe("TokenVesting", function () {
 
       // check that vested amount is equal to the total amount
       expect(
-        await tokenVesting.computeReleasableAmount(vestingScheduleId)
+        await tokenVesting.computeReleasableAmount(testToken.address, vestingScheduleId)
       ).to.be.equal(amount);
     });
 

@@ -235,14 +235,4 @@ contract BuzzVaultExponential is BuzzVault {
             feeManager.collectTradingFee(token, tradingFee);
         }
     }
-
-    function _collectFees(address token, address user, uint256 amount) internal returns (uint256 tradingFee, uint256 referralFee) {
-        tradingFee = feeManager.quoteTradingFee(amount);
-        if (tradingFee > 0) {
-            referralFee = _collectReferralFee(user, token, tradingFee);
-            tradingFee -= referralFee; // will never underflow because ref fee is a % of trading fee
-            IERC20(token).safeApprove(address(feeManager), tradingFee);
-            feeManager.collectTradingFee(token, tradingFee);
-        }
-    }
 }

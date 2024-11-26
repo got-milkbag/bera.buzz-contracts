@@ -276,6 +276,9 @@ describe("BuzzTokenFactory Tests", () => {
             expect(tokenCreatedEvent.args.baseToken).to.be.equal(wBera.address);
             expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
             expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
+            expect(tokenCreatedEvent.args.marketCap).to.be.equal(ethers.utils.parseEther("69420"));
+            expect(tokenCreatedEvent.args.curveData[0]).to.be.equal(ethers.utils.parseEther("2.22"));
+            expect(tokenCreatedEvent.args.curveData[1]).to.be.equal(BigNumber.from("3350000000"));
 
             // Get token contract
             token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);

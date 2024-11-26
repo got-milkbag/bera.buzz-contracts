@@ -13,4 +13,6 @@ interface IFeeManager {
     function quoteTradingFee(uint256 amount) external view returns (uint256 fee);
 
     function quoteMigrationFee(uint256 amount) external view returns (uint256 fee);
+
+    function migrationFeeBps() external view returns (uint256);
 }

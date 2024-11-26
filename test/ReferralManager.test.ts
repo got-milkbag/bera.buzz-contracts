@@ -3,7 +3,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
-import { Contract } from "ethers";
+import { BigNumber, Contract } from "ethers";
 import { formatBytes32String } from "ethers/lib/utils";
 
 describe("ReferralManager Tests", () => {
@@ -109,6 +109,7 @@ describe("ReferralManager Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
+            [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
             0,
             formatBytes32String("12345"),
             ethers.utils.parseEther("69420"),

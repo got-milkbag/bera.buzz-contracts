@@ -42,8 +42,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     error BuzzVault_NativeTradeUnsupported();
     /// @notice Error code emitted when WBera transfer fails (depositing or withdrawing)
     error BuzzVault_WBeraConversionFailed();
-    /// @notice Error code emitted when curve softcap has been reached
-    //error BuzzVault_SoftcapReached();
 
     /// @notice Event emitted when a trade occurs
     event Trade(
@@ -59,10 +57,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         bool isBuyOrder
     );
 
-    /// @notice The protocol fee in basis points
-    uint256 public constant PROTOCOL_FEE_BPS = 100; // 100 -> 1%
-    /// @notice The DEX migration fee in basis points
-    uint256 public constant DEX_MIGRATION_FEE_BPS = 420; // 420 -> 4.2%
     /// @notice The percentage of total minted supply after BEX migration in bps
     uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
     /// @notice The min ERC20 amount for bonding curve swaps
@@ -71,10 +65,6 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     uint256 public constant TOTAL_MINTED_SUPPLY = 8e26;
     /// @notice Final balance threshold of the bonding curve
     uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
-    /// @notice The bonding curve alpha coefficient
-    uint256 public constant CURVE_ALPHA = 222970128658;
-    /// @notice The bonding curve beta coefficient
-    uint256 public constant CURVE_BETA = 3350000000;
 
     /// @notice The fee manager contract collecting protocol fees
     IFeeManager public immutable feeManager;
@@ -104,6 +94,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 lastPrice;
         uint256 lastBasePrice;
         uint256 beraThreshold;
+        uint256 k;
+        uint256 growthRate;
         bool bexListed;
         address lpConduit;
     }
@@ -204,15 +196,24 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param token The token address
      * @param tokenBalance The token balance
      * @param marketCap The market cap of the token
+     * @param k The initial k of the token
+     * @param growthRate The growth rate of the token
      */
-    function registerToken(address token, address baseToken, uint256 tokenBalance, uint256 marketCap) external override {
+    function registerToken(
+        address token, 
+        address baseToken, 
+        uint256 tokenBalance, 
+        uint256 marketCap,
+        uint256 k,
+        uint256 growthRate
+    ) external override {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
 
         uint256 reserveBera = _getBeraAmountForMarketCap(marketCap);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, false, address(0));
+        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, k, growthRate, false, address(0));
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
     }
@@ -256,6 +257,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         info.lastBasePrice = 0;
         info.lastPrice = 0;
         info.beraThreshold = 0;
+        info.k = 0;
+        info.growthRate = 0;
         info.bexListed = true;
 
         // collect fee
@@ -349,12 +352,13 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      */
     function _getBeraAmountForMarketCap(uint256 marketCap) internal view returns (uint256 beraAmount) {
         uint256 beraUsdPrice = priceDecoder.getPrice();
+        uint256 migrationFee = feeManager.migrationFeeBps();
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
         uint256 beraAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
         uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
 
-        beraAmount = beraAmountNoFee + ((beraAmountNoFee * DEX_MIGRATION_FEE_BPS) / 10000);
+        beraAmount = beraAmountNoFee + ((beraAmountNoFee * migrationFee) / 10000);
     }
 
     function _unwrap(address to, uint256 amount) internal {

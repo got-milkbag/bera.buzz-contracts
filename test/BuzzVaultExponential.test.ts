@@ -116,6 +116,7 @@ describe("BuzzVaultExponential Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
+            [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
             0,
             formatBytes32String("12345"),
             ethers.utils.parseEther("69420"),
@@ -168,7 +169,7 @@ describe("BuzzVaultExponential Tests", () => {
             await expect(
                 expVault
                     .connect(user1Signer)
-                    .registerToken(factory.address, wBera.address, ethers.utils.parseEther("100"), ethers.utils.parseEther("69420"))
+                    .registerToken(factory.address, wBera.address, ethers.utils.parseEther("100"), ethers.utils.parseEther("69420"), 0, 0)
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_Unauthorized");
             //console.log("initial approx token price:", calculateTokenPrice(ethers.utils.parseEther("2.7"), await expVault.initialVirtualBase()));
             //console.log("initial Token price:", await expVault.initialTokenPrice());
@@ -406,8 +407,8 @@ describe("BuzzVaultExponential Tests", () => {
             const lastPrice = tokenInfoAfter[2];
             const lastBeraPrice = tokenInfoAfter[3];
             const beraThresholdAfter = tokenInfoAfter[4];
-            const bexListed = tokenInfoAfter[6];
-            const lpConduit = tokenInfoAfter[7];
+            const bexListed = tokenInfoAfter[8];
+            const lpConduit = tokenInfoAfter[9];
 
             console.log("Lp conduit address: ", lpConduit);
 

@@ -35,6 +35,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_BaseAmountNotEnough();
     /// @notice Error code emitted when the base token address is not whitelisted
     error BuzzToken_BaseTokenNotWhitelisted();
+    /// @notice Error code emitted when the value of K is not valid
+    error BuzzToken_InvalidK();
+    /// @notice Error code emitted when the value of growth rate is not valid
+    error BuzzToken_InvalidGrowthRate();
 
     /// TODO: Fix indexed limit
     event TokenCreated(
@@ -95,6 +99,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @dev Msg.value should be greater or equal to the listing fee.
      * @param metadata A string array containing the name and symbol of the token
      * @param addr An address array containing the addresses for baseToken and vault
+     * @param curveData An array containing the curve data for the token
      * @param baseAmount The amount of base token used to buy the new token after deployment
      * @param salt The salt for the CREATE3 deployment
      * @param marketCap The market cap of the token
@@ -102,6 +107,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     function createToken(
         string[2] calldata metadata, //name, symbol
         address[2] calldata addr, //baseToken, vault
+        uint256[2] calldata curveData, //k, growthRate
         uint256 baseAmount,
         bytes32 salt,
         uint256 marketCap
@@ -111,14 +117,16 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
         if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
+        if (curveData[0] == 0) revert BuzzToken_InvalidK();
+        if (curveData[1] == 0) revert BuzzToken_InvalidGrowthRate();
 
         uint256 listingFee = feeManager.listingFee();
         if (listingFee > 0) {
             if (msg.value < listingFee) revert BuzzToken_InsufficientFee();
             feeManager.collectListingFee{value: listingFee}();
         }
-        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap);
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
+
+        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap, curveData);
 
         if (baseAmount > 0) {
             // Buy tokens after deployment
@@ -190,6 +198,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @notice Deploys a new token using CREATE3
      * @param name The name of the token
      * @param symbol The symbol of the token
+     * @param baseToken The address of the base token
      * @param vault The address of the vault
      * @param salt The salt for the CREATE3 deployment
      * @param marketCap The market cap of the token
@@ -201,14 +210,21 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address baseToken,
         address vault,
         bytes32 salt,
-        uint256 marketCap
+        uint256 marketCap,
+        uint256[2] calldata curveData
     ) internal returns (address token) {
-        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
+        uint256 k = curveData[0];
+        uint256 growthRate = curveData[1];
+
+        bytes memory bytecode = abi.encodePacked(
+            type(BuzzToken).creationCode,
+            abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault)
+        );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;
 
         IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
-        IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, marketCap);
+        IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, marketCap, k, growthRate);
     }
 }

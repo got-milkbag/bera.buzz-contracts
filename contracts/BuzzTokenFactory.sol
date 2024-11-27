@@ -126,6 +126,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             feeManager.collectListingFee{value: listingFee}();
         }
 
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
         token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap, curveData);
 
         if (baseAmount > 0) {
@@ -147,8 +148,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
-
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
     }
 
     /**

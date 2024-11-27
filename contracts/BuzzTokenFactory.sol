@@ -126,8 +126,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             feeManager.collectListingFee{value: listingFee}();
         }
 
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
         token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap, curveData);
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
 
         if (baseAmount > 0) {
             // Buy tokens after deployment

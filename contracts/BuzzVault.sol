@@ -57,7 +57,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         bool isBuyOrder
     );
 
-    event CurveDataSet(address indexed token, uint256 k, uint256 growthRate, uint256 beraThreshold);
+    event CurveDataSet(address indexed token, uint256 k, uint256 growthRate, uint256 baseThreshold);
 
     /// @notice The percentage of total minted supply after BEX migration in bps
     uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
@@ -86,7 +86,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param tokenBalance The token balance
      * @param baseBalance The base amount balance
      * @param lastPrice The last price of the token
-     * @param beraThreshold The amount of bera on the curve to lock it
+     * @param baseThreshold The amount of bera on the curve to lock it
      * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
@@ -95,7 +95,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 baseBalance; // aka reserve balance
         uint256 lastPrice;
         uint256 lastBasePrice;
-        uint256 beraThreshold;
+        uint256 baseThreshold;
         uint256 k;
         uint256 growthRate;
         bool bexListed;
@@ -259,7 +259,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         info.tokenBalance = 0;
         info.lastBasePrice = 0;
         info.lastPrice = 0;
-        info.beraThreshold = 0;
+        info.baseThreshold = 0;
         info.k = 0;
         info.growthRate = 0;
         info.bexListed = true;
@@ -319,7 +319,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
             true
         );
 
-        if (info.baseBalance >= info.beraThreshold && info.tokenBalance == 0) {
+        if (info.baseBalance >= info.baseThreshold && info.tokenBalance == 0) {
             _lockCurveAndDeposit(token, info);
         }
     }

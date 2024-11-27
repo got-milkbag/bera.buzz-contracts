@@ -1,10 +1,10 @@
-import { expect } from "chai";
-import { ethers } from "hardhat";
-import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
+import {expect} from "chai";
+import {ethers} from "hardhat";
+import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import * as helpers from "@nomicfoundation/hardhat-network-helpers";
-import { BigNumber, Contract } from "ethers";
-import { formatBytes32String } from "ethers/lib/utils";
-import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
+import {BigNumber, Contract} from "ethers";
+import {formatBytes32String} from "ethers/lib/utils";
+import {anyValue} from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("BuzzTokenFactory Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
@@ -117,7 +117,7 @@ describe("BuzzTokenFactory Tests", () => {
         await factory.connect(ownerSigner).setAllowTokenCreation(true);
 
         // Get some wBera
-        await wBera.connect(ownerSigner).deposit({ value: ethers.utils.parseEther("10") });
+        await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
     });
     describe("constructor", () => {
         it("should set the CREATE_DEPLOYER", async () => {
@@ -132,7 +132,7 @@ describe("BuzzTokenFactory Tests", () => {
         });
     });
     describe("createToken", () => {
-        beforeEach(async () => { });
+        beforeEach(async () => {});
         it("should revert if token creation is disabled", async () => {
             await factory.setAllowTokenCreation(false);
             await expect(
@@ -277,12 +277,29 @@ describe("BuzzTokenFactory Tests", () => {
             expect(tokenCreatedEvent.args.deployer).to.be.equal(ownerSigner.address);
             expect(tokenCreatedEvent.args.vault).to.be.equal(expVault.address);
             expect(tokenCreatedEvent.args.marketCap).to.be.equal(ethers.utils.parseEther("69420"));
-            expect(tokenCreatedEvent.args.curveData[0]).to.be.equal(ethers.utils.parseEther("2.22"));
-            expect(tokenCreatedEvent.args.curveData[1]).to.be.equal(BigNumber.from("3350000000"));
 
             // Get token contract
             token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
             expect(await token.name()).to.be.equal(name);
+        });
+        it("should emit a CurveDataSet event", async () => {
+            const name = "TEST";
+            const symbol = "TST";
+            expect(
+                await factory.createToken(
+                    [name, symbol],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
+                    0,
+                    formatBytes32String("12345"),
+                    ethers.utils.parseEther("69420"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            )
+                .to.emit(vault, "CurveDataSet")
+                .withArgs(anyValue, ethers.utils.parseEther("2.22"), BigNumber.from("3350000000"), anyValue);
         });
         describe("_deployToken", () => {
             beforeEach(async () => {
@@ -363,7 +380,7 @@ describe("BuzzTokenFactory Tests", () => {
             });
         });
         describe("buy on deployment - native currency", () => {
-            beforeEach(async () => { });
+            beforeEach(async () => {});
             it("should revert if the remaining value is not the same as the baseAmount", async () => {
                 // Deploy and buy token
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
@@ -415,7 +432,7 @@ describe("BuzzTokenFactory Tests", () => {
             });
         });
         describe("buy on deployment - base token", () => {
-            beforeEach(async () => { });
+            beforeEach(async () => {});
             it("should purchase the using base tokens and emit a trade event", async () => {
                 // Deploy and buy token
                 await wBera.approve(factory.address, ethers.utils.parseEther("0.1"));

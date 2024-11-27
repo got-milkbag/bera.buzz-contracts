@@ -57,6 +57,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         bool isBuyOrder
     );
 
+    event CurveDataSet(address indexed token, uint256 k, uint256 growthRate, uint256 beraThreshold);
+
     /// @notice The percentage of total minted supply after BEX migration in bps
     uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
     /// @notice The min ERC20 amount for bonding curve swaps
@@ -200,9 +202,9 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param growthRate The growth rate of the token
      */
     function registerToken(
-        address token, 
-        address baseToken, 
-        uint256 tokenBalance, 
+        address token,
+        address baseToken,
+        uint256 tokenBalance,
         uint256 marketCap,
         uint256 k,
         uint256 growthRate
@@ -216,6 +218,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, k, growthRate, false, address(0));
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
+        emit CurveDataSet(token, k, growthRate, reserveBera);
     }
 
     function quote(

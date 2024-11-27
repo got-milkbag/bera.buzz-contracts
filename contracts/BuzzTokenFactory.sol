@@ -48,8 +48,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address indexed deployer,
         string name,
         string symbol,
-        uint256 marketCap,
-        uint256[2] curveData
+        uint256 marketCap
     );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
@@ -149,16 +148,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
 
-        emit TokenCreated(
-            token, 
-            addr[0], 
-            addr[1], 
-            msg.sender, 
-            metadata[0], 
-            metadata[1], 
-            marketCap, 
-            curveData
-        );
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
     }
 
     /**
@@ -228,10 +218,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         uint256 k = curveData[0];
         uint256 growthRate = curveData[1];
 
-        bytes memory bytecode = abi.encodePacked(
-            type(BuzzToken).creationCode,
-            abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault)
-        );
+        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
 
         token = ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
         isDeployed[token] = true;

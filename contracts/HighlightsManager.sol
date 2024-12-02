@@ -4,8 +4,6 @@ pragma solidity ^0.8.19;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
-
 contract HighlightsManager is Ownable, ReentrancyGuard {
     /// @notice Error thrown when the duration is zero
     error HighlightsManager_ZeroDuration();

@@ -4,6 +4,8 @@ pragma solidity ^0.8.19;
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
+
 contract HighlightsManager is Ownable, ReentrancyGuard {
     /// @notice Error thrown when the duration is zero
     error HighlightsManager_ZeroDuration();
@@ -96,9 +98,22 @@ contract HighlightsManager is Ownable, ReentrancyGuard {
         if (duration <= EXP_THRESHOLD) {
             fee = baseFeePerSecond * duration;
         } else {
-            uint256 extraTime = duration - EXP_THRESHOLD;
+            UD60x18 extraTime = ud(duration - EXP_THRESHOLD);
+            UD60x18 maxExtraTime = ud(hardCap - EXP_THRESHOLD);
+            UD60x18 baseFeePerSecondUd = ud(baseFeePerSecond);
+            UD60x18 expThresholdUd = ud(EXP_THRESHOLD);
+            UD60x18 wadUd = ud(1e18);
+            UD60x18 logMultiplier = ud(50).log2(); // Fixed-point arithmetic for precision (change ud(50) to final multiplier on hour end)
 
-            fee = (baseFeePerSecond * EXP_THRESHOLD) + baseFeePerSecond * extraTime * 2 ** (extraTime);
+            // Compute scaling factor T
+            UD60x18 T = maxExtraTime.mul(wadUd).div(logMultiplier);
+
+            // Calculate exponential growth component
+            UD60x18 exponentialGrowth = (extraTime.mul(wadUd).div(T)).exp2().div(wadUd); // Adjusted for fixed-point
+            UD60x18 exponentialFee = baseFeePerSecondUd.mul(extraTime).mul(exponentialGrowth);
+
+            // Total fee is the sum of the base fee and the exponential component
+            fee = ((baseFeePerSecondUd.mul(expThresholdUd)).add(exponentialFee)).unwrap();
         }
         return fee;
     }

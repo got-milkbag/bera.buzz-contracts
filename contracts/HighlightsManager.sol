@@ -98,22 +98,16 @@ contract HighlightsManager is Ownable, ReentrancyGuard {
         if (duration <= EXP_THRESHOLD) {
             fee = baseFeePerSecond * duration;
         } else {
-            UD60x18 extraTime = ud(duration - EXP_THRESHOLD);
-            UD60x18 maxExtraTime = ud(hardCap - EXP_THRESHOLD);
-            UD60x18 baseFeePerSecondUd = ud(baseFeePerSecond);
-            UD60x18 expThresholdUd = ud(EXP_THRESHOLD);
-            UD60x18 wadUd = ud(1e18);
-            UD60x18 logMultiplier = ud(50).log2(); // Fixed-point arithmetic for precision (change ud(50) to final multiplier on hour end)
+            uint256 extraTime = duration - EXP_THRESHOLD;
 
-            // Compute scaling factor T
-            UD60x18 T = maxExtraTime.mul(wadUd).div(logMultiplier);
+            // Fixed growth factor G
+            uint256 growthFactor = 98; // Representing 9.8 as an integer (fixed-point, scaled by 10) -> growth rate for 50x fee on 1 hour vs 10 minutes
 
-            // Calculate exponential growth component
-            UD60x18 exponentialGrowth = (extraTime.mul(wadUd).div(T)).exp2().div(wadUd); // Adjusted for fixed-point
-            UD60x18 exponentialFee = baseFeePerSecondUd.mul(extraTime).mul(exponentialGrowth);
+            // Calculate exponential fee using the growth factor
+            uint256 exponentialFee = (baseFeePerSecond * extraTime * growthFactor) / 10;
 
             // Total fee is the sum of the base fee and the exponential component
-            fee = ((baseFeePerSecondUd.mul(expThresholdUd)).add(exponentialFee)).unwrap();
+            fee = (baseFeePerSecond * EXP_THRESHOLD) + exponentialFee;
         }
         return fee;
     }

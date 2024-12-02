@@ -54,6 +54,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 baseBalance,
         uint256 lastPrice,
         uint256 lastBasePrice,
+        uint256 currentPrice,
+        uint256 currentBasePrice,
         bool isBuyOrder
     );
 
@@ -83,23 +85,32 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
     /**
      * @notice Data about a token in the bonding curve
+     * @param baseToken The base token address
+     * @param lpConduit The LP conduit address
      * @param tokenBalance The token balance
      * @param baseBalance The base amount balance
      * @param lastPrice The last price of the token
+     * @param lastBasePrice The last price of the base token
+     * @param currentPrice The current price of the token
+     * @param currentBasePrice The current price of the base token
      * @param baseThreshold The amount of bera on the curve to lock it
+     * @param k The k value of the token
+     * @param growthRate The growth rate of the token
      * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
         address baseToken;
+        address lpConduit;
         uint256 tokenBalance;
         uint256 baseBalance; // aka reserve balance
         uint256 lastPrice;
         uint256 lastBasePrice;
+        uint256 currentPrice;
+        uint256 currentBasePrice;
         uint256 baseThreshold;
         uint256 k;
         uint256 growthRate;
         bool bexListed;
-        address lpConduit;
     }
 
     /// @notice Map token address to token info
@@ -188,6 +199,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
             info.baseBalance,
             info.lastPrice,
             info.lastBasePrice,
+            info.currentPrice,
+            info.currentBasePrice,
             false
         );
     }
@@ -215,7 +228,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         uint256 reserveBera = _getBeraAmountForMarketCap(marketCap);
 
         // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(baseToken, tokenBalance, 0, 0, 0, reserveBera, k, growthRate, false, address(0));
+        tokenInfo[token] = TokenInfo(baseToken, address(0), tokenBalance, 0, 0, 0, 0, 0, reserveBera, k, growthRate, false);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
         emit CurveDataSet(token, k, growthRate, reserveBera);
@@ -257,8 +270,10 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         info.baseBalance = 0;
         info.tokenBalance = 0;
-        info.lastBasePrice = 0;
         info.lastPrice = 0;
+        info.lastBasePrice = 0;
+        info.currentPrice = 0;
+        info.currentBasePrice = 0;
         info.baseThreshold = 0;
         info.k = 0;
         info.growthRate = 0;
@@ -278,10 +293,10 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
 
         info.lpConduit = lpConduit;
-
+ 
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
-            IERC20(token).safeTransfer(address(0x1), IERC20(token).balanceOf(address(this)));
+            IERC20(token).safeTransfer(address(0xdead), IERC20(token).balanceOf(address(this)));
         }
     }
 
@@ -316,6 +331,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
             info.baseBalance,
             info.lastPrice,
             info.lastBasePrice,
+            info.currentPrice,
+            info.currentBasePrice,
             true
         );
 

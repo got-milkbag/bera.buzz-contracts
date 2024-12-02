@@ -56,9 +56,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (isBuyOrder) {
             uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
-
             (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(info.baseBalance, amountAfterFee, k, growthRate);
-
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
@@ -90,7 +88,6 @@ contract BuzzVaultExponential is BuzzVault {
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
         if (tokenAmountBuy > info.tokenBalance) tokenAmountBuy = info.tokenBalance;
-        //if (info.tokenBalance - tokenAmountBuy < CURVE_BALANCE_THRESHOLD - (CURVE_BALANCE_THRESHOLD / 20)) revert BuzzVault_SoftcapReached();
 
         // Update balances
         info.baseBalance += netBaseAmount;
@@ -99,6 +96,8 @@ contract BuzzVaultExponential is BuzzVault {
         // Update prices
         info.lastPrice = basePerToken;
         info.lastBasePrice = tokenPerBase;
+        info.currentPrice = info.baseBalance * 1e18 / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
+        info.currentBasePrice = (info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18 / info.baseBalance;
 
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
@@ -144,6 +143,8 @@ contract BuzzVaultExponential is BuzzVault {
         // Update prices
         info.lastPrice = basePerToken;
         info.lastBasePrice = tokenPerBase;
+        info.currentPrice = info.baseBalance * 1e18 / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
+        info.currentBasePrice = (info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18 / info.baseBalance;
 
         netBaseAmount = baseAmountSell - tradingFee - referralFee;
 

@@ -352,6 +352,8 @@ describe("BuzzVaultExponential Tests", () => {
                     anyValue,
                     anyValue,
                     anyValue,
+                    anyValue,
+                    anyValue,
                     true
                 );
         });
@@ -384,7 +386,7 @@ describe("BuzzVaultExponential Tests", () => {
             console.log("Token contract balanceA: ", tokenContractBalance.toString());
 
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
-            const beraThreshold = tokenInfoBefore[5];
+            const beraThreshold = tokenInfoBefore[6];
             console.log("Bera thresholdA: ", beraThreshold.toString());
 
             const beraPrice = await expVault.getBeraUsdPrice();
@@ -400,15 +402,17 @@ describe("BuzzVaultExponential Tests", () => {
             const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
             console.log("Price per token in BeraA: ", pricePerToken);
 
-            const tokenBalance = tokenInfoAfter[1];
+            const tokenBalance = tokenInfoAfter[2];
             console.log("Token balanceA: ", tokenBalance.toString());
 
-            const beraBalance = tokenInfoAfter[1];
-            const lastPrice = tokenInfoAfter[2];
-            const lastBeraPrice = tokenInfoAfter[3];
-            const beraThresholdAfter = tokenInfoAfter[4];
-            const bexListed = tokenInfoAfter[8];
-            const lpConduit = tokenInfoAfter[9];
+            const beraBalance = tokenInfoAfter[2];
+            const lastPrice = tokenInfoAfter[3];
+            const lastBeraPrice = tokenInfoAfter[4];
+            const currentPrice = tokenInfoAfter[5];
+            const currentBeraPrice = tokenInfoAfter[6];
+            const beraThresholdAfter = tokenInfoAfter[7];
+            const bexListed = tokenInfoAfter[11];
+            const lpConduit = tokenInfoAfter[1];
 
             console.log("Lp conduit address: ", lpConduit);
 
@@ -420,6 +424,8 @@ describe("BuzzVaultExponential Tests", () => {
             expect(beraBalance).to.be.equal(0);
             expect(lastPrice).to.be.equal(0);
             expect(lastBeraPrice).to.be.equal(0);
+            expect(currentPrice).to.be.equal(0);
+            expect(currentBeraPrice).to.be.equal(0);
             expect(beraThresholdAfter).to.be.equal(0);
             expect(bexListed).to.be.equal(true);
             expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
@@ -565,6 +571,8 @@ describe("BuzzVaultExponential Tests", () => {
                     anyValue,
                     anyValue,
                     anyValue,
+                    anyValue,
+                    anyValue,
                     false
                 );
         });
@@ -584,7 +592,7 @@ describe("BuzzVaultExponential Tests", () => {
             await expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero, false);
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
 
-            expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(userTokenBalance));
+            expect(tokenInfoAfter[2]).to.be.equal(tokenInfoBefore[2].add(userTokenBalance));
         });
     });
 });

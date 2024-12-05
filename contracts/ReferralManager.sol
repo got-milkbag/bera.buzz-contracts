@@ -122,7 +122,7 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
     /// @notice Callable by the vault with the address of the referred user
     /// @param user The address of the referred user
     /// @return totalReferralBps The total referral bps that the calling contract should deduct from the protocol fee and pass to the Referral Manager via receiveReferral
-    function getReferralBpsFor(address user) external view returns (uint256 totalReferralBps) {
+    function getReferralBpsFor(address user) public view returns (uint256 totalReferralBps) {
         if ((validUntil < block.timestamp) || (referredBy[user] == address(0))) {
             return 0;
         }
@@ -130,6 +130,20 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
         totalReferralBps = directRefFeeBps;
         if (indirectReferral[user] != address(0)) {
             totalReferralBps += indirectRefFeeBps;
+        }
+    }
+
+    /**
+     * @notice Calculates the referral fee for a user
+     * @param user The user address
+     * @param amount The amount to calculate the fee on
+     * @return referralFee The referral fee
+     */
+    function quoteReferralFee(address user, uint256 amount) external view returns (uint256 referralFee) {
+        uint256 bps = getReferralBpsFor(user);
+
+        if (bps > 0) {
+            referralFee = (amount * bps) / 1e4;
         }
     }
 

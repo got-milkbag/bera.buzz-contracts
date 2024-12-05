@@ -75,7 +75,7 @@ contract BuzzVaultExponential is BuzzVault {
      */
     function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
-        uint256 referralFee = _getReferralFee(msg.sender, tradingFee);
+        uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
 
         uint256 netBaseAmount = baseAmount - tradingFee - referralFee;
         (uint256 tokenAmountBuy, uint256 basePerToken, uint256 tokenPerBase) = _calculateBuyPrice(
@@ -147,7 +147,7 @@ contract BuzzVaultExponential is BuzzVault {
         info.currentBasePrice = (info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18 / info.baseBalance;
 
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmountSell);
-        uint256 referralFee = _getReferralFee(msg.sender, tradingFee);
+        uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
 
         netBaseAmount = baseAmountSell - tradingFee - referralFee;
 
@@ -236,11 +236,11 @@ contract BuzzVaultExponential is BuzzVault {
     function _collectFees(address token, address user, uint256 amount) internal returns (uint256 tradingFee, uint256 referralFee) {
         tradingFee = feeManager.quoteTradingFee(amount);
         if (tradingFee > 0) {
-            referralFee = _getReferralFee(user, tradingFee);
-            tradingFee -= referralFee; // will never underflow because ref fee is a % of trading fee
+            referralFee = referralManager.quoteReferralFee(user, tradingFee);
+            uint256 tradingMinusRef = tradingFee - referralFee; // will never underflow because ref fee is a % of trading fee
             
-            IERC20(token).safeApprove(address(feeManager), tradingFee);
-            feeManager.collectTradingFee(token, tradingFee);
+            IERC20(token).safeApprove(address(feeManager), tradingMinusRef);
+            feeManager.collectTradingFee(token, tradingMinusRef);
             _collectReferralFee(user, token, tradingFee);
         }
     }

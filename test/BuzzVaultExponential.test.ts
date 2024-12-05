@@ -380,10 +380,12 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter.baseBalance).to.be.equal(tokenInfoBefore.baseBalance.add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("830");
+            const msgValue = ethers.utils.parseEther("2000");
 
             const tokenContractBalance = await token.balanceOf(expVault.address);
             console.log("Token contract balanceA: ", tokenContractBalance.toString());
+
+            const userBaseBalanceBefore = await wBera.balanceOf(user1Signer.address);
 
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
             const beraThreshold = tokenInfoBefore[6];
@@ -392,14 +394,20 @@ describe("BuzzVaultExponential Tests", () => {
             const beraPrice = await expVault.getBeraUsdPrice();
             console.log("Bera priceA: ", beraPrice.toString());
 
-            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
-                value: ethers.utils.parseEther("1500"),
+            const tx = await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
+                value: msgValue,
             });
+            const receipt = await tx.wait();
 
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
             const userTokenBalance = await token.balanceOf(user1Signer.address);
+            
+            const userBaseBalanceAfter = await wBera.balanceOf(user1Signer.address);
 
-            const pricePerToken = calculateTokenPrice(msgValue, userTokenBalance);
+            const tradeEvent = receipt.events?.find((x: any) => x.event === "Trade");
+            const baseAmount = tradeEvent.args.baseAmount
+
+            const pricePerToken = calculateTokenPrice(baseAmount, userTokenBalance);
             console.log("Price per token in BeraA: ", pricePerToken);
 
             const tokenBalance = tokenInfoAfter[2];
@@ -429,6 +437,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(beraThresholdAfter).to.be.equal(0);
             expect(bexListed).to.be.equal(true);
             expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
+            expect(userBaseBalanceAfter.sub(userBaseBalanceBefore)).to.be.gt(0);
         });
     });
     describe("sell", () => {

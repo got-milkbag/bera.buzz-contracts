@@ -87,7 +87,18 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
-        if (tokenAmountBuy > info.tokenBalance) tokenAmountBuy = info.tokenBalance;
+
+        // Calculate base token surplus whenever applicable
+        uint256 baseSurplus;
+        if (tokenAmountBuy > info.tokenBalance) {
+            tokenAmountBuy = info.tokenBalance;
+
+            uint256 basePlusNet = info.baseBalance + netBaseAmount; 
+            if (basePlusNet > info.baseThreshold) {
+                baseSurplus = basePlusNet - info.baseThreshold;
+                netBaseAmount -= baseSurplus;
+            }
+        }
 
         // Update balances
         info.baseBalance += netBaseAmount;
@@ -104,6 +115,11 @@ contract BuzzVaultExponential is BuzzVault {
 
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
+
+        // refund user if they paid too much
+        if (baseSurplus > 0) {
+            IERC20(info.baseToken).safeTransfer(msg.sender, baseSurplus);
+        }
 
         tokenAmount = tokenAmountBuy;
     }

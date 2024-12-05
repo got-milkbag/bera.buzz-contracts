@@ -12,7 +12,11 @@ async function main() {
 
     // Deploy token
     const Token = await ethers.getContractFactory("BuzzToken");
-    const token = await Token.deploy("Test 1", "TST1", ethers.utils.parseEther("1000000"), BigNumber.from(0), deployer.address, ethers.constants.AddressZero, deployer.address);
+    const token = await Token.deploy("Test 1", "TST1", ethers.utils.parseEther("1000000"), deployer.address, deployer.address);
+
+    // Deploy token
+    const Token1 = await ethers.getContractFactory("BuzzToken");
+    const token1 = await Token.deploy("Test 2", "TST2", ethers.utils.parseEther("1000000"), deployer.address, deployer.address);
 
     // Deploy BexLiquidityManager
     const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
@@ -21,15 +25,17 @@ async function main() {
     console.log("Token address: ", token.address);
     console.log("BexLiquidityManager address: ", bexLiquidityManager.address);
 
-    const approveTx = await token.connect(deployer).approve(bexLiquidityManager.address, ethers.utils.parseEther("100"));
+    const approveTx = await token.connect(deployer).approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000"));
 
     await approveTx.wait();
 
     console.log(approveTx);
 
-    const tx = await bexLiquidityManager.createPoolAndAdd(token.address, ethers.utils.parseEther("100"), {
-        value: ethers.utils.parseEther("0.001"),
-    });
+    const approveTx1 = await token1.connect(deployer).approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000"));
+    await approveTx1.wait();
+    console.log(approveTx1);
+
+    const tx = await bexLiquidityManager.createPoolAndAdd(token.address, token1.address, ethers.utils.parseEther("0.001"), ethers.utils.parseEther("1000000"));
 
     console.log(tx);
 }

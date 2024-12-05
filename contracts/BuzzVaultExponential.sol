@@ -60,8 +60,8 @@ contract BuzzVaultExponential is BuzzVault {
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
-            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
             amountOut -= feeManager.quoteTradingFee(amountOut);
+            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
         }
     }
 

@@ -312,7 +312,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
-
+        if (info.baseBalance + (baseAmount - feeManager.quoteTradingFee(baseAmount)) > info.baseThreshold) revert BuzzVault_InvalidReserves();
         if (info.bexListed) revert BuzzVault_BexListed();
 
         uint256 contractBalance = IERC20(token).balanceOf(address(this));
@@ -338,6 +338,20 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
         if (info.baseBalance >= info.baseThreshold && info.tokenBalance == 0) {
             _lockCurveAndDeposit(token, info);
+        }
+    }
+
+    /**
+     * @notice Calculates the referral fee for a user
+     * @param user The user address
+     * @param amount The amount to calculate the fee on
+     * @return referralFee The referral fee
+     */
+    function _getReferralFee(address user, uint256 amount) internal view returns (uint256 referralFee) {
+        uint256 bps = referralManager.getReferralBpsFor(user);
+
+        if (bps > 0) {
+            referralFee = (amount * bps) / 1e4;
         }
     }
 

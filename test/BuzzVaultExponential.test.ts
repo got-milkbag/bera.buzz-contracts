@@ -500,7 +500,7 @@ describe("BuzzVaultExponential Tests", () => {
             const tradingFee = await feeManager.quoteTradingFee(grossBaseAmount);
 
             // TODO - Check: Test ignoring rounding errors
-            // expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.eq(tradingFee);
+            //expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.eq(tradingFee);
         });
 
         it("should transfer the referral fee, and a lower trading fee", async () => {
@@ -521,8 +521,8 @@ describe("BuzzVaultExponential Tests", () => {
             const referralFee = tradingFee.mul(refUserBps).div(10000);
 
             // TODO - Check: Test ignoring rounding errors
-            // expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(referralFee);
-            // expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee.sub(referralFee));
+            expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(referralFee);
+            //expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee.sub(referralFee));
         });
 
         it("should not collect a referral fee if trading fee is 0", async () => {

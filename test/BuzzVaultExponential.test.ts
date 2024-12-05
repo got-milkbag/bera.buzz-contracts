@@ -496,7 +496,7 @@ describe("BuzzVaultExponential Tests", () => {
 
             const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
             // increase baseAmount by 1%
-            const grossBaseAmount = baseAmount.add(baseAmount.div(100));
+            const grossBaseAmount = baseAmount.add(baseAmount.mul(100).div(10000));
             const tradingFee = await feeManager.quoteTradingFee(grossBaseAmount);
 
             // TODO - Check: Test ignoring rounding errors
@@ -509,12 +509,16 @@ describe("BuzzVaultExponential Tests", () => {
             const treasuryBalanceBefore = await wBera.balanceOf(treasury.address);
             const sellAmount = ethers.utils.parseEther("10000");
 
-            await expVault
+            const tx = await expVault
                 .connect(user1Signer)
                 .sell(token.address, sellAmount, ethers.utils.parseEther("0.0001"), ethers.constants.AddressZero, false);
+            const receipt = await tx.wait();
+            const tradeEvent = receipt.events?.find((x: any) => x.event === "Trade");
 
             const treasuryBalanceAfter = await wBera.balanceOf(treasury.address);
-            const tradingFee = await feeManager.quoteTradingFee(sellAmount);
+            const baseAmount = tradeEvent?.args.baseAmount;
+
+            const tradingFee = await feeManager.quoteTradingFee(baseAmount.add(baseAmount.div(100)));
 
             // Calculate referral fee
             const refUserBps = await referralManager.getReferralBpsFor(user1Signer.address);

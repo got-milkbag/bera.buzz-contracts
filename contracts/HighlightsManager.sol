@@ -26,7 +26,7 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     error HighlightsManager_TokenWithinCoolDown();
 
     /// @notice Event emitted when a token is highlighted
-    event TokenHighlighted(address indexed token, address indexed buyer, uint256 duration, uint256 bookedUntil);
+    event TokenHighlighted(address indexed token, address indexed buyer, uint256 duration, uint256 bookedUntil, uint256 fee);
     /// @notice Event emitted when the treasury address is set
     event TreasurySet(address indexed treasury);
     /// @notice Event emitted when the base fee is set
@@ -92,7 +92,7 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
         (bool success, ) = treasury.call{value: fee}("");
         if (!success) revert HighlightsManager_EthTransferFailed();
 
-        emit TokenHighlighted(token, msg.sender, duration, bookedUntil);
+        emit TokenHighlighted(token, msg.sender, duration, bookedUntil, fee);
     }
 
     /**

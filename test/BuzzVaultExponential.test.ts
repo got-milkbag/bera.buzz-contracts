@@ -508,8 +508,8 @@ describe("BuzzVaultExponential Tests", () => {
             const grossBaseAmount = baseAmount.add(baseAmount.mul(100).div(10000));
             const tradingFee = await feeManager.quoteTradingFee(grossBaseAmount);
 
-            // TODO - Check: Test ignoring rounding errors
-            //expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.eq(tradingFee);
+            // Test ignoring rounding errors
+            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.approximately(tradingFee, ethers.utils.parseUnits("1", 9));
         });
 
         it("should transfer the referral fee, and a lower trading fee", async () => {
@@ -533,9 +533,10 @@ describe("BuzzVaultExponential Tests", () => {
             const refUserBps = await referralManager.getReferralBpsFor(user1Signer.address);
             const referralFee = tradingFee.mul(refUserBps).div(10000);
 
-            // TODO - Check: Test ignoring rounding errors
             expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(referralFee);
-            //expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee.sub(referralFee));
+            // Test ignoring rounding errors
+            expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.approximately(tradingFee.sub(referralFee), ethers.utils.parseUnits("1", 9));
+            
         });
 
         it("should not collect a referral fee if trading fee is 0", async () => {
@@ -590,13 +591,16 @@ describe("BuzzVaultExponential Tests", () => {
                 );
         });
         it("should unwrap the wrapped bera", async () => {
+            const userBalanceBefore = await ethers.provider.getBalance(user1Signer.address);
             const amountToSell = ethers.utils.parseEther("100");
             await token.connect(user1Signer).approve(expVault.address, amountToSell);
-            expect(await await expVault.connect(user1Signer).sell(token.address, amountToSell, 0, ethers.constants.AddressZero, true)).to.emit(
-                expVault,
-                "Trade"
-            );
-            // TODO: Calculate eth transfer amount
+            const tx = await expVault.connect(user1Signer).sell(token.address, amountToSell, 0, ethers.constants.AddressZero, true);
+            const receipt = await tx.wait();
+            const tradeEvent = receipt.events?.find((x: any) => x.event === "Trade");
+            const baseAmount = tradeEvent.args.baseAmount;
+
+            expect(await ethers.provider.getBalance(user1Signer.address)).to.be.approximately(userBalanceBefore.add(baseAmount), ethers.utils.parseUnits("1", 16));
+
         });
         it("should increase the tokenBalance in the vault", async () => {
             const tokenInfoBefore = await expVault.tokenInfo(token.address);

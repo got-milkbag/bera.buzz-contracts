@@ -16,6 +16,7 @@ describe("HighlightsManager Tests", () => {
 
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
+    const coolDownPeriod = 12 * 60 * 60; // 12 hours in seconds
 
     beforeEach(async () => {
         [ownerSigner, treasury] = await ethers.getSigners();
@@ -26,9 +27,23 @@ describe("HighlightsManager Tests", () => {
 
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond);
+        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod);
     });
     describe("constructor", () => {
+        it("should revert if hardCap is less than MIN_DURATION", async () => {
+            const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
+            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
+                highlightsManager,
+                "HighlightsManager_HardCapBelowMinimumDuration"
+            );
+        });
+        it("should revert if treasury is address zero", async () => {
+            const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
+            await expect(HighlightsManager.deploy(ethers.constants.AddressZero, hardcap, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
+                highlightsManager,
+                "HighlightsManager_TreasuryZeroAddress"
+            );
+        });
         it("should set the treasury", async () => {
             expect(await highlightsManager.treasury()).to.be.equal(treasury.address);
         });
@@ -37,6 +52,9 @@ describe("HighlightsManager Tests", () => {
         });
         it("should set the baseFeePerSecond", async () => {
             expect(await highlightsManager.baseFeePerSecond()).to.be.equal(baseFeePerSecond);
+        });
+        it("should set the coolDownPeriod", async () => {
+            expect(await highlightsManager.coolDownPeriod()).to.be.equal(coolDownPeriod);
         });
     });
     describe("quote", () => {
@@ -76,7 +94,7 @@ describe("HighlightsManager Tests", () => {
 
             const quote = await highlightsManager.quote(duration);
             const linearFee = baseFeePerSecond.mul(expThreshold);
-            console.log("quote: ", quote.toString());
+            // console.log("quote: ", quote.toString());
         });
     });
     describe("highlightToken", () => {
@@ -105,56 +123,29 @@ describe("HighlightsManager Tests", () => {
 
             await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee}))
                 .to.emit(highlightsManager, "TokenHighlighted")
-                .withArgs(token.address, ownerSigner.address, timestamp, duration, timestamp + duration);
-        });
-        describe("when there is no other highlight", () => {
-            beforeEach(async () => {
-                await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
-            });
-            it("should set the bookedUntil timestamp to the end of the duration", async () => {
-                expect(await highlightsManager.bookedUntil()).to.be.equal((await time.latest()) + duration);
-            });
+                .withArgs(token.address, ownerSigner.address, duration, timestamp + duration);
         });
         describe("when there is a previous highlight that hasn't expired", () => {
             beforeEach(async () => {
                 await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
             });
-            it("should set the bookedUntil timestamp to the end of the second duration", async () => {
-                const currentTimestamp = await time.latest();
-                await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
-                expect(await highlightsManager.bookedUntil()).to.be.equal(currentTimestamp + duration * 2);
-            });
-            it("should set startAt at the end of the last highlight", async () => {
-                const previousBookedUntil = await highlightsManager.bookedUntil();
-                const tx = await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
-                const receipt = await tx.wait();
-                const tokenHighlightedEvent = receipt.events?.find((x: any) => x.event === "TokenHighlighted");
-
-                // Get token contract
-                const startAt = tokenHighlightedEvent?.args?.startAt;
-                expect(startAt).to.be.equal(previousBookedUntil.add(1));
+            it("should revert with Slot Occupied", async () => {
+                await expect(highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})).to.be.revertedWithCustomError(
+                    highlightsManager,
+                    "HighlightsManager_SlotOccupied"
+                );
             });
         });
-        describe("when there is a previous highlight that has expired", () => {
+        describe("when the token is within the cool down period", () => {
             beforeEach(async () => {
                 await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
                 await time.increase(duration + 1);
             });
-            it("should set the bookedUntil timestamp to the end of the second duration", async () => {
-                await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
-                const currentTimestamp = await time.latest();
-                expect(await highlightsManager.bookedUntil()).to.be.equal(currentTimestamp + duration);
-            });
-            it("should set startAt at the current block", async () => {
-                const tx = await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
-                const currentTimestamp = await time.latest();
-
-                const receipt = await tx.wait();
-                const tokenHighlightedEvent = receipt.events?.find((x: any) => x.event === "TokenHighlighted");
-
-                // Get token contract
-                const startAt = tokenHighlightedEvent?.args?.startAt;
-                expect(startAt).to.be.equal(currentTimestamp);
+            it("should revert with Token Within CoolDown", async () => {
+                await expect(highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})).to.be.revertedWithCustomError(
+                    highlightsManager,
+                    "HighlightsManager_TokenWithinCoolDown"
+                );
             });
         });
     });
@@ -212,6 +203,47 @@ describe("HighlightsManager Tests", () => {
             await expect(highlightsManager.connect(treasury).setBaseFee(ethers.utils.parseEther("0.01"))).to.be.revertedWith(
                 "Ownable: caller is not the owner"
             );
+        });
+    });
+    describe("setCoolDownPeriod", () => {
+        beforeEach(async () => {});
+        it("should set the cool down period", async () => {
+            await highlightsManager.setCoolDownPeriod(1000);
+            expect(await highlightsManager.coolDownPeriod()).to.be.equal(1000);
+        });
+        it("should emit a CoolDownPeriodSet event", async () => {
+            await expect(highlightsManager.setCoolDownPeriod(1000)).to.emit(highlightsManager, "CoolDownPeriodSet").withArgs(1000);
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(highlightsManager.connect(treasury).setCoolDownPeriod(1000)).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+    });
+    describe("pause", () => {
+        beforeEach(async () => {});
+        it("should pause the contract", async () => {
+            await highlightsManager.pause();
+            expect(await highlightsManager.paused()).to.be.true;
+        });
+        it("should emit a Paused event", async () => {
+            await expect(highlightsManager.pause()).to.emit(highlightsManager, "Paused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(highlightsManager.connect(treasury).pause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+    });
+    describe("unpause", () => {
+        beforeEach(async () => {
+            await highlightsManager.pause();
+        });
+        it("should unpause the contract", async () => {
+            await highlightsManager.unpause();
+            expect(await highlightsManager.paused()).to.be.false;
+        });
+        it("should emit a Unpaused event", async () => {
+            await expect(highlightsManager.unpause()).to.emit(highlightsManager, "Unpaused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(highlightsManager.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
         });
     });
 });

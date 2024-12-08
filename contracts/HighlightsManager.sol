@@ -2,9 +2,10 @@
 pragma solidity ^0.8.19;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
-contract HighlightsManager is Ownable, ReentrancyGuard {
+contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     /// @notice Error thrown when the duration is zero
     error HighlightsManager_ZeroDuration();
     /// @notice Error thrown when the duration is above the hard cap
@@ -75,10 +76,11 @@ contract HighlightsManager is Ownable, ReentrancyGuard {
 
     /**
      * @notice Allows msg.sender to highlights a token for a given duration, paying the fee in native currency
+     * @notice BookedUntil must be in the past to allow a new highlight. quote() should be called beforehand to get the msg.value required.
      * @param token The address of the token to highlight
      * @param duration The duration in seconds
      */
-    function highlightToken(address token, uint256 duration) external payable nonReentrant {
+    function highlightToken(address token, uint256 duration) external payable whenNotPaused nonReentrant {
         if (bookedUntil > block.timestamp) revert HighlightsManager_SlotOccupied();
         if (tokenCoolDownUntil[token] > block.timestamp) revert HighlightsManager_TokenWithinCoolDown();
 
@@ -155,5 +157,21 @@ contract HighlightsManager is Ownable, ReentrancyGuard {
     function setCoolDownPeriod(uint256 _coolDownPeriod) external onlyOwner {
         coolDownPeriod = _coolDownPeriod;
         emit CoolDownPeriodSet(_coolDownPeriod);
+    }
+
+    /**
+     * @notice Pauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

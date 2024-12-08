@@ -22,6 +22,11 @@ const migrationFeeBps = 420; // 4.2% migration fee
 const payoutThreshold = 0;
 const validUntil = Math.floor(Date.now() / 1000) + ONE_YEAR_IN_SECS;
 
+// HighlightsManager config
+const highlightsBaseFee = ethers.utils.parseEther("0.0005"); // base fee per second for highlighting
+const hardCap = 3600; // 1 hour in seconds
+const coolDownPeriod = 60 * 60 * 24; // 1 day
+
 // The deployer is also the owner
 
 const DEPLOY_ABI = [
@@ -95,6 +100,11 @@ async function main() {
         wberaAddress
     );
     console.log("Exponential Vault deployed to:", expVault.address);
+
+    // Deploy HighlighstManager
+    const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, highlightsBaseFee, hardCap, coolDownPeriod);
+    console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager
     // await referralManager.setWhitelistedVault(vault.address, true);

@@ -179,8 +179,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         
         TokenInfo storage info = tokenInfo[token];
-        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
+        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
     
         if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 
@@ -309,8 +309,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
         TokenInfo storage info = tokenInfo[token];
-        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
+        if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
 
         uint256 contractBalance = IERC20(token).balanceOf(address(this));
         if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();

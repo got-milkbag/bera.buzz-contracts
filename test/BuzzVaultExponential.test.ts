@@ -270,7 +270,7 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault.buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
                     value: ethers.utils.parseEther("1500"),
                 })
-            ).to.be.revertedWithCustomError(expVault, "BuzzVault_UnknownToken");
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_BexListed");
             // fails in safeTransferFrom
         });
         it("should revert if reserves are invalid", async () => {
@@ -471,7 +471,7 @@ describe("BuzzVaultExponential Tests", () => {
             await token.approve(expVault.address, ethers.utils.parseEther("2"));
             await expect(
                 expVault.sell(token.address, ethers.utils.parseEther("2"), ethers.utils.parseEther("2"), ethers.constants.AddressZero, false)
-            ).to.be.revertedWithCustomError(expVault, "BuzzVault_UnknownToken");
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_BexListed");
         });
         it("should revert if user balance is invalid", async () => {
             await expect(

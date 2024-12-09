@@ -39,10 +39,9 @@ describe("HighlightsManager Tests", () => {
         });
         it("should revert if treasury is address zero", async () => {
             const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(HighlightsManager.deploy(ethers.constants.AddressZero, hardcap, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
-                highlightsManager,
-                "HighlightsManager_TreasuryZeroAddress"
-            );
+            await expect(
+                HighlightsManager.deploy(ethers.constants.AddressZero, hardcap, baseFeePerSecond, coolDownPeriod)
+            ).to.be.revertedWithCustomError(highlightsManager, "HighlightsManager_TreasuryZeroAddress");
         });
         it("should set the treasury", async () => {
             expect(await highlightsManager.treasury()).to.be.equal(treasury.address);
@@ -123,17 +122,16 @@ describe("HighlightsManager Tests", () => {
 
             await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee}))
                 .to.emit(highlightsManager, "TokenHighlighted")
-                .withArgs(token.address, ownerSigner.address, duration, timestamp + duration);
+                .withArgs(token.address, ownerSigner.address, duration, timestamp + duration, quotedFee);
         });
         describe("when there is a previous highlight that hasn't expired", () => {
             beforeEach(async () => {
                 await highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)});
             });
             it("should revert with Slot Occupied", async () => {
-                await expect(highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})).to.be.revertedWithCustomError(
-                    highlightsManager,
-                    "HighlightsManager_SlotOccupied"
-                );
+                await expect(
+                    highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})
+                ).to.be.revertedWithCustomError(highlightsManager, "HighlightsManager_SlotOccupied");
             });
         });
         describe("when the token is within the cool down period", () => {
@@ -142,10 +140,9 @@ describe("HighlightsManager Tests", () => {
                 await time.increase(duration + 1);
             });
             it("should revert with Token Within CoolDown", async () => {
-                await expect(highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})).to.be.revertedWithCustomError(
-                    highlightsManager,
-                    "HighlightsManager_TokenWithinCoolDown"
-                );
+                await expect(
+                    highlightsManager.highlightToken(token.address, duration, {value: await highlightsManager.quote(duration)})
+                ).to.be.revertedWithCustomError(highlightsManager, "HighlightsManager_TokenWithinCoolDown");
             });
         });
     });

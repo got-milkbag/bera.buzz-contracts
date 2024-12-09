@@ -51,10 +51,6 @@ describe("ReferralManager Tests", () => {
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
         crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
 
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
-
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
@@ -62,6 +58,14 @@ describe("ReferralManager Tests", () => {
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
+            crocQuery.address, 
+            [wBera.address],
+            [bexLpToken.address]
+        );
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");

@@ -171,6 +171,8 @@ contract BuzzVaultExponential is BuzzVault {
         _collectFees(info.baseToken, msg.sender, baseAmountSell);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
+
+        //TODO: check if security issue when unwrap true and token is not WBera
         if (unwrap) {
             _unwrap(msg.sender, netBaseAmount);
         } else {

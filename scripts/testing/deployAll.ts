@@ -42,7 +42,10 @@ async function main() {
 
     // Deploy BexPriceDecoder
     const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-    const bexPriceDecoder = await BexPriceDecoder.deploy(wberaHoneyLpToken, crocQueryAddress);
+    const bexPriceDecoder = await BexPriceDecoder.deploy(
+        crocQueryAddress,
+        [wberaAddress],
+        [wberaHoneyLpToken]);
     console.log("BexPriceDecoder deployed to:", bexPriceDecoder.address);
 
     // Deploy FeeManager

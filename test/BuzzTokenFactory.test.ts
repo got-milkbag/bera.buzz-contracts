@@ -281,6 +281,7 @@ describe("BuzzTokenFactory Tests", () => {
             // Get token contract
             token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
             expect(await token.name()).to.be.equal(name);
+            expect(await factory.isDeployed(token.address)).to.be.equal(true);
         });
         it("should emit a CurveDataSet event", async () => {
             const name = "TEST";

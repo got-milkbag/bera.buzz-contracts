@@ -12,9 +12,6 @@ import "./bex/CrocLpErc20.sol";
 contract BexLiquidityManager is IBexLiquidityManager {
     using SafeERC20 for IERC20;
 
-    /// @notice Error code emitted when deposit to the WBera contract fails
-    error WrappedDepositFailed();
-
     /// @notice Event emitted when liquidity is migrated to BEX
     event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
 

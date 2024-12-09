@@ -6,5 +6,7 @@ interface IReferralManager {
 
     function getReferralBpsFor(address user) external view returns (uint256 bps);
 
+    function quoteReferralFee(address user, uint256 amount) external view returns (uint256 referralFee);
+
     function receiveReferral(address user, address token, uint256 amount) external;
 }

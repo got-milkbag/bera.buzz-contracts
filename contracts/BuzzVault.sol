@@ -177,11 +177,12 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
         if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-        if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
-
+        
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
+    
+        if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
@@ -307,12 +308,12 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
         if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
 
-        uint256 contractBalance = IERC20(token).balanceOf(address(this));
-        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
-
         TokenInfo storage info = tokenInfo[token];
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
         if (info.bexListed) revert BuzzVault_BexListed();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 

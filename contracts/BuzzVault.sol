@@ -2,6 +2,8 @@
 pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
+import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
@@ -15,7 +17,7 @@ import "./interfaces/IFeeManager.sol";
 
 /// @title BuzzVault contract
 /// @notice An abstract contract holding logic for bonding curve operations, leaving the implementation of the curve to child contracts
-abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
+abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     using SafeERC20 for IERC20;
 
     /// @notice Error code emitted when the quote amount in buy/sell is zero
@@ -139,7 +141,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable override nonReentrant {
+    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable override nonReentrant whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
@@ -162,7 +164,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external override nonReentrant {
+    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external override nonReentrant whenNotPaused {
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
         _buyTokens(token, baseAmount, minTokensOut, affiliate);
     }
@@ -174,7 +176,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant {
+    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
         if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         
@@ -394,4 +396,20 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
 
     // Fallback function
     receive() external payable {}
+
+    /**
+     * @notice Pauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
 }

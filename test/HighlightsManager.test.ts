@@ -216,7 +216,9 @@ describe("HighlightsManager Tests", () => {
         });
     });
     describe("pause", () => {
-        beforeEach(async () => {});
+        beforeEach(async () => {
+            duration = 120; // 2 minutes
+        });
         it("should pause the contract", async () => {
             await highlightsManager.pause();
             expect(await highlightsManager.paused()).to.be.true;
@@ -226,6 +228,11 @@ describe("HighlightsManager Tests", () => {
         });
         it("should revert if the caller is not the owner", async () => {
             await expect(highlightsManager.connect(treasury).pause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should not allow calling highlightToken", async () => {
+            await highlightsManager.pause();
+            const quotedFee = await highlightsManager.quote(duration);
+            await expect(highlightsManager.connect(ownerSigner).highlightToken(token.address, duration, {value: quotedFee})).to.be.revertedWith("Pausable: paused");
         });
     });
     describe("unpause", () => {
@@ -241,6 +248,16 @@ describe("HighlightsManager Tests", () => {
         });
         it("should revert if the caller is not the owner", async () => {
             await expect(highlightsManager.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should allow calling highlightToken", async () => {
+            await highlightsManager.unpause();
+            const quotedFee = await highlightsManager.quote(duration);
+            const balanceBefore = await ethers.provider.getBalance(treasury.address);
+
+            await highlightsManager.connect(ownerSigner).highlightToken(token.address, duration, {value: quotedFee});
+            
+            const balanceAfter = await ethers.provider.getBalance(treasury.address);
+            expect(balanceAfter.sub(balanceBefore)).to.be.equal(quotedFee);
         });
     });
 });

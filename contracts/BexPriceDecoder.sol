@@ -27,6 +27,13 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         address indexed quoteToken, 
         uint256 poolIdx
     );
+    /// @notice Emitted when the LP token is removed
+    event LpTokenRemoved(
+        address indexed lpToken,
+        address indexed baseToken, 
+        address indexed quoteToken, 
+        uint256 poolIdx
+    );
 
     ICrocQuery public immutable crocQuery;
     struct LPToken {
@@ -65,6 +72,29 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
             lpTokens[_tokens[i]].poolIdx = poolIdx;
 
             emit LpTokenAdded(lpToken, baseToken, quoteToken, poolIdx);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    function removeLpTokens(address[] memory _tokens) public onlyOwner {
+        for (uint256 i; i < _tokens.length;) {
+            if (_tokens[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
+            if (lpTokens[_tokens[i]].baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
+
+            address lpToken = lpTokens[_tokens[i]].lpToken;
+            address baseToken = lpTokens[_tokens[i]].baseToken;
+            address quoteToken = lpTokens[_tokens[i]].quoteToken;
+            uint256 poolIdx = lpTokens[_tokens[i]].poolIdx;
+
+            lpTokens[_tokens[i]].lpToken = address(0);
+            lpTokens[_tokens[i]].baseToken = address(0);
+            lpTokens[_tokens[i]].quoteToken = address(0);
+            lpTokens[_tokens[i]].poolIdx = 0;
+
+            emit LpTokenRemoved(lpToken, baseToken, quoteToken, poolIdx);
 
             unchecked {
                 ++i;

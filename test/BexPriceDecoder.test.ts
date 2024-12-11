@@ -94,6 +94,45 @@ describe("BexPriceDecoder Tests", () => {
             )).to.be.revertedWithCustomError(bexPriceDecoder, "BexPriceDecoder_TokenAddressZero");
         });
     });
+    describe("removeLpTokens", () => {
+        it("should remove LP tokens", async () => {
+            await bexPriceDecoder.connect(ownerSigner).addLpTokens(
+                [honeyTokenAddress],
+                [bexHoneyUsdcLpAddress]
+            );
+
+            await expect(bexPriceDecoder.connect(ownerSigner).removeLpTokens([honeyTokenAddress]))
+            .to.emit(bexPriceDecoder, "LpTokenRemoved")
+            .withArgs(
+                bexHoneyUsdcLpAddress, 
+                honeyTokenAddress,
+                usdcAddress,
+                usdcHoneyIdx
+            );
+
+            const lpTokens = await bexPriceDecoder.lpTokens(honeyTokenAddress);
+
+            expect(lpTokens[0]).to.be.equal(ethers.constants.AddressZero);
+            expect(lpTokens[1]).to.be.equal(ethers.constants.AddressZero);
+            expect(lpTokens[2]).to.be.equal(ethers.constants.AddressZero);
+            expect(lpTokens[3]).to.be.equal(0);
+        });
+
+        it("should revert if not called by owner", async () => {
+            await expect(bexPriceDecoder.connect(user1Signer).removeLpTokens([honeyTokenAddress]))
+            .to.be.revertedWith("Ownable: caller is not the owner");
+        });
+
+        it("should revert if token is not on the mapping", async () => {
+            await expect(bexPriceDecoder.connect(ownerSigner).removeLpTokens([honeyTokenAddress]))
+            .to.be.revertedWithCustomError(bexPriceDecoder, "BexPriceDecoder_TokenDoesNotExist");
+        });
+
+        it("should revert if token is address(0)", async () => {
+            await expect(bexPriceDecoder.connect(ownerSigner).removeLpTokens([ethers.constants.AddressZero]))
+            .to.be.revertedWithCustomError(bexPriceDecoder, "BexPriceDecoder_TokenAddressZero");
+        });
+    });
     describe("getPrice", () => {
         it("should get price", async () => {
             const price = await bexPriceDecoder.getPrice(wBera.address);

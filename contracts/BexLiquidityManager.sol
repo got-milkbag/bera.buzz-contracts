@@ -3,17 +3,29 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import "@openzeppelin/contracts/access/Ownable.sol";
 
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/bex/ICrocSwapDex.sol";
 import "./libraries/SqrtMath.sol";
 import "./bex/CrocLpErc20.sol";
 
-contract BexLiquidityManager is IBexLiquidityManager {
+contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     using SafeERC20 for IERC20;
+
+    /// @notice Error emitted when the caller is not authorized to perform the action
+    error BexLiquidityManager_Unauthorized();
+    /// @notice Error emitted when the vault is already in the whitelist
+    error BexLiquidityManager_VaultAlreadyInWhitelist();
+    /// @notice Error emitted when the vault is not in the whitelist
+    error BexLiquidityManager_VaultNotInWhitelist();
 
     /// @notice Event emitted when liquidity is migrated to BEX
     event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
+    /// @notice Event emitted when a vault is added to the whitelist
+    event VaultAdded(address indexed vault);
+    /// @notice Event emitted when a vault is removed from the whitelist
+    event VaultRemoved(address indexed vault);
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant _poolIdx = 36002;
@@ -22,7 +34,9 @@ contract BexLiquidityManager is IBexLiquidityManager {
     /// @notice The init code hash of the LP conduit
     bytes private constant LP_CONDUIT_INIT_CODE_HASH = hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
     /// @notice The address of the CrocSwap DEX
-    ICrocSwapDex public immutable crocSwapDex;
+    ICrocSwapDex private immutable crocSwapDex;
+    /// @notice The Vault address whitelist
+    mapping(address => bool) private vaults;
 
     /**
      * @notice Constructor a new BexLiquidityManager
@@ -42,6 +56,7 @@ contract BexLiquidityManager is IBexLiquidityManager {
      * @return lpConduit The address of the LP conduit
      */
     function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external returns (address) {
+        if(vaults[msg.sender] == false) revert BexLiquidityManager_Unauthorized();
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
@@ -92,6 +107,40 @@ contract BexLiquidityManager is IBexLiquidityManager {
         emit BexListed(token, baseAmount, _initPrice, lpConduit);
 
         return lpConduit;
+    }
+
+    /**
+     * @notice Add a list of vaults to the whitelist
+     * @param vault The array of vault addresses
+     */
+    function addVaults(address[] memory vault) public onlyOwner {
+        for (uint256 i; i < vault.length;) {
+            if (vaults[vault[i]] == true) revert BexLiquidityManager_VaultAlreadyInWhitelist();
+            vaults[vault[i]] = true;
+
+            emit VaultAdded(vault[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
+    }
+
+    /**
+     * @notice Remove a list of vaults from the whitelist
+     * @param vault The array of vault addresses
+     */
+    function removeVaults(address[] calldata vault) external onlyOwner {
+        for (uint256 i; i < vault.length;) {
+            if (vaults[vault[i]] == false) revert BexLiquidityManager_VaultNotInWhitelist();
+            vaults[vault[i]] = false;
+
+            emit VaultRemoved(vault[i]);
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 
     /**

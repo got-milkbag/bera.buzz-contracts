@@ -103,8 +103,9 @@ describe("BuzzVaultExponential Tests", () => {
             wBera.address
         );
 
-        totalMintedSupply = await expVault.TOTAL_MINTED_SUPPLY();
+        await bexLiquidityManager.connect(ownerSigner).addVaults([expVault.address]);
 
+        totalMintedSupply = await expVault.TOTAL_MINTED_SUPPLY();
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);

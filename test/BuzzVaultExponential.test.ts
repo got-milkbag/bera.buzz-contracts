@@ -653,7 +653,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(await expVault.paused()).to.be.false;
         });
         it("should emit a Unpaused event", async () => {
-            await expect(expVault.unpause()).to.emit(expVault, "Unpaused");
+            expect(await expVault.unpause()).to.emit(expVault, "Unpaused");
         });
         it("should revert if the caller is not the owner", async () => {
             await expect(expVault.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
@@ -689,6 +689,30 @@ describe("BuzzVaultExponential Tests", () => {
                 .buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, { value: ethers.utils.parseEther("0.1") });
             const userBalanceAfter = await token.balanceOf(user1Signer.address);
             expect(await userBalanceAfter.sub(userBalanceBefore)).to.be.greaterThan(userBalanceBefore);
+        });
+    });
+    describe("emergencyWithdraw", () => {
+        beforeEach(async () => {
+            await expVault.pause();
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(expVault.connect(treasury).emergencyWithdraw(wBera.address)).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should revert if the contract is not paused", async () => {
+            await expVault.unpause();
+            expect(await expVault.emergencyWithdraw(wBera.address)).to.be.revertedWith("Pausable: not paused");
+        });
+        it("should transfer the base tokens to the owner", async () => {
+            await wBera.deposit({ value: ethers.utils.parseEther("1") });
+            
+            await expVault.unpause();
+            const balanceBefore = await wBera.balanceOf(ownerSigner.address);
+            await expVault
+                .connect(user1Signer)
+                .buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, { value: ethers.utils.parseEther("1") });
+            await expVault.pause();
+            await expVault.emergencyWithdraw(wBera.address);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(balanceBefore.add(ethers.utils.parseEther("1")).sub(await feeManager.quoteTradingFee(ethers.utils.parseEther("1"))));
         });
     });
 });

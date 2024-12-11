@@ -260,4 +260,30 @@ describe("HighlightsManager Tests", () => {
             expect(balanceAfter.sub(balanceBefore)).to.be.equal(quotedFee);
         });
     });
+    describe("emergencyWithdrawNative", () => {
+        beforeEach(async () => {
+            duration = 120; // 2 minutes
+            await highlightsManager.pause();
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(highlightsManager.connect(treasury).emergencyWithdrawNative()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should revert if the contract is not paused", async () => {
+            await highlightsManager.unpause();
+            await expect(highlightsManager.emergencyWithdrawNative()).to.be.revertedWith("Pausable: not paused");
+        });
+        it("should withdraw the balance", async () => {
+            await highlightsManager.unpause();
+            const quotedFee = await highlightsManager.quote(duration);
+            const balanceBefore = await ethers.provider.getBalance(treasury.address);
+
+            await highlightsManager.highlightToken(token.address, duration, {value: quotedFee});
+
+            await highlightsManager.pause();
+            await highlightsManager.emergencyWithdrawNative();
+
+            const balanceAfter = await ethers.provider.getBalance(treasury.address);
+            expect(balanceAfter.sub(balanceBefore)).to.be.equal(quotedFee);
+        });
+    });
 });

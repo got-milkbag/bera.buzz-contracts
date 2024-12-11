@@ -429,4 +429,25 @@ describe("ReferralManager Tests", () => {
             expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
         });
     });
+    describe("emergencyWithdraw", () => {
+        beforeEach(async () => {
+            await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
+            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+
+            await referralManager.pause();
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(referralManager.connect(treasury).emergencyWithdraw(wBera.address)).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should revert if the contract is not paused", async () => {
+            await referralManager.unpause();
+            await expect(referralManager.connect(ownerSigner).emergencyWithdraw(wBera.address)).to.be.revertedWith("Pausable: not paused");
+        });
+        it("should withdraw the token balance", async () => {
+            const balanceBefore = await wBera.balanceOf(ownerSigner.address);
+            await referralManager.connect(ownerSigner).emergencyWithdraw(wBera.address);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(balanceBefore.add(ethers.utils.parseEther("0.01")));
+        });
+    });
 });

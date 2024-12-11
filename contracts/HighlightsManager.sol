@@ -174,4 +174,12 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     function unpause() external onlyOwner {
         _unpause();
     }
+
+    /**
+     * @notice Withdraws the BERA from the contract
+     */
+    function emergencyWithdrawNative() external onlyOwner whenPaused {
+        (bool success, ) = payable(owner()).call{value: address(this).balance}("");
+        require(success, "HighlightsManager: emergency withdrawal failed");
+    }
 }

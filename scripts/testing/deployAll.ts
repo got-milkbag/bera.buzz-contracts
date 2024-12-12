@@ -104,6 +104,8 @@ async function main() {
     );
     console.log("Exponential Vault deployed to:", expVault.address);
 
+    await bexLiquidityManager.addVaults([expVault.address]);
+
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
     const highlightsManager = await HighlightsManager.deploy(feeRecipient, highlightsBaseFee, hardCap, coolDownPeriod);

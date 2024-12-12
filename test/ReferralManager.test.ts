@@ -54,6 +54,7 @@ describe("ReferralManager Tests", () => {
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+        await bexLiquidityManager.addVaults([ownerSigner.address]);
 
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");

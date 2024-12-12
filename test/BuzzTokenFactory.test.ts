@@ -84,6 +84,7 @@ describe("BuzzTokenFactory Tests", () => {
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+        await bexLiquidityManager.connect(ownerSigner).addVaults([ownerSigner.address]);
 
         // Deploy Linear Vault
         /*const Vault = await ethers.getContractFactory("BuzzVaultLinear");

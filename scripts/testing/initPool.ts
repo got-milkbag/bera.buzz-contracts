@@ -21,6 +21,7 @@ async function main() {
     // Deploy BexLiquidityManager
     const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
     bexLiquidityManager = await BexLiquidityManager.deploy(crocSwapDex);
+    await bexLiquidityManager.addVaults([deployer.address]);
 
     console.log("Token address: ", token.address);
     console.log("BexLiquidityManager address: ", bexLiquidityManager.address);

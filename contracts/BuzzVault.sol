@@ -207,6 +207,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
      * @notice Register a token in the vault
      * @dev Only the factory can register tokens
      * @param token The token address
+     * @param baseToken The base token address
      * @param tokenBalance The token balance
      * @param marketCap The market cap of the token
      * @param k The initial k of the token
@@ -223,7 +224,7 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
         if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
 
-        uint256 reserveBera = _getBeraAmountForMarketCap(marketCap);
+        uint256 reserveBera = _getBaseAmountForMarketCap(baseToken, marketCap);
 
         // Assumption: Token has fixed supply upon deployment
         tokenInfo[token] = TokenInfo(baseToken, address(0), tokenBalance, 0, 0, 0, 0, 0, reserveBera, k, growthRate, false);
@@ -364,19 +365,22 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Returns the amount of BERA to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
-     * @return beraAmount The amount of BERA for market cap
+     * @notice Returns the amount of baseToken to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
+     * @param baseToken The base token address
+     * @param marketCap The market cap of the token
+     * @return baseAmount The amount of baseToken for market cap
      */
-    function _getBeraAmountForMarketCap(uint256 marketCap) internal view returns (uint256 beraAmount) {
-        uint256 beraUsdPrice = priceDecoder.getPrice();
+    function _getBaseAmountForMarketCap(address baseToken, uint256 marketCap) internal view returns (uint256 baseAmount) {
+        uint256 baseUsdPrice = priceDecoder.getPrice(baseToken);
 
         // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
-        uint256 beraAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
-        uint256 beraAmountNoFee = beraAmountToBps / beraUsdPrice;
+        uint256 baseAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
+        uint256 baseAmountNoFee = baseAmountToBps / baseUsdPrice;
 
-        beraAmount = beraAmountNoFee + feeManager.quoteMigrationFee(beraAmountNoFee);
+        baseAmount = baseAmountNoFee + feeManager.quoteMigrationFee(baseAmountNoFee);
     }
 
+    //TODO: check if security issue when unwrap true and token is not WBera
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
         IERC20(address(wbera)).safeApprove(address(wbera), amount);
@@ -388,8 +392,8 @@ abstract contract BuzzVault is ReentrancyGuard, IBuzzVault {
         _transferEther(payable(to), amount);
     }
 
-    function getBeraUsdPrice() external view returns (uint256 beraPrice) {
-        beraPrice = priceDecoder.getPrice();
+    function getBaseUsdPrice(address token) external view returns (uint256 beraPrice) {
+        beraPrice = priceDecoder.getPrice(token);
     }
 
     // Fallback function

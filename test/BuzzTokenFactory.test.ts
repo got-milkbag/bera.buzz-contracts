@@ -51,13 +51,17 @@ describe("BuzzTokenFactory Tests", () => {
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
         crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
 
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
-
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
+            crocQuery.address,
+            [wBera.address],
+            [bexLpToken.address]
+        );
 
         // Deploy FeeManager
         const FeeManager = await ethers.getContractFactory("FeeManager");

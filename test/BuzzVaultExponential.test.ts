@@ -62,13 +62,18 @@ describe("BuzzVaultExponential Tests", () => {
 
         const bexLpTokenAddress = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
         const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpTokenAddress, crocQueryAddress);
 
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy BexPriceDecoder
+        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
+            crocQueryAddress,
+            [wBera.address],
+            [bexLpTokenAddress]
+        );
 
         // Deploy FeeManager
         const FeeManager = await ethers.getContractFactory("FeeManager");
@@ -395,7 +400,7 @@ describe("BuzzVaultExponential Tests", () => {
             const beraThreshold = tokenInfoBefore[6];
             console.log("Bera thresholdA: ", beraThreshold.toString());
 
-            const beraPrice = await expVault.getBeraUsdPrice();
+            const beraPrice = await expVault.getBaseUsdPrice(wBera.address);
             console.log("Bera priceA: ", beraPrice.toString());
 
             const tx = await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {

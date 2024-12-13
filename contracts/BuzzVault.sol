@@ -412,12 +412,4 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     function unpause() external onlyOwner {
         _unpause();
     }
-
-    /**
-     * @notice Withdraws the base token from the contract
-     * @param token The token address
-     */
-    function emergencyWithdraw(address token) external onlyOwner {
-        IERC20(token).safeTransfer(owner(), IERC20(token).balanceOf(address(this)));
-    }
 }

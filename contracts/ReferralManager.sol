@@ -214,12 +214,4 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
     function unpause() external onlyOwner {
         _unpause();
     }
-
-    /**
-     * @notice Withdraws the base token from the contract
-     * @param token The token address
-     */
-    function emergencyWithdraw(address token) external onlyOwner whenPaused {
-        IERC20(token).safeTransfer(owner(), IERC20(token).balanceOf(address(this)));
-    }
 }

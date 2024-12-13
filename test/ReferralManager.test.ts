@@ -378,4 +378,60 @@ describe("ReferralManager Tests", () => {
             expect(await referralManager.whitelistedVault(ownerSigner.address)).to.be.equal(true);
         });
     });
+    describe("pause", () => {
+        beforeEach(async () => {});
+        it("should pause the contract", async () => {
+            await referralManager.pause();
+            expect(await referralManager.paused()).to.be.true;
+        });
+        it("should emit a Paused event", async () => {
+            await expect(referralManager.pause()).to.emit(referralManager, "Paused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(referralManager.connect(treasury).pause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should not allow calling claimReferralReward", async () => {
+            await referralManager.pause();
+
+            await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
+            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
+
+            const referralAmount = ethers.utils.parseEther("0.01");
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
+            // store user ether balance
+            await expect(referralManager.connect(user1Signer).claimReferralReward(wBera.address)).to.be.revertedWith("Pausable: paused");
+        });
+    });
+    describe("unpause", () => {
+        beforeEach(async () => {
+            await referralManager.pause();
+        });
+        it("should unpause the contract", async () => {
+            await referralManager.unpause();
+            expect(await referralManager.paused()).to.be.false;
+        });
+        it("should emit a Unpaused event", async () => {
+            await expect(referralManager.unpause()).to.emit(referralManager, "Unpaused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(referralManager.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should allow calling claimReferralReward", async () => {
+            await referralManager.unpause();
+
+            await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
+            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
+
+            const referralAmount = ethers.utils.parseEther("0.01");
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
+            // store user ether balance
+            const userBalanceBefore = await wBera.balanceOf(ownerSigner.address);
+            const tx = await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
+
+            // check event
+            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, wBera.address, referralAmount);
+            // check user ether balance
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
+        });
+    });
 });

@@ -3,11 +3,12 @@ pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 import "./interfaces/IReferralManager.sol";
 
-contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
+contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager {
     using SafeERC20 for IERC20;
 
     /// @notice Error emitted when the caller is not authorized
@@ -149,7 +150,7 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
     // User functions
 
-    function claimReferralReward(address token) external nonReentrant {
+    function claimReferralReward(address token) external nonReentrant whenNotPaused {
         uint256 reward = _referrerBalances[msg.sender][token];
 
         if (reward < payoutThreshold[token]) revert ReferralManager_PayoutBelowThreshold();
@@ -196,5 +197,21 @@ contract ReferralManager is Ownable, ReentrancyGuard, IReferralManager {
 
     function getReferralRewardFor(address user, address token) external view returns (uint256 reward) {
         reward = _referrerBalances[user][token];
+    }
+
+    /**
+     * @notice Pauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
+
+    /**
+     * @notice Unpauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
     }
 }

@@ -621,4 +621,80 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter[2]).to.be.equal(tokenInfoBefore[2].add(userTokenBalance));
         });
     });
+    describe("pause", () => {
+        beforeEach(async () => {});
+        it("should pause the contract", async () => {
+            await expVault.pause();
+            expect(await expVault.paused()).to.be.true;
+        });
+        it("should emit a Paused event", async () => {
+            await expect(expVault.pause()).to.emit(expVault, "Paused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(expVault.connect(treasury).pause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should not allow calling buy", async () => {
+            await expVault.pause();
+            await wBera.deposit({ value: ethers.utils.parseEther("1") });
+            await wBera.connect(ownerSigner).approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(token.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero)).to.be.revertedWith("Pausable: paused");
+        });
+        it("should not allow calling sell", async () => {
+            await expVault.pause();
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(expVault.address, userTokenBalance);
+            await expect(expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero, false)).to.be.revertedWith("Pausable: paused");
+        });
+        it("should not allow calling buyNative", async () => {
+            await expVault.pause();
+            await expect(expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("0.01") })).to.be.revertedWith("Pausable: paused");
+        });
+    });
+    describe("unpause", () => {
+        beforeEach(async () => {
+            await expVault.pause();
+        });
+        it("should unpause the contract", async () => {
+            await expVault.unpause();
+            expect(await expVault.paused()).to.be.false;
+        });
+        it("should emit a Unpaused event", async () => {
+            expect(await expVault.unpause()).to.emit(expVault, "Unpaused");
+        });
+        it("should revert if the caller is not the owner", async () => {
+            await expect(expVault.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
+        });
+        it("should allow calling buy", async () => {
+            await expVault.unpause();
+            await wBera.deposit({ value: ethers.utils.parseEther("1") });
+
+            const balanceBefore = await wBera.balanceOf(ownerSigner.address);
+            await wBera.connect(ownerSigner).approve(expVault.address, ethers.utils.parseEther("1"));
+            await expVault.buy(token.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(balanceBefore.sub(ethers.utils.parseEther("1")));
+        });
+        it("should allow calling sell", async () => {
+            await expVault.unpause();
+            await expVault
+                .connect(user1Signer)
+                .buyNative(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, { value: ethers.utils.parseEther("3") });
+            await token.connect(user1Signer).approve(expVault.address, await token.balanceOf(user1Signer.address));
+
+            const tokenInfoBefore = await expVault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            await token.connect(user1Signer).approve(expVault.address, userTokenBalance);
+            await expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero, false);
+            const tokenInfoAfter = await expVault.tokenInfo(token.address);
+            expect(tokenInfoAfter[2]).to.be.equal(tokenInfoBefore[2].add(userTokenBalance));
+        });
+        it("should allow calling buyNative", async () => {
+            await expVault.unpause();
+            const userBalanceBefore = await token.balanceOf(user1Signer.address);
+            await expVault
+                .connect(user1Signer)
+                .buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, { value: ethers.utils.parseEther("0.1") });
+            const userBalanceAfter = await token.balanceOf(user1Signer.address);
+            expect(await userBalanceAfter.sub(userBalanceBefore)).to.be.greaterThan(userBalanceBefore);
+        });
+    });
 });

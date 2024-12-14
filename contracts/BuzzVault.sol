@@ -66,7 +66,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     /// @notice The percentage of total minted supply after BEX migration in bps
     uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
     /// @notice The min ERC20 amount for bonding curve swaps
-    uint256 public constant MIN_TOKEN_AMOUNT = 1e15; // 0.001 ERC20 token
+    uint256 public constant MIN_TOKEN_AMOUNT = 1e14; // 0.0001 ERC20 token
     /// @notice The total supply of tokens minted
     uint256 public constant TOTAL_MINTED_SUPPLY = 8e26;
     /// @notice Final balance threshold of the bonding curve
@@ -336,7 +336,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             true
         );
 
-        if (info.baseBalance >= info.baseThreshold && info.tokenBalance == 0) {
+        if (info.tokenBalance == 0) {
             _lockCurveAndDeposit(token, info);
         }
     }

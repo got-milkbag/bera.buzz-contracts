@@ -336,7 +336,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             true
         );
 
-        if (info.baseBalance >= info.baseThreshold && info.tokenBalance == 0) {
+        if (info.tokenBalance == 0) {
             _lockCurveAndDeposit(token, info);
         }
     }

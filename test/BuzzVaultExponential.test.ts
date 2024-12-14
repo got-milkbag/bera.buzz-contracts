@@ -126,7 +126,7 @@ describe("BuzzVaultExponential Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
-            [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
+            [ethers.utils.parseEther("0.222"), BigNumber.from("3350000000")],
             0,
             formatBytes32String("12345"),
             ethers.utils.parseEther("69420"),
@@ -398,7 +398,7 @@ describe("BuzzVaultExponential Tests", () => {
             const userBaseBalanceBefore = await wBera.balanceOf(user1Signer.address);
 
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
-            const beraThreshold = tokenInfoBefore[6];
+            const beraThreshold = tokenInfoBefore[8];
             console.log("Bera thresholdA: ", beraThreshold.toString());
 
             const beraPrice = await expVault.getBaseUsdPrice(wBera.address);
@@ -423,12 +423,12 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenBalance = tokenInfoAfter[2];
             console.log("Token balanceA: ", tokenBalance.toString());
 
-            const beraBalance = tokenInfoAfter[2];
-            const lastPrice = tokenInfoAfter[3];
-            const lastBeraPrice = tokenInfoAfter[4];
-            const currentPrice = tokenInfoAfter[5];
-            const currentBeraPrice = tokenInfoAfter[6];
-            const beraThresholdAfter = tokenInfoAfter[7];
+            const beraBalance = tokenInfoAfter[3];
+            const lastPrice = tokenInfoAfter[4];
+            const lastBeraPrice = tokenInfoAfter[5];
+            const currentPrice = tokenInfoAfter[6];
+            const currentBeraPrice = tokenInfoAfter[7];
+            const beraThresholdAfter = tokenInfoAfter[8];
             const bexListed = tokenInfoAfter[11];
             const lpConduit = tokenInfoAfter[1];
 
@@ -448,6 +448,67 @@ describe("BuzzVaultExponential Tests", () => {
             expect(bexListed).to.be.equal(true);
             expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
             expect(userBaseBalanceAfter.sub(userBaseBalanceBefore)).to.be.gt(0);
+        });
+        it("should init a pool and deposit liquidity even when tokenBalance lt MIN_TOKEN_AMOUNT", async () => {
+            const tokenContractBalance = await token.balanceOf(expVault.address);
+            console.log("Token contract balanceA: ", tokenContractBalance.toString());
+
+            const userBaseBalanceBefore = await wBera.balanceOf(user1Signer.address);
+
+            const tokenInfoBefore = await expVault.tokenInfo(token.address);
+            const beraThreshold = tokenInfoBefore[8];
+            console.log("Bera thresholdA: ", beraThreshold.toString());
+
+            const msgValue = beraThreshold.add(await feeManager.quoteTradingFee(beraThreshold)).sub(BigNumber.from("100"));
+            console.log("msgValueA: ", msgValue.toString());
+
+            const beraPrice = await expVault.getBaseUsdPrice(wBera.address);
+            console.log("Bera priceA: ", beraPrice.toString());
+
+            const tx = await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, {
+                value: msgValue,
+            });
+            const receipt = await tx.wait();
+
+            const tokenInfoAfter = await expVault.tokenInfo(token.address);
+            const userTokenBalance = await token.balanceOf(user1Signer.address);
+            
+            const userQuoteBalanceAfter = await token.balanceOf(user1Signer.address);
+            console.log("User token balance afterA: ", userQuoteBalanceAfter.toString());
+
+            const tradeEvent = receipt.events?.find((x: any) => x.event === "Trade");
+            const baseAmount = tradeEvent.args.baseAmount
+
+            const pricePerToken = calculateTokenPrice(baseAmount, userTokenBalance);
+            console.log("Price per token in BeraA: ", pricePerToken);
+
+            const tokenBalance = tokenInfoAfter[2];
+            console.log("Token balanceA: ", tokenBalance.toString());
+
+            const beraBalance = tokenInfoAfter[3];
+            const lastPrice = tokenInfoAfter[4];
+            const lastBeraPrice = tokenInfoAfter[5];
+            const currentPrice = tokenInfoAfter[6];
+            const currentBeraPrice = tokenInfoAfter[7];
+            const beraThresholdAfter = tokenInfoAfter[8];
+            const bexListed = tokenInfoAfter[11];
+            const lpConduit = tokenInfoAfter[1];
+
+            console.log("Lp conduit address: ", lpConduit);
+
+            // Get LP token contract
+            const lpToken = await ethers.getContractAt("CrocLpErc20", lpConduit);
+
+            // check balances
+            expect(tokenBalance).to.be.equal(0);
+            expect(beraBalance).to.be.equal(0);
+            expect(lastPrice).to.be.equal(0);
+            expect(lastBeraPrice).to.be.equal(0);
+            expect(currentPrice).to.be.equal(0);
+            expect(currentBeraPrice).to.be.equal(0);
+            expect(beraThresholdAfter).to.be.equal(0);
+            expect(bexListed).to.be.equal(true);
+            expect(await lpToken.balanceOf(bexLiquidityManager.address)).to.be.equal(0);
         });
     });
     describe("sell", () => {

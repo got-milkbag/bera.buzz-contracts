@@ -84,13 +84,13 @@ contract BuzzVaultExponential is BuzzVault {
             info.k,
             info.growthRate
         );
-
+        
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
 
         // Calculate base token surplus whenever applicable
         uint256 baseSurplus;
-        if (tokenAmountBuy > info.tokenBalance) {
+        if (tokenAmountBuy > info.tokenBalance || info.tokenBalance - tokenAmountBuy < MIN_TOKEN_AMOUNT) {
             tokenAmountBuy = info.tokenBalance;
 
             uint256 basePlusNet = info.baseBalance + netBaseAmount; 

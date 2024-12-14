@@ -50,6 +50,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         string symbol,
         uint256 marketCap
     );
+    event TradeOnTokenCreation(address indexed token, address indexed buyer, uint256 tokenAmount);
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event FeeManagerSet(address indexed feeManager);
@@ -144,9 +145,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
                 IBuzzVault(addr[1]).buy(token, baseAmount, 1e15, address(0));
             }
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
-
-            if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
-            IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
+            uint256 balance = balanceAfter - balanceBefore;
+            if (balance > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
+            emit TradeOnTokenCreation(token, msg.sender, balance);
+            IERC20(token).safeTransfer(msg.sender, balance);
         }
     }
 

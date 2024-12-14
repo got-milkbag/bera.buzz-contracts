@@ -570,9 +570,9 @@ describe("BuzzVaultExponential Tests", () => {
             const userBalanceAfter = await wBera.balanceOf(user1Signer.address);
             expect(await userBalanceAfter.sub(userBalanceBefore)).to.be.greaterThan(userBalanceBefore);
         });
-        it("should revert if user wants to sell less than 0.001 token", async () => {
+        it("should revert if user wants to sell less than 0.0001 token", async () => {
             await expect(
-                expVault.sell(token.address, ethers.utils.parseEther("0.0001"), 0, ethers.constants.AddressZero, false)
+                expVault.sell(token.address, ethers.utils.parseEther("0.00001"), 0, ethers.constants.AddressZero, false)
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidMinTokenAmount");
         });
         it("should emit a trade event", async () => {

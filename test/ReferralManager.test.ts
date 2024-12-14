@@ -162,7 +162,7 @@ describe("ReferralManager Tests", () => {
     });
     describe("setReferral", () => {
         beforeEach(async () => {
-            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, ownerSigner.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -182,13 +182,13 @@ describe("ReferralManager Tests", () => {
         });
         it("should not update the referral if one is already set", async () => {
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
-            await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, {
+            await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user2Signer.address, ownerSigner.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
             expect(await referralManager.referredBy(ownerSigner.address)).to.be.equal(user1Signer.address);
         });
         it("should not set the referral if it's the same as msg.sender", async () => {
-            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, user1Signer.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
             expect(await referralManager.referredBy(user1Signer.address)).to.be.equal(ethers.constants.AddressZero);
@@ -198,7 +198,7 @@ describe("ReferralManager Tests", () => {
         });
         describe("setReferral - indirect referral", () => {
             beforeEach(async () => {
-                tx = await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                tx = await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, user2Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });
@@ -217,7 +217,7 @@ describe("ReferralManager Tests", () => {
     });
     describe("getReferralBpsFor", () => {
         beforeEach(async () => {
-            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, {
+            tx = await expVault.connect(ownerSigner).buyNative(token.address, ethers.utils.parseEther("0.001"), user1Signer.address, ownerSigner.address, {
                 value: ethers.utils.parseEther("0.01"),
             });
         });
@@ -233,7 +233,7 @@ describe("ReferralManager Tests", () => {
         });
         describe("getReferralBpsFor - indirect referral", () => {
             beforeEach(async () => {
-                await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, {
+                await expVault.connect(user2Signer).buyNative(token.address, ethers.utils.parseEther("0.001"), ownerSigner.address, user2Signer.address, {
                     value: ethers.utils.parseEther("0.01"),
                 });
             });

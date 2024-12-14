@@ -50,7 +50,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         string symbol,
         uint256 marketCap
     );
-    event TradeOnTokenCreation(address indexed token, address indexed buyer, uint256 tokenAmount);
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event FeeManagerSet(address indexed feeManager);
@@ -137,18 +136,17 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 uint256 remainingValue = msg.value - listingFee;
                 if (remainingValue != baseAmount) revert BuzzToken_BaseAmountNotEnough();
-                IBuzzVault(addr[1]).buyNative{value: remainingValue}(token, 1e15, address(0));
+                IBuzzVault(addr[1]).buyNative{value: remainingValue}(token, 1e15, address(0), msg.sender);
             } else {
                 // Buy tokens using base token
                 IERC20(addr[0]).safeTransferFrom(msg.sender, address(this), baseAmount);
                 IERC20(addr[0]).safeApprove(addr[1], baseAmount);
-                IBuzzVault(addr[1]).buy(token, baseAmount, 1e15, address(0));
+                IBuzzVault(addr[1]).buy(token, baseAmount, 1e15, address(0), msg.sender);
             }
             uint256 balanceAfter = IERC20(token).balanceOf(address(this));
-            uint256 balance = balanceAfter - balanceBefore;
-            if (balance > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
-            emit TradeOnTokenCreation(token, msg.sender, balance);
-            IERC20(token).safeTransfer(msg.sender, balance);
+
+            if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
+            IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
     }
 

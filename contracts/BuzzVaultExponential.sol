@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: UNLICENSED
 pragma solidity ^0.8.19;
 
-import { UD60x18, ud } from "@prb/math/src/UD60x18.sol";
+import {UD60x18, ud} from "@prb/math/src/UD60x18.sol";
 
 import "./BuzzVault.sol";
 import "./interfaces/IBuzzToken.sol";
@@ -73,7 +73,13 @@ contract BuzzVaultExponential is BuzzVault {
      * @param info The token info struct
      * @return tokenAmount The amount of tokens bought
      */
-    function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal override returns (uint256 tokenAmount) {
+    function _buy(
+        address token,
+        uint256 baseAmount,
+        uint256 minTokensOut,
+        address recipient,
+        TokenInfo storage info
+    ) internal override returns (uint256 tokenAmount) {
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
         uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
 
@@ -84,7 +90,7 @@ contract BuzzVaultExponential is BuzzVault {
             info.k,
             info.growthRate
         );
-        
+
         if (tokenAmountBuy < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
 
@@ -93,7 +99,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (tokenAmountBuy > info.tokenBalance || info.tokenBalance - tokenAmountBuy < MIN_TOKEN_AMOUNT) {
             tokenAmountBuy = info.tokenBalance;
 
-            uint256 basePlusNet = info.baseBalance + netBaseAmount; 
+            uint256 basePlusNet = info.baseBalance + netBaseAmount;
             if (basePlusNet > info.baseThreshold) {
                 baseSurplus = basePlusNet - info.baseThreshold;
                 netBaseAmount -= baseSurplus;
@@ -107,14 +113,14 @@ contract BuzzVaultExponential is BuzzVault {
         // Update prices
         info.lastPrice = basePerToken;
         info.lastBasePrice = tokenPerBase;
-        info.currentPrice = info.baseBalance * 1e18 / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
-        info.currentBasePrice = (info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18 / info.baseBalance;
+        info.currentPrice = (info.baseBalance * 1e18) / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
+        info.currentBasePrice = ((info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18) / info.baseBalance;
 
         // Collect trading and referral fee
         _collectFees(info.baseToken, msg.sender, baseAmount);
 
         // Transfer tokens to the buyer
-        IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
+        IERC20(token).safeTransfer(recipient, tokenAmountBuy);
 
         // refund user if they paid too much
         if (baseSurplus > 0) {
@@ -137,12 +143,12 @@ contract BuzzVaultExponential is BuzzVault {
         address token,
         uint256 tokenAmount,
         uint256 minAmountOut,
+        address recipient,
         TokenInfo storage info,
         bool unwrap
     ) internal override returns (uint256 netBaseAmount) {
-        uint256 circulatingSupply = TOTAL_MINTED_SUPPLY - info.tokenBalance;
         (uint256 baseAmountSell, uint256 basePerToken, uint256 tokenPerBase) = _calculateSellPrice(
-            circulatingSupply,
+            TOTAL_MINTED_SUPPLY - info.tokenBalance,
             tokenAmount,
             info.k,
             info.growthRate
@@ -159,8 +165,8 @@ contract BuzzVaultExponential is BuzzVault {
         // Update prices
         info.lastPrice = basePerToken;
         info.lastBasePrice = tokenPerBase;
-        info.currentPrice = info.baseBalance * 1e18 / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
-        info.currentBasePrice = (info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18 / info.baseBalance;
+        info.currentPrice = (info.baseBalance * 1e18) / (info.tokenBalance + CURVE_BALANCE_THRESHOLD);
+        info.currentBasePrice = ((info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18) / info.baseBalance;
 
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmountSell);
         uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
@@ -171,11 +177,11 @@ contract BuzzVaultExponential is BuzzVault {
         _collectFees(info.baseToken, msg.sender, baseAmountSell);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
-        
+
         if (unwrap && info.baseToken == address(wbera)) {
-            _unwrap(msg.sender, netBaseAmount);
+            _unwrap(recipient, netBaseAmount);
         } else {
-            IERC20(info.baseToken).safeTransfer(msg.sender, netBaseAmount);
+            IERC20(info.baseToken).safeTransfer(recipient, netBaseAmount);
         }
     }
 
@@ -232,7 +238,7 @@ contract BuzzVaultExponential is BuzzVault {
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
         require(quoteBalance >= quoteAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
-        
+
         UD60x18 quoteBalanceFixed = ud(quoteBalance);
         UD60x18 quoteAmountFixed = ud(quoteAmountIn);
         UD60x18 kFixed = ud(k);
@@ -255,7 +261,7 @@ contract BuzzVaultExponential is BuzzVault {
         if (tradingFee > 0) {
             referralFee = referralManager.quoteReferralFee(user, tradingFee);
             uint256 tradingMinusRef = tradingFee - referralFee; // will never underflow because ref fee is a % of trading fee
-            
+
             IERC20(token).safeApprove(address(feeManager), tradingMinusRef);
             feeManager.collectTradingFee(token, tradingMinusRef);
             _collectReferralFee(user, token, tradingFee);

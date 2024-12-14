@@ -44,6 +44,8 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     error BuzzVault_NativeTradeUnsupported();
     /// @notice Error code emitted when WBera transfer fails (depositing or withdrawing)
     error BuzzVault_WBeraConversionFailed();
+    /// @notice Error code emitted when the recipient is the zero address
+    error BuzzVault_ZeroAddressRecipient();
 
     /// @notice Event emitted when a trade occurs
     event Trade(
@@ -141,7 +143,12 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable override nonReentrant whenNotPaused {
+    function buyNative(
+        address token,
+        uint256 minTokensOut,
+        address affiliate,
+        address recipient
+    ) external payable override nonReentrant whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
@@ -154,7 +161,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             revert BuzzVault_NativeTradeUnsupported();
         }
 
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -164,9 +171,15 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external override nonReentrant whenNotPaused {
+    function buy(
+        address token,
+        uint256 baseAmount,
+        uint256 minTokensOut,
+        address affiliate,
+        address recipient
+    ) external override nonReentrant whenNotPaused {
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -176,21 +189,29 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant whenNotPaused {
+    function sell(
+        address token,
+        uint256 tokenAmount,
+        uint256 minAmountOut,
+        address affiliate,
+        address recipient,
+        bool unwrap
+    ) external override nonReentrant whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
         if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-        
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
+
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
-    
+
         if (IERC20(token).balanceOf(msg.sender) < tokenAmount) revert BuzzVault_InvalidUserBalance();
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, info, unwrap);
+        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, recipient, info, unwrap);
         emit Trade(
-            msg.sender,
+            recipient,
             token,
             info.baseToken,
             tokenAmount,
@@ -241,12 +262,19 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         bool isBuyOrder
     ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
 
-    function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
+    function _buy(
+        address token,
+        uint256 baseAmount,
+        uint256 minTokensOut,
+        address recipient,
+        TokenInfo storage info
+    ) internal virtual returns (uint256 tokenAmount);
 
     function _sell(
         address token,
         uint256 tokenAmount,
         uint256 minAmountOut,
+        address recipient,
         TokenInfo storage info,
         bool unwrap
     ) internal virtual returns (uint256 netBaseAmount);
@@ -294,7 +322,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
 
         info.lpConduit = lpConduit;
- 
+
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
             IERC20(token).safeTransfer(address(0xdead), IERC20(token).balanceOf(address(this)));
@@ -308,9 +336,9 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      */
-    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
+    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate, address recipient) internal {
         if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
@@ -320,9 +348,9 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountBought = _buy(token, baseAmount, minTokensOut, info);
+        uint256 amountBought = _buy(token, baseAmount, minTokensOut, recipient, info);
         emit Trade(
-            msg.sender,
+            recipient,
             token,
             info.baseToken,
             amountBought,

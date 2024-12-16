@@ -40,8 +40,7 @@ contract BuzzVaultExponential is BuzzVault {
     function quote(
         address token,
         uint256 amount,
-        bool isBuyOrder,
-        bool validate
+        bool isBuyOrder
     ) external view override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -57,11 +56,11 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (isBuyOrder) {
             uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
-            (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(info.baseBalance, amountAfterFee, k, growthRate);
-            if (validate && (amountOut > tokenBalance)) revert BuzzVault_InvalidReserves();
+            (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(baseBalance, amountAfterFee, k, growthRate);
+            if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
-            if (validate && (amountOut > baseBalance)) revert BuzzVault_InvalidReserves();
+            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
             amountOut -= feeManager.quoteTradingFee(amountOut);
         }
     }
@@ -82,9 +81,8 @@ contract BuzzVaultExponential is BuzzVault {
         TokenInfo storage info
     ) internal override returns (uint256 tokenAmount) {
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
-        uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
-
-        uint256 netBaseAmount = baseAmount - tradingFee - referralFee;
+        uint256 netBaseAmount = baseAmount - tradingFee;
+        
         (uint256 tokenAmountBuy, uint256 basePerToken, uint256 tokenPerBase) = _calculateBuyPrice(
             info.baseBalance,
             netBaseAmount,
@@ -170,9 +168,8 @@ contract BuzzVaultExponential is BuzzVault {
         info.currentBasePrice = ((info.tokenBalance + CURVE_BALANCE_THRESHOLD) * 1e18) / info.baseBalance;
 
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmountSell);
-        uint256 referralFee = referralManager.quoteReferralFee(msg.sender, tradingFee);
 
-        netBaseAmount = baseAmountSell - tradingFee - referralFee;
+        netBaseAmount = baseAmountSell - tradingFee;
 
         // Collect trading and referral fee
         _collectFees(info.baseToken, msg.sender, baseAmountSell);

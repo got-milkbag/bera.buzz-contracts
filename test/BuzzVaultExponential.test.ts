@@ -187,6 +187,59 @@ describe("BuzzVaultExponential Tests", () => {
             //console.log("initial virtual base:", ethers.utils.formatEther(await expVault.initialVirtualBase()));
         });
     });
+    describe("quote", () => {
+        beforeEach(async () => {});
+        it("should revert if token doesn't exist", async () => {
+            await expect(expVault.quote(ownerSigner.address, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(
+                expVault,
+                "BuzzVault_UnknownToken"
+            );
+        });
+        it("should return the quote for a given amount of tokens (buy)", async () => {
+            const amount = ethers.utils.parseEther("1");
+            const tradingFeeQuote = await feeManager.quoteTradingFee(amount);
+            const netAmount = amount.sub(tradingFeeQuote);
+            const tokenInfo = await expVault.tokenInfo(token.address);
+            const quote = await expVault.quote(token.address, amount, true);
+            const netCalculation = await expVault.calculateBuyPrice_(tokenInfo[3], netAmount, tokenInfo[9], tokenInfo[10]);
+            expect(quote[0]).to.be.equal(netCalculation[0]);
+        });
+        it("should return the quote for a given amount of tokens (sell)", async () => {
+            // buy tokens initialy
+            await expVault
+                .connect(ownerSigner)
+                .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, user1Signer.address, {
+                    value: ethers.utils.parseEther("0.1"),
+                });
+            const amount = ethers.utils.parseEther("1");
+            const TOTAL_MINTED_SUPPLY = await expVault.TOTAL_MINTED_SUPPLY();
+            const tokenInfo = await expVault.tokenInfo(token.address);
+            const tokenBalance = tokenInfo[2];
+            const circSupply = TOTAL_MINTED_SUPPLY.sub(tokenBalance);
+            const quote = await expVault.quote(token.address, amount, false);
+            const calculation = await expVault.calculateSellPrice_(circSupply, amount, tokenInfo[9], tokenInfo[10]);
+
+            const tradingFee = await feeManager.quoteTradingFee(calculation[0]);
+            expect(quote[0]).to.be.equal(calculation[0].sub(tradingFee));
+        });
+        describe("quote w/ invalid reserves", () => {
+            it("should revert if the reserves are invalid - buy", async () => {
+                await expect(expVault.quote(token.address, ethers.utils.parseEther("10"), true)).to.be.revertedWithCustomError(
+                    expVault,
+                    "BuzzVault_InvalidReserves"
+                );
+            });
+            it("should revert if the reserves are invalid - sell", async () => {
+                //     await expVault
+                //         .connect(ownerSigner)
+                //         .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, user1Signer.address, {
+                //             value: ethers.utils.parseEther("0.1"),
+                //         });
+                //     const tokenInfo = await expVault.tokenInfo(token.address);
+                //     await expect(expVault.quote(token.address, tokenInfo[3], false)).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
+            });
+        });
+    });
     describe("buyNative", () => {
         beforeEach(async () => { });
         it("should handle multiple buys in succession", async () => {

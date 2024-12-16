@@ -372,7 +372,7 @@ describe("BuzzTokenFactory Tests", () => {
                     factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
-                        [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
+                        [ethers.utils.parseEther("22.22"), BigNumber.from("3350000000")],
                         ethers.utils.parseEther("100"),
                         formatBytes32String("123456006"),
                         ethers.utils.parseEther("69420"),

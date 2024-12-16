@@ -259,7 +259,8 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     function quote(
         address token,
         uint256 amount,
-        bool isBuyOrder
+        bool isBuyOrder,
+        bool validate
     ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
 
     function _buy(

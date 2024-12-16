@@ -57,11 +57,7 @@ describe("BuzzTokenFactory Tests", () => {
 
         // Deploy BexPriceDecoder
         const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
-            crocQuery.address,
-            [wBera.address],
-            [bexLpToken.address]
-        );
+        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(crocQuery.address, [wBera.address], [bexLpToken.address]);
 
         // Deploy FeeManager
         const FeeManager = await ethers.getContractFactory("FeeManager");
@@ -293,8 +289,8 @@ describe("BuzzTokenFactory Tests", () => {
         it("should emit a CurveDataSet event", async () => {
             const name = "TEST";
             const symbol = "TST";
-            expect(
-                await factory.createToken(
+            await expect(
+                factory.createToken(
                     [name, symbol],
                     [wBera.address, expVault.address],
                     [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
@@ -306,7 +302,7 @@ describe("BuzzTokenFactory Tests", () => {
                     }
                 )
             )
-                .to.emit(vault, "CurveDataSet")
+                .to.emit(expVault, "CurveDataSet")
                 .withArgs(anyValue, ethers.utils.parseEther("2.22"), BigNumber.from("3350000000"), anyValue);
         });
         describe("_deployToken", () => {
@@ -411,8 +407,8 @@ describe("BuzzTokenFactory Tests", () => {
                 // Deploy and buy token
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("0.01"));
 
-                expect(
-                    await factory.createToken(
+                await expect(
+                    factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
                         [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
@@ -424,13 +420,15 @@ describe("BuzzTokenFactory Tests", () => {
                         }
                     )
                 )
-                    .to.emit(vault, "Trade")
+                    .to.emit(expVault, "Trade")
                     .withArgs(
                         ownerSigner.address,
-                        token.address,
+                        anyValue,
                         wBera.address,
                         anyValue,
                         ethers.utils.parseEther("0.01"),
+                        anyValue,
+                        anyValue,
                         anyValue,
                         anyValue,
                         anyValue,
@@ -444,8 +442,8 @@ describe("BuzzTokenFactory Tests", () => {
             it("should purchase the using base tokens and emit a trade event", async () => {
                 // Deploy and buy token
                 await wBera.approve(factory.address, ethers.utils.parseEther("0.1"));
-                expect(
-                    await factory.createToken(
+                await expect(
+                    factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
                         [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
@@ -457,13 +455,15 @@ describe("BuzzTokenFactory Tests", () => {
                         }
                     )
                 )
-                    .to.emit(vault, "Trade")
+                    .to.emit(expVault, "Trade")
                     .withArgs(
                         ownerSigner.address,
-                        token.address,
+                        anyValue,
                         wBera.address,
                         anyValue,
                         ethers.utils.parseEther("0.1"),
+                        anyValue,
+                        anyValue,
                         anyValue,
                         anyValue,
                         anyValue,

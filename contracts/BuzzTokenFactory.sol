@@ -130,8 +130,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
 
         if (baseAmount > 0) {
+            (uint256 quotedAmount, , ) = IBuzzVault(addr[1]).quote(token, baseAmount, true, false);
+            if (quotedAmount > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
+
             // Buy tokens after deployment
-            uint256 balanceBefore = IERC20(token).balanceOf(address(this));
             if ((msg.value - listingFee) > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 uint256 remainingValue = msg.value - listingFee;
@@ -143,10 +145,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
                 IERC20(addr[0]).safeApprove(addr[1], baseAmount);
                 IBuzzVault(addr[1]).buy(token, baseAmount, 1e15, address(0), msg.sender);
             }
-            uint256 balanceAfter = IERC20(token).balanceOf(address(this));
-
-            if (balanceAfter - balanceBefore > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
-            IERC20(token).safeTransfer(msg.sender, balanceAfter - balanceBefore);
         }
     }
 

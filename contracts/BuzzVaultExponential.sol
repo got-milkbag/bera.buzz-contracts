@@ -40,7 +40,8 @@ contract BuzzVaultExponential is BuzzVault {
     function quote(
         address token,
         uint256 amount,
-        bool isBuyOrder
+        bool isBuyOrder,
+        bool validate
     ) external view override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -57,10 +58,10 @@ contract BuzzVaultExponential is BuzzVault {
         if (isBuyOrder) {
             uint256 amountAfterFee = amount - feeManager.quoteTradingFee(amount);
             (amountOut, pricePerToken, pricePerBase) = _calculateBuyPrice(info.baseBalance, amountAfterFee, k, growthRate);
-            if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
+            if (validate && (amountOut > tokenBalance)) revert BuzzVault_InvalidReserves();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
-            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
+            if (validate && (amountOut > baseBalance)) revert BuzzVault_InvalidReserves();
             amountOut -= feeManager.quoteTradingFee(amountOut);
         }
     }

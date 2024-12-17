@@ -195,6 +195,12 @@ describe("BuzzVaultExponential Tests", () => {
                 "BuzzVault_UnknownToken"
             );
         });
+        it("should revert if the token has already been listed on Bex", async () => {
+            await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, user1Signer.address, {
+                value: ethers.utils.parseEther("1500"),
+            });
+            await expect(expVault.quote(token.address, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(expVault, "BuzzVault_BexListed");
+        });
         it("should return the quote for a given amount of tokens (buy)", async () => {
             const amount = ethers.utils.parseEther("1");
             const tradingFeeQuote = await feeManager.quoteTradingFee(amount);

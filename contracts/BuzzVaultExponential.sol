@@ -184,7 +184,7 @@ contract BuzzVaultExponential is BuzzVault {
 
     /**
      * @notice Calculate the amount of quote tokens that can be bought at the current curve
-     * @param baseBalance The balance of base token
+     * @param baseRaised The amount of base tokens raised
      * @param baseAmountIn The amount of base tokens to buy with
      * @param k The k coefficient of the curve
      * @param growthFactor The growth coefficient of the curve
@@ -193,14 +193,14 @@ contract BuzzVaultExponential is BuzzVault {
      * @return pricePerBase The price per base token, scaled by 1e18
      */
     function _calculateBuyPrice(
-        uint256 baseBalance,
+        uint256 baseRaised,
         uint256 baseAmountIn,
         uint256 k,
         uint256 growthFactor
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         if (baseAmountIn == 0) revert BuzzVault_QuoteAmountZero();
 
-        UD60x18 baseBalanceFixed = ud(baseBalance);
+        UD60x18 baseBalanceFixed = ud(baseRaised);
         UD60x18 baseAmountFixed = ud(baseAmountIn);
         UD60x18 kFixed = ud(k);
         UD60x18 growthFactorFixed = ud(growthFactor);
@@ -219,7 +219,7 @@ contract BuzzVaultExponential is BuzzVault {
 
     /**
      * @notice Calculate the amount of base tokens that can be received for selling quote tokens
-     * @param quoteBalance The balance of quote tokens
+     * @param quoteSold The amount of quote tokens sold
      * @param quoteAmountIn The amount of quote tokens to sell
      * @param k The k coefficient of the curve
      * @param growthFactor The growth coefficient of the curve
@@ -228,15 +228,15 @@ contract BuzzVaultExponential is BuzzVault {
      * @return pricePerBase The price per base token, scaled by 1e18
      */
     function _calculateSellPrice(
-        uint256 quoteBalance,
+        uint256 quoteSold,
         uint256 quoteAmountIn,
         uint256 k,
         uint256 growthFactor
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
-        if (quoteBalance < quoteAmountIn) revert BuzzVault_InvalidReserves();
+        if (quoteSold < quoteAmountIn) revert BuzzVault_InvalidReserves();
 
-        UD60x18 quoteBalanceFixed = ud(quoteBalance);
+        UD60x18 quoteBalanceFixed = ud(quoteSold);
         UD60x18 quoteAmountFixed = ud(quoteAmountIn);
         UD60x18 kFixed = ud(k);
         UD60x18 growthFactorFixed = ud(growthFactor);

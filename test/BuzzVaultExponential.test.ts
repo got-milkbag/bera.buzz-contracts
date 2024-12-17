@@ -230,13 +230,13 @@ describe("BuzzVaultExponential Tests", () => {
                 );
             });
             it("should revert if the reserves are invalid - sell", async () => {
-                //     await expVault
-                //         .connect(ownerSigner)
-                //         .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, user1Signer.address, {
-                //             value: ethers.utils.parseEther("0.1"),
-                //         });
-                //     const tokenInfo = await expVault.tokenInfo(token.address);
-                //     await expect(expVault.quote(token.address, tokenInfo[3], false)).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
+                await expVault
+                    .connect(ownerSigner)
+                    .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, user1Signer.address, {
+                        value: ethers.utils.parseEther("0.1"),
+                    });
+                const tokenInfo = await expVault.tokenInfo(token.address);
+                await expect(expVault.quote(token.address, ethers.utils.parseEther("500000000"), false)).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
             });
         });
     });

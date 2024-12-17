@@ -60,7 +60,6 @@ contract BuzzVaultExponential is BuzzVault {
             if (amountOut > tokenBalance) revert BuzzVault_InvalidReserves();
         } else {
             (amountOut, pricePerToken, pricePerBase) = _calculateSellPrice(circulatingSupply, amount, k, growthRate);
-            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
             amountOut -= feeManager.quoteTradingFee(amountOut);
         }
     }
@@ -235,7 +234,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 growthFactor
     ) internal pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
         if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
-        require(quoteBalance >= quoteAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
+        if (quoteBalance < quoteAmountIn) revert BuzzVault_InvalidReserves();
 
         UD60x18 quoteBalanceFixed = ud(quoteBalance);
         UD60x18 quoteAmountFixed = ud(quoteAmountIn);

@@ -203,30 +203,35 @@ describe("BuzzVaultExponential Tests", () => {
         });
         it("should return the quote for a given amount of tokens (buy)", async () => {
             const amount = ethers.utils.parseEther("1");
-            const tradingFeeQuote = await feeManager.quoteTradingFee(amount);
-            const netAmount = amount.sub(tradingFeeQuote);
-            const tokenInfo = await expVault.tokenInfo(token.address);
+
             const quote = await expVault.quote(token.address, amount, true);
-            const netCalculation = await expVault.calculateBuyPrice_(tokenInfo[3], netAmount, tokenInfo[9], tokenInfo[10]);
-            expect(quote[0]).to.be.equal(netCalculation[0]);
+            const balanceBefore = await token.balanceOf(user1Signer.address);
+            await expVault
+                .connect(ownerSigner)
+                .buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, user1Signer.address, {
+                    value: amount,
+                });
+            const balanceAfter = await token.balanceOf(user1Signer.address);
+            expect(quote[0]).to.be.equal(balanceAfter.sub(balanceBefore));
         });
         it("should return the quote for a given amount of tokens (sell)", async () => {
+            const baseAmount = ethers.utils.parseEther("1");
+
             // buy tokens initialy
             await expVault
                 .connect(ownerSigner)
-                .buyNative(token.address, ethers.utils.parseEther("0.001"), ethers.constants.AddressZero, user1Signer.address, {
-                    value: ethers.utils.parseEther("0.1"),
+                .buyNative(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, ownerSigner.address, {
+                    value: baseAmount,
                 });
-            const amount = ethers.utils.parseEther("1");
-            const TOTAL_MINTED_SUPPLY = await expVault.TOTAL_MINTED_SUPPLY();
-            const tokenInfo = await expVault.tokenInfo(token.address);
-            const tokenBalance = tokenInfo[2];
-            const circSupply = TOTAL_MINTED_SUPPLY.sub(tokenBalance);
-            const quote = await expVault.quote(token.address, amount, false);
-            const calculation = await expVault.calculateSellPrice_(circSupply, amount, tokenInfo[9], tokenInfo[10]);
 
-            const tradingFee = await feeManager.quoteTradingFee(calculation[0]);
-            expect(quote[0]).to.be.equal(calculation[0].sub(tradingFee));
+            const tokenBalance = await token.balanceOf(ownerSigner.address);
+            const baseBalanceBefore = await wBera.balanceOf(ownerSigner.address);
+            const quote = await expVault.quote(token.address, tokenBalance, false);
+
+            await token.approve(expVault.address, tokenBalance);
+            await expVault.connect(ownerSigner).sell(token.address, tokenBalance, 0, ethers.constants.AddressZero, ownerSigner.address, false);
+            const baseBalanceAfter = await wBera.balanceOf(ownerSigner.address);
+            expect(quote[0]).to.be.equal(baseBalanceAfter.sub(baseBalanceBefore));
         });
         describe("quote w/ invalid reserves", () => {
             it("should revert if the reserves are invalid - buy", async () => {

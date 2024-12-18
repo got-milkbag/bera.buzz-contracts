@@ -34,6 +34,7 @@ const DEPLOY_ABI = [
     "function getDeployed (address deployer, bytes32 salt) public view returns (address deployed)",
 ];
 
+//TODO: Update script
 async function main() {
     //Deployers address
     const [deployer] = await ethers.getSigners();

@@ -60,14 +60,6 @@ describe("ReferralManager Tests", () => {
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
 
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
-            crocQuery.address, 
-            [wBera.address],
-            [bexLpToken.address]
-        );
-
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(
@@ -95,7 +87,6 @@ describe("ReferralManager Tests", () => {
             feeManager.address,
             factory.address,
             referralManager.address,
-            bexPriceDecoder.address,
             bexLiquidityManager.address,
             wBera.address
         );
@@ -104,7 +95,7 @@ describe("ReferralManager Tests", () => {
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);
 
         // Admin: Whitelist base token in Factory
-        await factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, true);
+        await factory.connect(ownerSigner).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("0.01"), ethers.utils.parseEther("0.01"), true);
 
         // Admin: Set Vault as the factory's vault & enable token creation
         await factory.connect(ownerSigner).setVault(expVault.address, true);
@@ -114,10 +105,9 @@ describe("ReferralManager Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
-            [ethers.utils.parseEther("2.22"), BigNumber.from("3350000000")],
+            [ethers.utils.parseEther("1"), ethers.utils.parseEther("10000")],
             0,
             formatBytes32String("12345"),
-            ethers.utils.parseEther("69420"),
             {
                 value: listingFee,
             }

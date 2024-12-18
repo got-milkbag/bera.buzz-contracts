@@ -17,8 +17,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
     /// @notice Error code emitted when token creation is disabled
     error BuzzToken_TokenCreationDisabled();
-    /// @notice Error code emitted when the same bool is passed
-    error BuzzToken_SameBool();
     /// @notice Error code emitted when the vault is not registered
     error BuzzToken_VaultNotRegistered();
     /// @notice Error code emitted when the address is zero
@@ -29,38 +27,37 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_FeeTransferFailed();
     /// @notice Error code emitted when the max initial buy is exceeded
     error BuzzToken_MaxInitialBuyExceeded();
-    /// @notice Error code emitted when the market cap is under the minimum
-    error BuzzToken_MarketCapUnderMin();
     /// @notice Error code emitted when the base amount is not enough to complete the autobuy transaction
     error BuzzToken_BaseAmountNotEnough();
     /// @notice Error code emitted when the base token address is not whitelisted
     error BuzzToken_BaseTokenNotWhitelisted();
-    /// @notice Error code emitted when the value of K is not valid
-    error BuzzToken_InvalidK();
-    /// @notice Error code emitted when the value of growth rate is not valid
-    error BuzzToken_InvalidGrowthRate();
+    /// @notice Error code emitted when the initial reserves are invalid
+    error BuzzToken_InvalidInitialReserves();
+    /// @notice Error code emitted when the final reserves are invalid
+    error BuzzToken_InvalidFinalReserves();
 
-    /// TODO: Fix indexed limit
     event TokenCreated(
         address indexed token,
-        address baseToken,
+        address indexed baseToken,
         address indexed vault,
-        address indexed deployer,
+        address deployer,
         string name,
-        string symbol,
-        uint256 marketCap
+        string symbol
     );
     event VaultSet(address indexed vault, bool status);
     event TokenCreationSet(bool status);
     event FeeManagerSet(address indexed feeManager);
-    event BaseTokenWhitelisted(address indexed baseToken, bool enabled);
+    event BaseTokenWhitelisted(address indexed baseToken, uint256 minReserveAmount, uint256 minRaiseAmount, bool enabled);
+
+    struct RaiseInfo {
+        uint256 minReserveAmount;
+        uint256 minRaiseAmount;
+    }
 
     /// @notice The initial supply of the token
-    uint256 public constant INITIAL_SUPPLY = 8e26;
-    /// @notice The maximum initial deployer buy (5% of the total 1B supply)
-    uint256 public constant MAX_INITIAL_BUY = 5e25;
-    /// @notice The minimum market cap for a token
-    uint256 public constant MIN_MARKET_CAP = 1e21;
+    uint256 public constant INITIAL_SUPPLY = 1e27;
+    /// @notice The maximum initial deployer buy (10% of the total 1B supply)
+    uint256 public constant MAX_INITIAL_BUY = 1e26;
     /// @notice The fee manager contract collecting the listing fee
     IFeeManager public feeManager;
 
@@ -77,6 +74,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     mapping(address => bool) public whitelistedBaseTokens;
     /// @notice A mapping of deployed tokens via this factory
     mapping(address => bool) public isDeployed;
+    /// @notice A mapping of minimum reserve and raise amounts for a base token
+    mapping(address => RaiseInfo) public raiseAmounts;
 
     /**
      * @notice Constructor of the Token Factory contract
@@ -99,26 +98,23 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @dev Msg.value should be greater or equal to the listing fee.
      * @param metadata A string array containing the name and symbol of the token
      * @param addr An address array containing the addresses for baseToken and vault
-     * @param curveData An array containing the curve data for the token
+     * @param raiseData An array containing the reserve data for the token
      * @param baseAmount The amount of base token used to buy the new token after deployment
      * @param salt The salt for the CREATE3 deployment
-     * @param marketCap The market cap of the token
      */
     function createToken(
         string[2] calldata metadata, //name, symbol
         address[2] calldata addr, //baseToken, vault
-        uint256[2] calldata curveData, //k, growthRate
+        uint256[2] calldata raiseData, //initialReserves, finalReserves
         uint256 baseAmount,
-        bytes32 salt,
-        uint256 marketCap
+        bytes32 salt
     ) external payable nonReentrant returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
-        if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
-        if (marketCap < MIN_MARKET_CAP) revert BuzzToken_MarketCapUnderMin();
+        if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
         if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
-        if (curveData[0] == 0) revert BuzzToken_InvalidK();
-        if (curveData[1] == 0) revert BuzzToken_InvalidGrowthRate();
+        if (raiseData[0] < raiseAmounts[addr[0]].minReserveAmount) revert BuzzToken_InvalidInitialReserves();
+        if (raiseData[1] < raiseData[0] + raiseAmounts[addr[0]].minRaiseAmount) revert BuzzToken_InvalidFinalReserves();
 
         uint256 listingFee = feeManager.listingFee();
         if (listingFee > 0) {
@@ -126,8 +122,8 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             feeManager.collectListingFee{value: listingFee}();
         }
 
-        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, marketCap, curveData);
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1], marketCap);
+        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, raiseData);
+        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1]);
 
         if (baseAmount > 0) {
             // Buy tokens after deployment
@@ -157,7 +153,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      */
     function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
         if (_vault == address(0)) revert BuzzToken_AddressZero();
-        if (vaults[_vault] == enable) revert BuzzToken_SameBool();
         vaults[_vault] = enable;
 
         emit VaultSet(_vault, enable);
@@ -168,7 +163,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param _allowTokenCreation The status of token creation
      */
     function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
-        if (allowTokenCreation == _allowTokenCreation) revert BuzzToken_SameBool();
         allowTokenCreation = _allowTokenCreation;
 
         emit TokenCreationSet(allowTokenCreation);
@@ -187,12 +181,26 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /**
      * @notice Enables or disables a base token address that can be used to deploy tokens
      * @param baseToken The address of the base token
+     * @param minReserveAmount The minimum reserve amount
+     * @param minRaiseAmount The minimum raise amount
      * @param enable True to whitelist, false to remove from the whitelist
      */
-    function setAllowedBaseToken(address baseToken, bool enable) external onlyRole(OWNER_ROLE) {
+    function setAllowedBaseToken(
+        address baseToken, 
+        uint256 minReserveAmount, 
+        uint256 minRaiseAmount,
+        bool enable
+    ) external onlyRole(OWNER_ROLE) {
+        if (raiseAmounts[baseToken].minReserveAmount == 0 && raiseAmounts[baseToken].minRaiseAmount == 0) {
+            raiseAmounts[baseToken] = RaiseInfo(minReserveAmount, minRaiseAmount);
+        } 
+        else {
+            raiseAmounts[baseToken].minReserveAmount = minReserveAmount;
+            raiseAmounts[baseToken].minRaiseAmount = minRaiseAmount;
+        }
         whitelistedBaseTokens[baseToken] = enable;
 
-        emit BaseTokenWhitelisted(baseToken, enable);
+        emit BaseTokenWhitelisted(baseToken, minReserveAmount, minRaiseAmount, enable);
     }
 
     /**
@@ -202,7 +210,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param baseToken The address of the base token
      * @param vault The address of the vault
      * @param salt The salt for the CREATE3 deployment
-     * @param marketCap The market cap of the token
+     * @param raiseData An array containing the reserve data for the token
      * @return token The address of the deployed token
      */
     function _deployToken(
@@ -211,11 +219,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         address baseToken,
         address vault,
         bytes32 salt,
-        uint256 marketCap,
-        uint256[2] calldata curveData
+        uint256[2] calldata raiseData
     ) internal returns (address token) {
-        uint256 k = curveData[0];
-        uint256 growthRate = curveData[1];
+        uint256 initialReserves = raiseData[0];
+        uint256 finalReserves = raiseData[1];
 
         bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
 
@@ -225,6 +232,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
         IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
-        IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, marketCap, k, growthRate);
+        IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, initialReserves, finalReserves);
     }
 }

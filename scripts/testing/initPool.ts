@@ -6,6 +6,7 @@ let bexLiquidityManager: Contract;
 const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
 
 async function main() {
+    //TODO: Update script
     const [deployer] = await ethers.getSigners();
 
     console.log("Creating tokens with the account:", deployer.address);

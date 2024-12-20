@@ -64,12 +64,14 @@ contract BuzzVaultExponential is BuzzVault {
      * @param baseAmount The base amount of tokens used to buy with
      * @param minTokensOut The minimum amount of tokens to buy
      * @param info The token info struct
+     * @param recipient The address to send the tokens to
      * @return tokenAmount The amount of tokens bought
      */
     function _buy(
         address token, 
         uint256 baseAmount, 
-        uint256 minTokensOut, 
+        uint256 minTokensOut,
+        address recipient, 
         TokenInfo storage info
     ) internal override returns (uint256 tokenAmount, bool needsMigration) {
         uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
@@ -110,11 +112,11 @@ contract BuzzVaultExponential is BuzzVault {
         _collectFees(info.baseToken, msg.sender, baseAmount);
 
         // Transfer tokens to the buyer
-        IERC20(token).safeTransfer(msg.sender, tokenAmountBuy);
+        IERC20(token).safeTransfer(recipient, tokenAmountBuy);
 
         // refund user if they paid too much
         if (baseSurplus > 0) {
-            IERC20(info.baseToken).safeTransfer(msg.sender, baseSurplus);
+            IERC20(info.baseToken).safeTransfer(recipient, baseSurplus);
         }
 
         tokenAmount = tokenAmountBuy;
@@ -126,6 +128,7 @@ contract BuzzVaultExponential is BuzzVault {
      * @param token The token address
      * @param tokenAmount The amount of tokens to sell
      * @param minAmountOut The minimum amount of base tokens to receive
+     * @param recipient The address to send the base tokens to
      * @param info The token info struct
      * @param unwrap True if the base token should be unwrapped (only if base token in WBera)
      * @return netBaseAmount The amount of base tokens after fees
@@ -134,6 +137,7 @@ contract BuzzVaultExponential is BuzzVault {
         address token,
         uint256 tokenAmount,
         uint256 minAmountOut,
+        address recipient,
         TokenInfo storage info,
         bool unwrap
     ) internal override returns (uint256 netBaseAmount) {
@@ -168,9 +172,9 @@ contract BuzzVaultExponential is BuzzVault {
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
         
         if (unwrap && info.baseToken == address(wbera)) {
-            _unwrap(msg.sender, netBaseAmount);
+            _unwrap(recipient, netBaseAmount);
         } else {
-            IERC20(info.baseToken).safeTransfer(msg.sender, netBaseAmount);
+            IERC20(info.baseToken).safeTransfer(recipient, netBaseAmount);
         }
     }
 

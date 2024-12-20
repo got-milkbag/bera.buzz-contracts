@@ -41,6 +41,8 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     error BuzzVault_NativeTradeUnsupported();
     /// @notice Error code emitted when WBera transfer fails (depositing or withdrawing)
     error BuzzVault_WBeraConversionFailed();
+    /// @notice Error code emitted when the recipient is the zero address
+    error BuzzVault_ZeroAddressRecipient();
 
     /// @notice Event emitted when a trade occurs
     event Trade(
@@ -135,8 +137,14 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param token The token address
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable override nonReentrant whenNotPaused {
+    function buyNative(
+        address token, 
+        uint256 minTokensOut, 
+        address affiliate,
+        address recipient
+    ) external payable override nonReentrant whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
@@ -149,7 +157,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             revert BuzzVault_NativeTradeUnsupported();
         }
 
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -158,10 +166,17 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param baseAmount The amount of base tokens to buy with
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external override nonReentrant whenNotPaused {
+    function buy(
+        address token, 
+        uint256 baseAmount, 
+        uint256 minTokensOut, 
+        address affiliate,
+        address recipient
+    ) external override nonReentrant whenNotPaused {
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -170,9 +185,19 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param tokenAmount The amount of (quote) tokens to sell
      * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
+     * @param unwrap Whether to unwrap the WBERA tokens to BERA
      */
-    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant whenNotPaused {
+    function sell(
+        address token, 
+        uint256 tokenAmount, 
+        uint256 minAmountOut, 
+        address affiliate, 
+        address recipient,
+        bool unwrap
+    ) external override nonReentrant whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
         
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -182,9 +207,9 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, info, unwrap);
+        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, recipient, info, unwrap);
         emit Trade(
-            msg.sender,
+            recipient, 
             token,
             info.baseToken,
             tokenAmount,
@@ -248,6 +273,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address token, 
         uint256 baseAmount, 
         uint256 minTokensOut, 
+        address recipient, 
         TokenInfo storage info
     ) internal virtual returns (uint256 tokenAmount, bool needsMigration);
 
@@ -255,6 +281,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address token,
         uint256 tokenAmount,
         uint256 minAmountOut,
+        address recipient,
         TokenInfo storage info,
         bool unwrap
     ) internal virtual returns (uint256 netBaseAmount);
@@ -315,8 +342,17 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param baseAmount The amount of base tokens to buy with
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
+    function _buyTokens(
+        address token, 
+        uint256 baseAmount, 
+        uint256 minTokensOut, 
+        address affiliate, 
+        address recipient
+    ) internal {
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
+        
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
@@ -326,9 +362,9 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        (uint256 amountBought, bool needsMigration) = _buy(token, baseAmount, minTokensOut, info);
+        (uint256 amountBought, bool needsMigration) = _buy(token, baseAmount, minTokensOut, recipient, info);
         emit Trade(
-            msg.sender,
+            recipient,
             token,
             info.baseToken,
             amountBought,

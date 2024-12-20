@@ -329,8 +329,8 @@ describe("BuzzTokenFactory Tests", () => {
             });
             it("should revert if the initial buy is bigger than 10% of the total supply", async () => {
                 const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("100"));
-                //await expect(
-                    await factory.createToken(
+                await expect(
+                    factory.createToken(
                         ["TEST", "TST"],
                         [wBera.address, expVault.address],
                         [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
@@ -340,7 +340,7 @@ describe("BuzzTokenFactory Tests", () => {
                             value: listingFeeAndBuyAmount,
                         }
                     )
-                //).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
+                ).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
             });
         });
         describe("buy on deployment - native currency", () => {

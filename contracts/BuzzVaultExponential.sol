@@ -88,7 +88,7 @@ contract BuzzVaultExponential is BuzzVault {
         //TODO: Check surplus math and if it checks out
         // Calculate base token surplus whenever applicable
         uint256 baseSurplus;
-        if (tokenAmountBuy > info.tokenBalance - info.quoteThreshold) {
+        if (tokenAmountBuy >= info.tokenBalance - info.quoteThreshold) {
             tokenAmountBuy = info.tokenBalance - info.quoteThreshold;
 
             uint256 basePlusNet = info.baseBalance + netBaseAmount; 

@@ -116,7 +116,7 @@ describe("BuzzVaultExponential Tests", () => {
         const tx = await factory.createToken(
             ["TEST", "TST"],
             [wBera.address, expVault.address],
-            [ethers.utils.parseEther("1"), ethers.utils.parseEther("500")],
+            [ethers.utils.parseEther("100"), ethers.utils.parseEther("1000")],
             0,
             formatBytes32String("12345"),
             {
@@ -156,7 +156,7 @@ describe("BuzzVaultExponential Tests", () => {
             const tokenInfo = await expVault.tokenInfo(token.address);
             expect(await token.balanceOf(expVault.address)).to.be.equal(await token.totalSupply());
             expect(tokenInfo.tokenBalance).to.be.equal(await token.totalSupply());
-            expect(tokenInfo.baseBalance).to.be.equal(ethers.utils.parseEther("1"));
+            expect(tokenInfo.baseBalance).to.be.equal(ethers.utils.parseEther("100"));
             expect(tokenInfo.bexListed).to.be.equal(false);
 
             expect(tokenInfo.tokenBalance).to.be.equal(await token.balanceOf(expVault.address));
@@ -240,6 +240,10 @@ describe("BuzzVaultExponential Tests", () => {
     describe("buyNative", () => {
         beforeEach(async () => { });
         it("should handle multiple buys in succession", async () => {
+            const tokenInfo = await expVault.tokenInfo(token.address);
+            const beraThreshold = tokenInfo[6];
+            console.log("Quote threshold: ", beraThreshold.toString());
+
             const initialVaultTokenBalance = await token.balanceOf(expVault.address);
             const initialUser1Balance = await ethers.provider.getBalance(user1Signer.address);
             const initialUser2Balance = await ethers.provider.getBalance(user2Signer.address);
@@ -477,7 +481,7 @@ describe("BuzzVaultExponential Tests", () => {
             expect(tokenInfoAfter.baseBalance).to.be.equal(tokenInfoBefore.baseBalance.add(msgValueAfterFee));
         });
         it("should init a pool and deposit liquidity if preconditions are met", async () => {
-            const msgValue = ethers.utils.parseEther("2000");
+            const msgValue = ethers.utils.parseEther("909.1");
 
             const tokenContractBalance = await token.balanceOf(expVault.address);
             console.log("Token contract balanceA: ", tokenContractBalance.toString());
@@ -544,7 +548,7 @@ describe("BuzzVaultExponential Tests", () => {
         beforeEach(async () => {
             await expVault
                 .connect(user1Signer)
-                .buyNative(token.address, ethers.utils.parseEther("3"), ethers.constants.AddressZero, user1Signer.address, { value: ethers.utils.parseEther("0.001") });
+                .buyNative(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, user1Signer.address, { value: ethers.utils.parseEther("2") });
             await token.connect(user1Signer).approve(expVault.address, await token.balanceOf(user1Signer.address));
         });
         it("should revert if the token amount is zero", async () => {

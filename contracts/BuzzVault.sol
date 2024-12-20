@@ -303,7 +303,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 tokenBalance = info.tokenBalance;
-        uint256 baseBalance = info.baseBalance - info.initialBase;
+        uint256 baseBalance =  info.baseBalance - info.initialBase;
 
         info.baseBalance = 0;
         info.tokenBalance = 0;

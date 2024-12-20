@@ -61,17 +61,17 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
             if (address(_lpTokens[i]) == address(0) || _tokens[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
             if (lpTokens[_tokens[i]].baseToken != address(0)) revert BexPriceDecoder_TokenAlreadyExists();
 
-            address lpToken = address(_lpTokens[i]);
-            address baseToken = _lpTokens[i].baseToken();
-            address quoteToken = _lpTokens[i].quoteToken();
-            uint256 poolIdx = _lpTokens[i].poolType();
+            lpTokens[_tokens[i]].lpToken = address(_lpTokens[i]);
+            lpTokens[_tokens[i]].baseToken = _lpTokens[i].baseToken();
+            lpTokens[_tokens[i]].quoteToken = _lpTokens[i].quoteToken();
+            lpTokens[_tokens[i]].poolIdx = _lpTokens[i].poolType();
 
-            lpTokens[_tokens[i]].lpToken = lpToken;
-            lpTokens[_tokens[i]].baseToken = baseToken;
-            lpTokens[_tokens[i]].quoteToken = quoteToken;
-            lpTokens[_tokens[i]].poolIdx = poolIdx;
-
-            emit LpTokenAdded(lpToken, baseToken, quoteToken, poolIdx);
+            emit LpTokenAdded(
+                address(_lpTokens[i]), 
+                _lpTokens[i].baseToken(), 
+                _lpTokens[i].quoteToken(),
+                _lpTokens[i].poolType()
+            );
 
             unchecked {
                 ++i;
@@ -94,7 +94,12 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
             lpTokens[_tokens[i]].quoteToken = address(0);
             lpTokens[_tokens[i]].poolIdx = 0;
 
-            emit LpTokenRemoved(lpToken, baseToken, quoteToken, poolIdx);
+            emit LpTokenRemoved(
+                lpToken, 
+                baseToken, 
+                quoteToken, 
+                poolIdx
+            );
 
             unchecked {
                 ++i;

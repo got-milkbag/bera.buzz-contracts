@@ -223,12 +223,21 @@ describe("BuzzVaultExponential Tests", () => {
             const quote = await expVault.quote(token.address, ethers.utils.parseEther("1000000000000000000000000000"), true);
             expect(quote).to.be.equal(ethers.utils.parseEther("900000000"));
         });
-        describe("quote w/ invalid reserves", () => {
-            it("should revert if the reserves are invalid - sell", async () => {
-                const sellAmount = await expVault.quote(token.address, ethers.utils.parseEther("5000000000000000000000000000"), false);
-                console.log(sellAmount, "sell amounts")
-                await expect(expVault.quote(token.address, ethers.utils.parseEther("500000000000000"), false)).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidReserves");
-            });
+        it("should return y1-y0 if quote amountIn is bigger than supply in curve (sell)", async () => {
+            const baseAmount = ethers.utils.parseEther("1");
+            await expVault
+                .connect(ownerSigner)
+                .buyNative(token.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, ownerSigner.address, {
+                    value: baseAmount,
+                });
+                
+            const tokenInfo = await expVault.tokenInfo(token.address);
+            const beraBalance = tokenInfo[2];
+            const initialBera = tokenInfo[3];
+            const resultingBera = beraBalance.sub(initialBera);
+
+            const quote = await expVault.quote(token.address, ethers.utils.parseEther("1000000000000000000000000000"), false);
+            expect(quote).to.be.equal(resultingBera.sub(await feeManager.quoteTradingFee(resultingBera)));
         });
     });
     describe("buyNative", () => {

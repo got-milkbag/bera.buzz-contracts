@@ -57,6 +57,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external returns (address) {
         if(vaults[msg.sender] == false) revert BexLiquidityManager_Unauthorized();
+
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);

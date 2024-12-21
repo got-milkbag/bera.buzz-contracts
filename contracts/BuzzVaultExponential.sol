@@ -50,7 +50,7 @@ contract BuzzVaultExponential is BuzzVault {
             (amountOut,) = _calculateBuyPrice(amountAfterFee, baseBalance, tokenBalance, info.quoteThreshold, info.k);
         } else {
             amountOut = _calculateSellPrice(amount, tokenBalance, baseBalance, info.k);
-            if (amountOut > baseBalance) revert BuzzVault_InvalidReserves();
+            if (amountOut > baseBalance - info.initialBase) amountOut = baseBalance - info.initialBase;
             amountOut -= feeManager.quoteTradingFee(amountOut);
         }
     }
@@ -135,7 +135,7 @@ contract BuzzVaultExponential is BuzzVault {
             info.k
         );
 
-        if (info.baseBalance < baseAmountSell) revert BuzzVault_InvalidReserves();
+        if (info.baseBalance - info.initialBase < baseAmountSell) revert BuzzVault_InvalidReserves();
         if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
         if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();
 

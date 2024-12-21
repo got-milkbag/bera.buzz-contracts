@@ -18,7 +18,7 @@ contract BuzzVaultExponentialMock is BuzzVaultExponential {
         uint256 quoteBalance,
         uint256 baseBalance,  
         uint256 k
-    ) external pure returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase) {
+    ) external pure returns (uint256 amountOut) {
         return _calculateSellPrice(quoteAmountIn, quoteBalance, baseBalance, k);
     }
 }

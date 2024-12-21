@@ -127,7 +127,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
         if (baseAmount > 0) {
             // Buy tokens after deployment
-            (uint256 quotedAmount, , ) = IBuzzVault(addr[1]).quote(token, baseAmount, true);
+            uint256 quotedAmount = IBuzzVault(addr[1]).quote(token, baseAmount, true);
             if (quotedAmount > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
 
             if ((msg.value - listingFee) > 0) {

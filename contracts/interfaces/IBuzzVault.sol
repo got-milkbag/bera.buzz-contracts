@@ -10,9 +10,5 @@ interface IBuzzVault {
 
     function registerToken(address token, address baseToken, uint256 initialTokenBalance, uint256 initialReserves, uint256 finalReserves) external;
 
-    function quote(
-        address token,
-        uint256 amount,
-        bool isBuyOrder
-    ) external view returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view returns (uint256 amountOut);
 }

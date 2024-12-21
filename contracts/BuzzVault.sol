@@ -53,10 +53,6 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         uint256 baseAmount,
         uint256 tokenBalance,
         uint256 baseBalance,
-        uint256 lastPrice,
-        uint256 lastBasePrice,
-        uint256 currentPrice,
-        uint256 currentBasePrice,
         bool isBuyOrder
     );
     /// @notice Event emitted when a token is registered
@@ -84,32 +80,22 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     /**
      * @notice Data about a token in the bonding curve
      * @param baseToken The base token address
-     * @param lpConduit The LP conduit address
      * @param tokenBalance The token balance
      * @param baseBalance The base amount balance
      * @param initialBase The initial base amount
      * @param baseThreshold The amount of bera on the curve to lock it
      * @param quoteThreshold The amount of tokens on the curve to lock it
      * @param k The k value of the token
-     * @param lastPrice The last price of the token
-     * @param lastBasePrice The last price of the base token
-     * @param currentPrice The current price of the token
-     * @param currentBasePrice The current price of the base token
      * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
         address baseToken;
-        address lpConduit;
         uint256 tokenBalance;
         uint256 baseBalance; // aka reserve balance
         uint256 initialBase;
         uint256 baseThreshold;
         uint256 quoteThreshold;
         uint256 k;
-        uint256 lastPrice;
-        uint256 lastBasePrice;
-        uint256 currentPrice;
-        uint256 currentBasePrice;
         bool bexListed;
     }
 
@@ -216,10 +202,6 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             amountSold,
             info.tokenBalance,
             info.baseBalance,
-            info.lastPrice,
-            info.lastBasePrice,
-            info.currentPrice,
-            info.currentBasePrice,
             false
         );
     }
@@ -247,14 +229,12 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         tokenInfo[token] = TokenInfo(
             baseToken, 
-            address(0), 
             initialTokenBalance, 
             initialReserves,
             initialReserves, 
             finalReserves, 
             k / finalReserves, 
-            k, 
-            0, 0, 0, 0, 
+            k,  
             false
         );
 
@@ -263,11 +243,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         emit TokenRegistered(token, baseToken, initialTokenBalance, initialReserves, finalReserves);
     }
 
-    function quote(
-        address token,
-        uint256 amount,
-        bool isBuyOrder
-    ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual override returns (uint256 amountOut);
 
     function _buy(
         address token, 
@@ -303,7 +279,8 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
         uint256 tokenBalance = info.tokenBalance;
-        uint256 baseBalance =  info.baseBalance - info.initialBase;
+        uint256 baseBalance = info.baseBalance - info.initialBase;
+        address baseToken = info.baseToken;
 
         info.baseBalance = 0;
         info.tokenBalance = 0;
@@ -311,24 +288,16 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         info.baseThreshold = 0;
         info.quoteThreshold = 0;
         info.k = 0;
-        info.lastPrice = 0;
-        info.lastBasePrice = 0;
-        info.currentPrice = 0;
-        info.currentBasePrice = 0;
         info.bexListed = true;
 
         // collect fee
         uint256 dexFee = feeManager.quoteMigrationFee(baseBalance);
-        IERC20(info.baseToken).safeApprove(address(feeManager), dexFee);
-        feeManager.collectMigrationFee(info.baseToken, baseBalance);
+        IERC20(baseToken).safeApprove(address(feeManager), dexFee);
+        feeManager.collectMigrationFee(baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
         IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
-        IERC20(info.baseToken).safeApprove(address(liquidityManager), netBaseAmount);
-
-        address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, tokenBalance);
-
-        info.lpConduit = lpConduit;
+        IERC20(baseToken).safeApprove(address(liquidityManager), netBaseAmount);
  
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
@@ -371,10 +340,6 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             baseAmount,
             info.tokenBalance,
             info.baseBalance,
-            info.lastPrice,
-            info.lastBasePrice,
-            info.currentPrice,
-            info.currentBasePrice,
             true
         );
 

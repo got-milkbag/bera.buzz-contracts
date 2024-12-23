@@ -299,7 +299,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
         IERC20(baseToken).safeApprove(address(liquidityManager), netBaseAmount);
 
-        liquidityManager.createPoolAndAdd(token, baseToken, tokenBalance, netBaseAmount);
+        liquidityManager.createPoolAndAdd(token, baseToken, netBaseAmount, tokenBalance);
  
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {

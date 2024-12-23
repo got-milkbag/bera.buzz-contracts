@@ -17,6 +17,7 @@ async function main() {
     const salt = "0x00000000000000000000000000000ef97e7373f5806fd04e465cc1fd7e395ca1";
     const expVault = "0x2f39b10CdDF881E0eE96e4c4e8926D8dD7107307";
 
+    //TODO: Update script
     const tokenFactoryContract = new ethers.Contract(tokenFactoryAddr, CREATE_TOKEN_ABI, deployer);
     const tx = await tokenFactoryContract.createToken("Test Token", "TT", expVault, salt);
     console.log(tx);

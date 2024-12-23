@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./interfaces/IBexPriceDecoder.sol";
 import "./interfaces/IBuzzToken.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IReferralManager.sol";
@@ -38,12 +37,12 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     error BuzzVault_Unauthorized();
     /// @notice Error code emitted when the token already exists
     error BuzzVault_TokenExists();
-    /// @notice Error code emitted when min ERC20 amount not respected
-    error BuzzVault_InvalidMinTokenAmount();
     /// @notice Error code emitted when native trades with ETH is not supported
     error BuzzVault_NativeTradeUnsupported();
     /// @notice Error code emitted when WBera transfer fails (depositing or withdrawing)
     error BuzzVault_WBeraConversionFailed();
+    /// @notice Error code emitted when the recipient is the zero address
+    error BuzzVault_ZeroAddressRecipient();
 
     /// @notice Event emitted when a trade occurs
     event Trade(
@@ -54,64 +53,49 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         uint256 baseAmount,
         uint256 tokenBalance,
         uint256 baseBalance,
-        uint256 lastPrice,
-        uint256 lastBasePrice,
-        uint256 currentPrice,
-        uint256 currentBasePrice,
         bool isBuyOrder
     );
+    /// @notice Event emitted when a token is registered
+    event TokenRegistered(
+        address indexed token, 
+        address indexed baseToken, 
+        uint256 tokenBalance, 
+        uint256 initialReserves, 
+        uint256 finalReserves
+    );
 
-    event CurveDataSet(address indexed token, uint256 k, uint256 growthRate, uint256 baseThreshold);
-
-    /// @notice The percentage of total minted supply after BEX migration in bps
-    uint256 public constant MIGRATION_LIQ_RATIO_BPS = 2000;
-    /// @notice The min ERC20 amount for bonding curve swaps
-    uint256 public constant MIN_TOKEN_AMOUNT = 1e14; // 0.0001 ERC20 token
-    /// @notice The total supply of tokens minted
-    uint256 public constant TOTAL_MINTED_SUPPLY = 8e26;
-    /// @notice Final balance threshold of the bonding curve
-    uint256 public constant CURVE_BALANCE_THRESHOLD = 2e26;
-
-    /// @notice The fee manager contract collecting protocol fees
-    IFeeManager public immutable feeManager;
     /// @notice The factory contract that can register tokens
     address public immutable factory;
+    /// @notice The fee manager contract collecting protocol fees
+    IFeeManager public immutable feeManager;
     /// @notice The referral manager contract
     IReferralManager public immutable referralManager;
-    /// @notice The price decoder contract
-    IBexPriceDecoder public immutable priceDecoder;
     /// @notice The liquidity manager contract
     IBexLiquidityManager public immutable liquidityManager;
     /// @notice The WBERA contract
     IWBera public immutable wbera;
+    /// @notice The initial supply of the token
+    uint256 public constant INITIAL_SUPPLY = 1e27;
 
     /**
      * @notice Data about a token in the bonding curve
      * @param baseToken The base token address
-     * @param lpConduit The LP conduit address
      * @param tokenBalance The token balance
      * @param baseBalance The base amount balance
-     * @param lastPrice The last price of the token
-     * @param lastBasePrice The last price of the base token
-     * @param currentPrice The current price of the token
-     * @param currentBasePrice The current price of the base token
+     * @param initialBase The initial base amount
      * @param baseThreshold The amount of bera on the curve to lock it
+     * @param quoteThreshold The amount of tokens on the curve to lock it
      * @param k The k value of the token
-     * @param growthRate The growth rate of the token
      * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
         address baseToken;
-        address lpConduit;
         uint256 tokenBalance;
         uint256 baseBalance; // aka reserve balance
-        uint256 lastPrice;
-        uint256 lastBasePrice;
-        uint256 currentPrice;
-        uint256 currentBasePrice;
+        uint256 initialBase;
         uint256 baseThreshold;
+        uint256 quoteThreshold;
         uint256 k;
-        uint256 growthRate;
         bool bexListed;
     }
 
@@ -123,14 +107,13 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param _feeManager The address of the fee manager contract collecting fees
      * @param _factory The factory contract that can register tokens
      * @param _referralManager The referral manager contract
-     * @param _priceDecoder The price decoder contract
      * @param _liquidityManager The liquidity manager contract
+     * @param _wbera The WBERA contract
      */
-    constructor(address _feeManager, address _factory, address _referralManager, address _priceDecoder, address _liquidityManager, address _wbera) {
+    constructor(address _feeManager, address _factory, address _referralManager, address _liquidityManager, address _wbera) {
         feeManager = IFeeManager(_feeManager);
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
-        priceDecoder = IBexPriceDecoder(_priceDecoder);
         liquidityManager = IBexLiquidityManager(_liquidityManager);
         wbera = IWBera(_wbera);
     }
@@ -140,8 +123,14 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param token The token address
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function buyNative(address token, uint256 minTokensOut, address affiliate) external payable override nonReentrant whenNotPaused {
+    function buyNative(
+        address token, 
+        uint256 minTokensOut, 
+        address affiliate,
+        address recipient
+    ) external payable override nonReentrant whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
@@ -154,7 +143,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
             revert BuzzVault_NativeTradeUnsupported();
         }
 
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -163,10 +152,17 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param baseAmount The amount of base tokens to buy with
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function buy(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) external override nonReentrant whenNotPaused {
+    function buy(
+        address token, 
+        uint256 baseAmount, 
+        uint256 minTokensOut, 
+        address affiliate,
+        address recipient
+    ) external override nonReentrant whenNotPaused {
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
-        _buyTokens(token, baseAmount, minTokensOut, affiliate);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
     }
 
     /**
@@ -175,10 +171,19 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param tokenAmount The amount of (quote) tokens to sell
      * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
+     * @param unwrap Whether to unwrap the WBERA tokens to BERA
      */
-    function sell(address token, uint256 tokenAmount, uint256 minAmountOut, address affiliate, bool unwrap) external override nonReentrant whenNotPaused {
+    function sell(
+        address token, 
+        uint256 tokenAmount, 
+        uint256 minAmountOut, 
+        address affiliate, 
+        address recipient,
+        bool unwrap
+    ) external override nonReentrant whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
-        if (tokenAmount < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
         
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -188,19 +193,15 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, info, unwrap);
+        uint256 amountSold = _sell(token, tokenAmount, minAmountOut, recipient, info, unwrap);
         emit Trade(
-            msg.sender,
+            recipient, 
             token,
             info.baseToken,
             tokenAmount,
             amountSold,
             info.tokenBalance,
             info.baseBalance,
-            info.lastPrice,
-            info.lastBasePrice,
-            info.currentPrice,
-            info.currentBasePrice,
             false
         );
     }
@@ -210,43 +211,53 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @dev Only the factory can register tokens
      * @param token The token address
      * @param baseToken The base token address
-     * @param tokenBalance The token balance
-     * @param marketCap The market cap of the token
-     * @param k The initial k of the token
-     * @param growthRate The growth rate of the token
+     * @param initialTokenBalance The initial quote token balance
+     * @param initialReserves The initial virtual base token reserves
+     * @param finalReserves The target virtual base token reserves
      */
     function registerToken(
         address token,
         address baseToken,
-        uint256 tokenBalance,
-        uint256 marketCap,
-        uint256 k,
-        uint256 growthRate
+        uint256 initialTokenBalance,
+        uint256 initialReserves,
+        uint256 finalReserves
     ) external override {
         if (msg.sender != factory) revert BuzzVault_Unauthorized();
-        if (tokenInfo[token].tokenBalance > 0 && tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
+        if (tokenInfo[token].tokenBalance > 0 || tokenInfo[token].baseBalance > 0) revert BuzzVault_TokenExists();
 
-        uint256 reserveBera = _getBaseAmountForMarketCap(baseToken, marketCap);
+        uint256 k = initialReserves * initialTokenBalance;
 
-        // Assumption: Token has fixed supply upon deployment
-        tokenInfo[token] = TokenInfo(baseToken, address(0), tokenBalance, 0, 0, 0, 0, 0, reserveBera, k, growthRate, false);
+        tokenInfo[token] = TokenInfo(
+            baseToken, 
+            initialTokenBalance, 
+            initialReserves,
+            initialReserves, 
+            finalReserves, 
+            k / finalReserves, 
+            k,  
+            false
+        );
 
-        IERC20(token).safeTransferFrom(msg.sender, address(this), tokenBalance);
-        emit CurveDataSet(token, k, growthRate, reserveBera);
+        IERC20(token).safeTransferFrom(msg.sender, address(this), initialTokenBalance);
+
+        emit TokenRegistered(token, baseToken, initialTokenBalance, initialReserves, finalReserves);
     }
 
-    function quote(
-        address token,
-        uint256 amount,
-        bool isBuyOrder
-    ) external view virtual override returns (uint256 amountOut, uint256 pricePerToken, uint256 pricePerBase);
+    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual override returns (uint256 amountOut);
 
-    function _buy(address token, uint256 baseAmount, uint256 minTokensOut, TokenInfo storage info) internal virtual returns (uint256 tokenAmount);
+    function _buy(
+        address token, 
+        uint256 baseAmount, 
+        uint256 minTokensOut, 
+        address recipient, 
+        TokenInfo storage info
+    ) internal virtual returns (uint256 tokenAmount, bool needsMigration);
 
     function _sell(
         address token,
         uint256 tokenAmount,
         uint256 minAmountOut,
+        address recipient,
         TokenInfo storage info,
         bool unwrap
     ) internal virtual returns (uint256 netBaseAmount);
@@ -267,33 +278,28 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param info The token info struct
      */
     function _lockCurveAndDeposit(address token, TokenInfo storage info) internal {
-        uint256 baseBalance = info.baseBalance;
+        uint256 tokenBalance = info.tokenBalance;
+        uint256 baseBalance = info.baseBalance - info.initialBase;
+        address baseToken = info.baseToken;
 
         info.baseBalance = 0;
         info.tokenBalance = 0;
-        info.lastPrice = 0;
-        info.lastBasePrice = 0;
-        info.currentPrice = 0;
-        info.currentBasePrice = 0;
+        info.initialBase = 0;
         info.baseThreshold = 0;
+        info.quoteThreshold = 0;
         info.k = 0;
-        info.growthRate = 0;
         info.bexListed = true;
 
         // collect fee
         uint256 dexFee = feeManager.quoteMigrationFee(baseBalance);
-        IERC20(info.baseToken).safeApprove(address(feeManager), dexFee);
-        feeManager.collectMigrationFee(info.baseToken, baseBalance);
+        IERC20(baseToken).safeApprove(address(feeManager), dexFee);
+        feeManager.collectMigrationFee(baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
-        IBuzzToken(token).mint(address(this), CURVE_BALANCE_THRESHOLD);
+        IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
+        IERC20(baseToken).safeApprove(address(liquidityManager), netBaseAmount);
 
-        IERC20(token).safeApprove(address(liquidityManager), CURVE_BALANCE_THRESHOLD);
-        IERC20(info.baseToken).safeApprove(address(liquidityManager), netBaseAmount);
-
-        address lpConduit = liquidityManager.createPoolAndAdd(token, info.baseToken, netBaseAmount, CURVE_BALANCE_THRESHOLD);
-
-        info.lpConduit = lpConduit;
+        liquidityManager.createPoolAndAdd(token, baseToken, netBaseAmount, tokenBalance);
  
         // burn any rounding excess
         if (IERC20(token).balanceOf(address(this)) > 0) {
@@ -307,10 +313,17 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param baseAmount The amount of base tokens to buy with
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
+     * @param recipient The recipient address
      */
-    function _buyTokens(address token, uint256 baseAmount, uint256 minTokensOut, address affiliate) internal {
-        if (minTokensOut < MIN_TOKEN_AMOUNT) revert BuzzVault_InvalidMinTokenAmount();
-
+    function _buyTokens(
+        address token, 
+        uint256 baseAmount, 
+        uint256 minTokensOut, 
+        address affiliate, 
+        address recipient
+    ) internal {
+        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
+        
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0) revert BuzzVault_UnknownToken();
@@ -320,23 +333,19 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
-        uint256 amountBought = _buy(token, baseAmount, minTokensOut, info);
+        (uint256 amountBought, bool needsMigration) = _buy(token, baseAmount, minTokensOut, recipient, info);
         emit Trade(
-            msg.sender,
+            recipient,
             token,
             info.baseToken,
             amountBought,
             baseAmount,
             info.tokenBalance,
             info.baseBalance,
-            info.lastPrice,
-            info.lastBasePrice,
-            info.currentPrice,
-            info.currentBasePrice,
             true
         );
 
-        if (info.tokenBalance == 0) {
+        if (needsMigration) {
             _lockCurveAndDeposit(token, info);
         }
     }
@@ -367,22 +376,10 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Returns the amount of baseToken to register in TokenInfo for a bonding curve lock given the USD market cap liquidity requirements
-     * @param baseToken The base token address
-     * @param marketCap The market cap of the token
-     * @return baseAmount The amount of baseToken for market cap
-     */
-    function _getBaseAmountForMarketCap(address baseToken, uint256 marketCap) internal view returns (uint256 baseAmount) {
-        uint256 baseUsdPrice = priceDecoder.getPrice(baseToken);
-
-        // divide by 5 to represent equivalent amount with 200MM tokens instead of 1B
-        uint256 baseAmountToBps = (marketCap * MIGRATION_LIQ_RATIO_BPS * 1e18) / 10000;
-        uint256 baseAmountNoFee = baseAmountToBps / baseUsdPrice;
-
-        baseAmount = baseAmountNoFee + feeManager.quoteMigrationFee(baseAmountNoFee);
-    }
-
-    //TODO: check if security issue when unwrap true and token is not WBera
+     * @notice Unwraps the WBERA tokens to BERA
+     * @param to The recipient address
+     * @param amount The amount to unwrap
+    */
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
         IERC20(address(wbera)).safeApprove(address(wbera), amount);
@@ -392,10 +389,6 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
 
         _transferEther(payable(to), amount);
-    }
-
-    function getBaseUsdPrice(address token) external view returns (uint256 beraPrice) {
-        beraPrice = priceDecoder.getPrice(token);
     }
 
     // Fallback function

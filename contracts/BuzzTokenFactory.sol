@@ -25,8 +25,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     error BuzzToken_InsufficientFee();
     /// @notice Error code emitted when the fee transfer failed
     error BuzzToken_FeeTransferFailed();
-    /// @notice Error code emitted when the max initial buy is exceeded
-    error BuzzToken_MaxInitialBuyExceeded();
     /// @notice Error code emitted when the base amount is not enough to complete the autobuy transaction
     error BuzzToken_BaseAmountNotEnough();
     /// @notice Error code emitted when the base token address is not whitelisted
@@ -56,8 +54,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
     /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 1e27;
-    /// @notice The maximum initial deployer buy (10% of the total 1B supply)
-    uint256 public constant MAX_INITIAL_BUY = 1e26;
     /// @notice The fee manager contract collecting the listing fee
     IFeeManager public feeManager;
 
@@ -128,7 +124,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (baseAmount > 0) {
             // Buy tokens after deployment
             uint256 quotedAmount = IBuzzVault(addr[1]).quote(token, baseAmount, true);
-            if (quotedAmount > MAX_INITIAL_BUY) revert BuzzToken_MaxInitialBuyExceeded();
 
             if ((msg.value - listingFee) > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract

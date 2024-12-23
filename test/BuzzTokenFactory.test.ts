@@ -327,21 +327,6 @@ describe("BuzzTokenFactory Tests", () => {
                 expect(await token.balanceOf(factory.address)).to.be.equal(0);
                 expect(await token.balanceOf(ownerSigner.address)).to.be.gt(0);
             });
-            it("should revert if the initial buy is bigger than 10% of the total supply", async () => {
-                const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("100"));
-                await expect(
-                    factory.createToken(
-                        ["TEST", "TST"],
-                        [wBera.address, expVault.address],
-                        [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
-                        ethers.utils.parseEther("100"),
-                        formatBytes32String("123456006"),
-                        {
-                            value: listingFeeAndBuyAmount,
-                        }
-                    )
-                ).to.be.revertedWithCustomError(factory, "BuzzToken_MaxInitialBuyExceeded");
-            });
         });
         describe("buy on deployment - native currency", () => {
             beforeEach(async () => {});

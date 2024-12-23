@@ -53,9 +53,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param baseToken The address of the base token
      * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
-     * @return lpConduit The address of the LP conduit
      */
-    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external returns (address) {
+    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
         if(vaults[msg.sender] == false) revert BexLiquidityManager_Unauthorized();
 
         // Transfer and approve tokens
@@ -106,8 +105,6 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
         // Emit event
         emit BexListed(token, baseAmount, _initPrice, lpConduit);
-
-        return lpConduit;
     }
 
     /**

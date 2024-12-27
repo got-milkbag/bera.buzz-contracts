@@ -13,6 +13,11 @@ const wberaAddress = "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8";
 
 // protocol fee is hardcoded in vaults
 
+// Factory config
+// Wbera as base token config:
+const baseTokenMinReserveAmount = ethers.utils.parseEther("0.001");
+const baseTokenMinRaiseAmount = ethers.utils.parseEther("0.1");
+
 // ReferralManager config
 const directRefFeeBps = 1500; // 15% of protocol fee
 const indirectRefFeeBps = 100; // fixed 1%
@@ -43,10 +48,7 @@ async function main() {
 
     // Deploy BexPriceDecoder
     const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-    const bexPriceDecoder = await BexPriceDecoder.deploy(
-        crocQueryAddress,
-        [wberaAddress],
-        [wberaHoneyLpToken]);
+    const bexPriceDecoder = await BexPriceDecoder.deploy(crocQueryAddress, [wberaAddress], [wberaHoneyLpToken]);
     console.log("BexPriceDecoder deployed to:", bexPriceDecoder.address);
 
     // Deploy FeeManager
@@ -65,7 +67,7 @@ async function main() {
     const factory = new ethers.ContractFactory(abi, factoryBytecode);
     const creationCode = factory.bytecode;
     // change salt for each new deployment
-    const salt = "0x080000000000000000000000000023ad609373a0f37571d4bb90f7ce6521626d";
+    const salt = "0x200000000000000000000000000015fca116f803b9ac9849772f2af2e9f1305d";
     const packedBytecode = ethers.utils.solidityPack(
         ["bytes", "bytes"],
         [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address"], [deployerAddress, create3Address, feeManager.address])]
@@ -99,7 +101,6 @@ async function main() {
         feeManager.address,
         factoryInstance.address,
         referralManager.address,
-        bexPriceDecoder.address,
         bexLiquidityManager.address,
         wberaAddress
     );
@@ -109,7 +110,7 @@ async function main() {
 
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-    const highlightsManager = await HighlightsManager.deploy(feeRecipient, highlightsBaseFee, hardCap, coolDownPeriod);
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, hardCap, highlightsBaseFee, coolDownPeriod);
     console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager
@@ -117,7 +118,7 @@ async function main() {
     await referralManager.setWhitelistedVault(expVault.address, true);
 
     // Admin: Whitelist base token in Factory
-    await factoryInstance.setAllowedBaseToken(wberaAddress, true);
+    await factoryInstance.setAllowedBaseToken(wberaAddress, baseTokenMinReserveAmount, baseTokenMinRaiseAmount, true);
 
     // Admin: Set Vault as the factory's vault & enable token creation
     // await factoryInstance.setVault(vault.address, true);

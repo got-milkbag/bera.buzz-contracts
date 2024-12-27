@@ -34,7 +34,7 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
     event IndirectRefFeeBpsSet(uint256 indirectRefFeeBps);
     event ReferralDeadlineSet(uint256 validUntil);
     event PayoutThresholdSet(address token, uint256 payoutThreshold);
-    event whitelistedVaultSet(address indexed vault, bool status);
+    event WhitelistedVaultSet(address indexed vault, bool status);
 
     uint256 public constant MAX_FEE_BPS = 10000;
 
@@ -190,7 +190,7 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
 
     function setWhitelistedVault(address vault, bool enable) external onlyOwner {
         whitelistedVault[vault] = enable;
-        emit whitelistedVaultSet(vault, enable);
+        emit WhitelistedVaultSet(vault, enable);
     }
 
     // View functions

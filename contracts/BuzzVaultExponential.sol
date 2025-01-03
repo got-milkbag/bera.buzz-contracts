@@ -195,7 +195,6 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 k
     ) internal pure returns (uint256 amountOut) {
         if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
-        //require(quoteBalance >= quoteAmountIn, "BuzzVaultExponential: Not enough tokens to sell");
         amountOut = baseBalance - k / (quoteBalance + quoteAmountIn);
     }
 

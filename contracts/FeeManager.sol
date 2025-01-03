@@ -13,13 +13,6 @@ import "./interfaces/IFeeManager.sol";
 contract FeeManager is Ownable, IFeeManager {
     using SafeERC20 for IERC20;
 
-    /// @notice Error thrown when treasury is the zero address
-    error FeeManager_TreasuryZeroAddress();
-    /// @notice Error thrown when the amount is above the fee divisor
-    error FeeManager_AmountAboveFeeDivisor();
-    /// @notice Error thrown when the fee is insufficient
-    error FeeManager_InsufficientFee();
-
     /// @notice Event emitted when an ERC20 fee is received
     event FeeReceived(address indexed token, uint256 amount);
     /// @notice Event emitted when a native currency fee is received
@@ -32,6 +25,13 @@ contract FeeManager is Ownable, IFeeManager {
     event ListingFeeSet(uint256 listingFee);
     /// @notice Event emitted when the migration fee is set
     event MigrationFeeSet(uint256 migrationFeeBps);
+
+    /// @notice Error thrown when treasury is the zero address
+    error FeeManager_TreasuryZeroAddress();
+    /// @notice Error thrown when the amount is above the fee divisor
+    error FeeManager_AmountAboveFeeDivisor();
+    /// @notice Error thrown when the fee is insufficient
+    error FeeManager_InsufficientFee();
 
     /// @notice The divisor used to calculate fees (one percent equals 100)
     uint256 public constant FEE_DIVISOR = 1e4;
@@ -176,7 +176,4 @@ contract FeeManager is Ownable, IFeeManager {
         IERC20(token).safeTransferFrom(_msgSender(), treasury, amount);
         emit FeeReceived(token, amount);
     }
-
-    // Fallback function
-    receive() external payable {}
 }

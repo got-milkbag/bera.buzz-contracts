@@ -13,6 +13,18 @@ import "./bex/CrocLpErc20.sol";
 contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     using SafeERC20 for IERC20;
 
+    /// @notice Event emitted when liquidity is migrated to BEX
+    event BexListed(
+        address indexed token, 
+        uint256 beraAmount, 
+        uint256 initPrice, 
+        address lpConduit
+    );
+    /// @notice Event emitted when a vault is added to the whitelist
+    event VaultAdded(address indexed vault);
+    /// @notice Event emitted when a vault is removed from the whitelist
+    event VaultRemoved(address indexed vault);
+
     /// @notice Error emitted when the caller is not authorized to perform the action
     error BexLiquidityManager_Unauthorized();
     /// @notice Error emitted when the vault is already in the whitelist
@@ -20,12 +32,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     /// @notice Error emitted when the vault is not in the whitelist
     error BexLiquidityManager_VaultNotInWhitelist();
 
-    /// @notice Event emitted when liquidity is migrated to BEX
-    event BexListed(address indexed token, uint256 beraAmount, uint256 initPrice, address lpConduit);
-    /// @notice Event emitted when a vault is added to the whitelist
-    event VaultAdded(address indexed vault);
-    /// @notice Event emitted when a vault is removed from the whitelist
-    event VaultRemoved(address indexed vault);
+    /// @notice The address of the CrocSwap DEX
+    ICrocSwapDex private immutable crocSwapDex;
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant POOL_IDX = 36002;
@@ -33,8 +41,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     uint256 private constant BURN_AMOUNT = 1e7;
     /// @notice The init code hash of the LP conduit
     bytes private constant LP_CONDUIT_INIT_CODE_HASH = hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
-    /// @notice The address of the CrocSwap DEX
-    ICrocSwapDex private immutable crocSwapDex;
+    
     /// @notice The Vault address whitelist
     mapping(address => bool) private vaults;
 
@@ -54,7 +61,12 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
      */
-    function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
+    function createPoolAndAdd(
+        address token, 
+        address baseToken, 
+        uint256 baseAmount, 
+        uint256 amount
+    ) external {
         if(!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
         address crocSwapAddress = address(crocSwapDex);
@@ -149,10 +161,11 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param quote The address of the quote token
      * @return lpConduit The address of the LP conduit
      */
-    function _predictConduitAddress(address base, address quote) internal view returns (address lpConduit) {
-        bytes memory bytecode = type(CrocLpErc20).creationCode;
+    function _predictConduitAddress(
+        address base, 
+        address quote
+    ) internal view returns (address lpConduit) {
         bytes32 salt = keccak256(abi.encodePacked(base, quote));
-
         lpConduit = address(uint160(uint256(keccak256(abi.encodePacked(bytes1(0xff), address(crocSwapDex), salt, LP_CONDUIT_INIT_CODE_HASH)))));
     }
 }

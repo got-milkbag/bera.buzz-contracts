@@ -11,6 +11,38 @@ import "./interfaces/IReferralManager.sol";
 contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager {
     using SafeERC20 for IERC20;
 
+    /// @notice Event emitted when a referral is set
+    event ReferralSet(address indexed referrer, address indexed referredUser);
+    /// @notice Event emitted when an indirect referral is set
+    event IndirectReferralSet(
+        address indexed indirectReferrer, 
+        address indexed referredUser, 
+        address indexed directReferrer
+    );
+    /// @notice Event emitted when a referral reward is received
+    event ReferralRewardReceived(
+        address indexed referrer, 
+        address indexed token, 
+        uint256 reward, 
+        bool isDirect
+    );
+    /// @notice Event emitted when a referral reward is paid out
+    event ReferralPaidOut(
+        address indexed referrer, 
+        address indexed token, 
+        uint256 reward
+    );
+    /// @notice Event emitted when the direct referral fee is set
+    event DirectRefFeeBpsSet(uint256 directRefFeeBps);
+    /// @notice Event emitted when the indirect referral fee is set
+    event IndirectRefFeeBpsSet(uint256 indirectRefFeeBps);
+    /// @notice Event emitted when the referral deadline is set
+    event ReferralDeadlineSet(uint256 validUntil);
+    /// @notice Event emitted when the payout threshold is set
+    event PayoutThresholdSet(address token, uint256 payoutThreshold);
+    /// @notice Event emitted when a vault is whitelisted
+    event WhitelistedVaultSet(address indexed vault, bool status);
+
     /// @notice Error emitted when the caller is not authorized
     error ReferralManager_Unauthorised();
     /// @notice Error emitted when the payout is zero
@@ -26,29 +58,25 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
     /// @notice Error emitted when the array lengths do not match
     error ReferralManager_ArrayLengthMismatch();
 
-    event ReferralSet(address indexed referrer, address indexed referredUser);
-    event IndirectReferralSet(address indexed indirectReferrer, address indexed referredUser, address indexed directReferrer);
-    event ReferralRewardReceived(address indexed referrer, address indexed token, uint256 reward, bool isDirect);
-    event ReferralPaidOut(address indexed referrer, address indexed token, uint256 reward);
-    event DirectRefFeeBpsSet(uint256 directRefFeeBps);
-    event IndirectRefFeeBpsSet(uint256 indirectRefFeeBps);
-    event ReferralDeadlineSet(uint256 validUntil);
-    event PayoutThresholdSet(address token, uint256 payoutThreshold);
-    event WhitelistedVaultSet(address indexed vault, bool status);
-
+    /// @notice The maximum fee basis points
     uint256 public constant MAX_FEE_BPS = 10000;
-
-    // Fees should be passed in bps of the protocol fee to be received by the referrer
+    /// @notice The direct referral fee in basis points
     uint256 public directRefFeeBps; // eg 100 -> 1%
+    /// @notice The indirect referral fee in basis points
     uint256 public indirectRefFeeBps; // eg 100 -> 1%
-
+    /// @notice The referral deadline
     uint256 public validUntil;
 
+    /// @notice Mapping for referred users and respective referrers
     mapping(address => address) public referredBy;
+    /// @notice Mapping for indirect referrals 
     mapping(address => address) public indirectReferral;
-    mapping(address => mapping(address => uint256)) private _referrerBalances;
+    /// @notice Whether a given vault is whitelisted
     mapping(address => bool) public whitelistedVault;
+    /// @notice The payout threshold for a token
     mapping(address => uint256) public payoutThreshold;
+    /// @notice Mapping for referrer balances
+    mapping(address => mapping(address => uint256)) private _referrerBalances;
 
     /// @notice Fee bps is the % of the protocol fee that the referrer will receive
     constructor(
@@ -83,7 +111,11 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
     // Vault functions
 
     /// @notice Callable by the vault with the address of the referred user
-    function receiveReferral(address user, address token, uint256 amount) external nonReentrant {
+    function receiveReferral(
+        address user, 
+        address token, 
+        uint256 amount
+    ) external nonReentrant {
         if (!whitelistedVault[msg.sender]) revert ReferralManager_Unauthorised();
         address referrer = referredBy[user];
 
@@ -108,6 +140,11 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
     }
 
+    /**
+     * @notice Callable by the vault to set the referral for a user
+     * @param referrer The address of the referrer
+     * @param user The address of the referred user
+     */
     function setReferral(address referrer, address user) external nonReentrant {
         if (!whitelistedVault[msg.sender]) revert ReferralManager_Unauthorised();
 
@@ -125,20 +162,6 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
         }
     }
 
-    /// @notice Callable by the vault with the address of the referred user
-    /// @param user The address of the referred user
-    /// @return totalReferralBps The total referral bps that the calling contract should deduct from the protocol fee and pass to the Referral Manager via receiveReferral
-    function getReferralBpsFor(address user) public view returns (uint256 totalReferralBps) {
-        if ((validUntil < block.timestamp) || (referredBy[user] == address(0))) {
-            return 0;
-        }
-
-        totalReferralBps = directRefFeeBps;
-        if (indirectReferral[user] != address(0)) {
-            totalReferralBps += indirectRefFeeBps;
-        }
-    }
-
     /**
      * @notice Calculates the referral fee for a user
      * @param user The user address
@@ -150,6 +173,22 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
 
         if (bps > 0) {
             referralFee = (amount * bps) / 1e4;
+        }
+    }
+
+    /** 
+     * @notice Callable by the vault with the address of the referred user
+     * @param user The address of the referred user
+     * @return totalReferralBps The total referral bps that the calling contract should deduct from the protocol fee and pass to the Referral Manager via receiveReferral
+     */
+    function getReferralBpsFor(address user) public view returns (uint256 totalReferralBps) {
+        if ((validUntil < block.timestamp) || (referredBy[user] == address(0))) {
+            return 0;
+        }
+
+        totalReferralBps = directRefFeeBps;
+        if (indirectReferral[user] != address(0)) {
+            totalReferralBps += indirectRefFeeBps;
         }
     }
 
@@ -169,21 +208,38 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
 
     // Admin functions
 
+    /**
+     * @notice Sets the direct referral fee
+     * @param directRefFeeBps_ The direct referral fee in basis points
+     */
     function setDirectRefFeeBps(uint256 directRefFeeBps_) external onlyOwner {
         directRefFeeBps = directRefFeeBps_;
         emit DirectRefFeeBpsSet(directRefFeeBps);
     }
 
+    /**
+     * @notice Sets the indirect referral fee
+     * @param indirectRefFeeBps_ The indirect referral fee in basis points
+     */
     function setIndirectRefFeeBps(uint256 indirectRefFeeBps_) external onlyOwner {
         indirectRefFeeBps = indirectRefFeeBps_;
         emit IndirectRefFeeBpsSet(indirectRefFeeBps);
     }
 
+    /**
+     * @notice Sets the referral deadline
+     * @param validUntil_ The referral deadline
+     */
     function setValidUntil(uint256 validUntil_) external onlyOwner {
         validUntil = validUntil_;
         emit ReferralDeadlineSet(validUntil);
     }
 
+    /**
+     * @notice Sets the payout threshold for a token
+     * @param tokens The token addresses
+     * @param thresholds The payout thresholds
+     */
     function setPayoutThreshold(address[] calldata tokens, uint256[] calldata thresholds) external onlyOwner {
         if (tokens.length != thresholds.length) revert ReferralManager_ArrayLengthMismatch();
 
@@ -197,15 +253,14 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
         }
     }
 
+    /**
+     * @notice Sets the vault whitelist status
+     * @param vault The vault address
+     * @param enable The status of the vault
+     */
     function setWhitelistedVault(address vault, bool enable) external onlyOwner {
         whitelistedVault[vault] = enable;
         emit WhitelistedVaultSet(vault, enable);
-    }
-
-    // View functions
-
-    function getReferralRewardFor(address user, address token) external view returns (uint256 reward) {
-        reward = _referrerBalances[user][token];
     }
 
     /**
@@ -222,5 +277,15 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /**
+     * @notice Gets the referral reward for a user
+     * @param user The user address
+     * @param token The token address
+     * @return reward The reward amount
+     */
+    function getReferralRewardFor(address user, address token) external view returns (uint256 reward) {
+        reward = _referrerBalances[user][token];
     }
 }

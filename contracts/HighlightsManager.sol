@@ -6,6 +6,17 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
 contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
+    /// @notice Event emitted when a token is highlighted
+    event TokenHighlighted(address indexed token, address indexed buyer, uint256 duration, uint256 bookedUntil, uint256 fee);
+    /// @notice Event emitted when the treasury address is set
+    event TreasurySet(address indexed treasury);
+    /// @notice Event emitted when the base fee is set
+    event BaseFeeSet(uint256 baseFeePerSecond);
+    /// @notice Event emitted when the hard cap is set
+    event HardCapSet(uint256 hardCap);
+    /// @notice Event emitted when the cool down period is set
+    event CoolDownPeriodSet(uint256 coolDownPeriod);
+
     /// @notice Error thrown when the duration is zero
     error HighlightsManager_ZeroDuration();
     /// @notice Error thrown when the duration is above the hard cap
@@ -25,17 +36,6 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     /// @notice Error thrown when the token is within the cool down period
     error HighlightsManager_TokenWithinCoolDown();
 
-    /// @notice Event emitted when a token is highlighted
-    event TokenHighlighted(address indexed token, address indexed buyer, uint256 duration, uint256 bookedUntil, uint256 fee);
-    /// @notice Event emitted when the treasury address is set
-    event TreasurySet(address indexed treasury);
-    /// @notice Event emitted when the base fee is set
-    event BaseFeeSet(uint256 baseFeePerSecond);
-    /// @notice Event emitted when the hard cap is set
-    event HardCapSet(uint256 hardCap);
-    /// @notice Event emitted when the cool down period is set
-    event CoolDownPeriodSet(uint256 coolDownPeriod);
-
     /// @notice The minimum duration allowed in seconds
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
     /// @notice The threshold after which the fee increases exponentially
@@ -46,11 +46,12 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     uint256 public coolDownPeriod;
     /// @notice The base fee per second to charge in wei
     uint256 public baseFeePerSecond;
-    /// @notice The treasury address where fees are sent
-    address payable public treasury;
     /// @notice The timestamp when the latest highlight expires
     uint256 public bookedUntil;
+    /// @notice The treasury address where fees are sent
+    address payable public treasury;
 
+    /// @notice The timestamp when a token can be highlighted again
     mapping(address => uint256) public tokenCoolDownUntil;
 
     /**
@@ -96,35 +97,6 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     }
 
     /**
-     * @notice Quotes the fee for highlighting a token for a given duration
-     * @param duration The duration in seconds
-     * @return fee The fee in wei
-     */
-    function quote(uint256 duration) public view returns (uint256 fee) {
-        uint256 expThreshold = EXP_THRESHOLD;
-        uint256 baseFeePs = baseFeePerSecond;
-
-        if (duration == 0) revert HighlightsManager_ZeroDuration();
-        if (duration < MIN_DURATION) revert HighlightsManager_DurationBelowMinimum();
-        if (duration > hardCap) revert HighlightsManager_DurationExceedsHardCap();
-        if (duration <= expThreshold) {
-            fee = baseFeePs * duration;
-        } else {
-            uint256 extraTime = duration - expThreshold;
-
-            // Fixed growth factor G
-            uint256 growthFactor = 98; // Representing 9.8 as an integer (fixed-point, scaled by 10) -> growth rate for 50x fee on 1 hour vs 10 minutes
-
-            // Calculate exponential fee using the growth factor
-            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) / 10;
-
-            // Total fee is the sum of the base fee and the exponential component
-            fee = (baseFeePs * expThreshold) + exponentialFee;
-        }
-        return fee;
-    }
-
-    /**
      * @notice Sets the treasury address
      * @dev Only the owner can call this function
      * @param treasury_ The treasury address where fees are sent
@@ -157,6 +129,11 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
         emit BaseFeeSet(baseFeePerSecond_);
     }
 
+    /**
+     * @notice Sets the cool down period for a token
+     * @dev Only the owner can call this function
+     * @param coolDownPeriod_ The cool down period in seconds
+     */
     function setCoolDownPeriod(uint256 coolDownPeriod_) external onlyOwner {
         coolDownPeriod = coolDownPeriod_;
         emit CoolDownPeriodSet(coolDownPeriod_);
@@ -176,5 +153,34 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
      */
     function unpause() external onlyOwner {
         _unpause();
+    }
+
+    /**
+     * @notice Quotes the fee for highlighting a token for a given duration
+     * @param duration The duration in seconds
+     * @return fee The fee in wei
+     */
+    function quote(uint256 duration) public view returns (uint256 fee) {
+        uint256 expThreshold = EXP_THRESHOLD;
+        uint256 baseFeePs = baseFeePerSecond;
+
+        if (duration == 0) revert HighlightsManager_ZeroDuration();
+        if (duration < MIN_DURATION) revert HighlightsManager_DurationBelowMinimum();
+        if (duration > hardCap) revert HighlightsManager_DurationExceedsHardCap();
+        if (duration <= expThreshold) {
+            fee = baseFeePs * duration;
+        } else {
+            uint256 extraTime = duration - expThreshold;
+
+            // Fixed growth factor G
+            uint256 growthFactor = 98; // Representing 9.8 as an integer (fixed-point, scaled by 10) -> growth rate for 50x fee on 1 hour vs 10 minutes
+
+            // Calculate exponential fee using the growth factor
+            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) / 10;
+
+            // Total fee is the sum of the base fee and the exponential component
+            fee = (baseFeePs * expThreshold) + exponentialFee;
+        }
+        return fee;
     }
 }

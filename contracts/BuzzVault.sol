@@ -18,6 +18,26 @@ import "./interfaces/IFeeManager.sol";
 abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     using SafeERC20 for IERC20;
 
+    /// @notice Event emitted when a trade occurs
+    event Trade(
+        address indexed user,
+        address indexed token,
+        address indexed baseToken,
+        uint256 tokenAmount,
+        uint256 baseAmount,
+        uint256 tokenBalance,
+        uint256 baseBalance,
+        bool isBuyOrder
+    );
+    /// @notice Event emitted when a token is registered
+    event TokenRegistered(
+        address indexed token, 
+        address indexed baseToken, 
+        uint256 tokenBalance, 
+        uint256 initialReserves, 
+        uint256 finalReserves
+    );
+
     /// @notice Error code emitted when the quote amount in buy/sell is zero
     error BuzzVault_QuoteAmountZero();
     /// @notice Error code emitted when the reserves are invalid
@@ -43,40 +63,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     /// @notice Error code emitted when the recipient is the zero address
     error BuzzVault_ZeroAddressRecipient();
 
-    /// @notice Event emitted when a trade occurs
-    event Trade(
-        address indexed user,
-        address indexed token,
-        address indexed baseToken,
-        uint256 tokenAmount,
-        uint256 baseAmount,
-        uint256 tokenBalance,
-        uint256 baseBalance,
-        bool isBuyOrder
-    );
-    /// @notice Event emitted when a token is registered
-    event TokenRegistered(
-        address indexed token, 
-        address indexed baseToken, 
-        uint256 tokenBalance, 
-        uint256 initialReserves, 
-        uint256 finalReserves
-    );
-
-    /// @notice The factory contract that can register tokens
-    address public immutable factory;
-    /// @notice The fee manager contract collecting protocol fees
-    IFeeManager public immutable feeManager;
-    /// @notice The referral manager contract
-    IReferralManager public immutable referralManager;
-    /// @notice The liquidity manager contract
-    IBexLiquidityManager public immutable liquidityManager;
-    /// @notice The WBERA contract
-    IWBera public immutable wbera;
-    /// @notice The initial supply of the token
-    uint256 public constant INITIAL_SUPPLY = 1e27;
-
-    /**
+     /**
      * @notice Data about a token in the bonding curve
      * @param baseToken The base token address
      * @param tokenBalance The token balance
@@ -98,6 +85,20 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         bool bexListed;
     }
 
+    /// @notice The fee manager contract collecting protocol fees
+    IFeeManager public immutable feeManager;
+    /// @notice The referral manager contract
+    IReferralManager public immutable referralManager;
+    /// @notice The liquidity manager contract
+    IBexLiquidityManager public immutable liquidityManager;
+    /// @notice The WBERA contract
+    IWBera public immutable wbera;
+
+    /// @notice The initial supply of the token
+    uint256 public constant INITIAL_SUPPLY = 1e27;
+    /// @notice The factory contract that can register tokens
+    address public immutable factory;
+
     /// @notice Map token address to token info
     mapping(address => TokenInfo) public tokenInfo;
 
@@ -109,13 +110,22 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param _liquidityManager The liquidity manager contract
      * @param _wbera The WBERA contract
      */
-    constructor(address _feeManager, address _factory, address _referralManager, address _liquidityManager, address _wbera) {
+    constructor(
+        address _feeManager, 
+        address _factory, 
+        address _referralManager, 
+        address _liquidityManager,
+        address _wbera
+    ) {
         feeManager = IFeeManager(_feeManager);
         factory = _factory;
         referralManager = IReferralManager(_referralManager);
         liquidityManager = IBexLiquidityManager(_liquidityManager);
         wbera = IWBera(_wbera);
     }
+
+    // Fallback function
+    receive() external payable {}
 
     /**
      * @notice Buy tokens from the vault with the native currency. The base token of the token must be WBera
@@ -242,8 +252,44 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         emit TokenRegistered(token, baseToken, initialTokenBalance, initialReserves, finalReserves);
     }
 
-    function quote(address token, uint256 amount, bool isBuyOrder) external view virtual override returns (uint256 amountOut);
+    /**
+     * @notice Pauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function pause() external onlyOwner {
+        _pause();
+    }
 
+    /**
+     * @notice Unpauses the contract
+     * @dev Only the owner can call this function.
+     */
+    function unpause() external onlyOwner {
+        _unpause();
+    }
+
+    /**
+     * @notice Quote the amount of tokenIn needed to buy a certain amount of tokenOut
+     * @param token The token address
+     * @param amount The amount of tokens to buy
+     * @param isBuyOrder Whether the quote is for a buy or sell order
+     * @return amountOut The amount of base tokens needed
+     */
+    function quote(
+        address token, 
+        uint256 amount, 
+        bool isBuyOrder
+    ) external view virtual override returns (uint256 amountOut);
+
+    /**
+     * @notice Internal function to handle buy accounting
+     * @param token The token address
+     * @param baseAmount The amount of base tokens to buy with
+     * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
+     * @param recipient The recipient address
+     * @return tokenAmount The amount of tokens bought
+     * @return needsMigration Whether the curve needs to be locked and migrated
+     */
     function _buy(
         address token, 
         uint256 baseAmount, 
@@ -252,6 +298,16 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         TokenInfo storage info
     ) internal virtual returns (uint256 tokenAmount, bool needsMigration);
 
+    /**
+     * @notice Internal function to handle sell accounting
+     * @param token The token address
+     * @param tokenAmount The amount of tokens to sell
+     * @param minAmountOut The minimum amount of base tokens to receive, will revert if slippage exceeds this value
+     * @param recipient The recipient address
+     * @param info The token info struct
+     * @param unwrap Whether to unwrap the WBERA tokens to BERA
+     * @return netBaseAmount The amount of base tokens received
+     */
     function _sell(
         address token,
         uint256 tokenAmount,
@@ -364,7 +420,11 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      * @param token The base token address
      * @param amount The base amount to calculate the fee on
      */
-    function _collectReferralFee(address user, address token, uint256 amount) internal returns (uint256 referralFee) {
+    function _collectReferralFee(
+        address user, 
+        address token, 
+        uint256 amount
+    ) internal returns (uint256 referralFee) {
         uint256 bps = referralManager.getReferralBpsFor(user);
 
         if (bps > 0) {
@@ -388,24 +448,5 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
 
         _transferEther(payable(to), amount);
-    }
-
-    // Fallback function
-    receive() external payable {}
-
-    /**
-     * @notice Pauses the contract
-     * @dev Only the owner can call this function.
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @notice Unpauses the contract
-     * @dev Only the owner can call this function.
-     */
-    function unpause() external onlyOwner {
-        _unpause();
     }
 }

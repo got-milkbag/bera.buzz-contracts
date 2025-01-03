@@ -109,11 +109,11 @@ describe("BuzzTokenFactory Tests", () => {
         await wBera.connect(ownerSigner).deposit({value: ethers.utils.parseEther("10")});
     });
     describe("constructor", () => {
-        it("should set the CREATE_DEPLOYER", async () => {
-            expect(await factory.CREATE_DEPLOYER()).to.be.equal(create3Factory.address);
+        it("should set the createDeployer", async () => {
+            expect(await factory.createDeployer()).to.be.equal(create3Factory.address);
         });
-        it("should grant the OWNER_ROLE to the owner", async () => {
-            const ownerRoleHash = await factory.OWNER_ROLE();
+        it("should grant the ownerRole to the owner", async () => {
+            const ownerRoleHash = await factory.ownerRole();
             expect(await factory.hasRole(ownerRoleHash, ownerSigner.address)).to.be.equal(true);
         });
         it("should set the feeManager", async () => {
@@ -464,7 +464,7 @@ describe("BuzzTokenFactory Tests", () => {
     });
     describe("setAllowedBaseToken", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
+            await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xef9601d24635ad31384c7350515a0fc1278494eeac14501e1be3d265f369a3be');
         });
         it("should set the base token status", async () => {
             expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(true);

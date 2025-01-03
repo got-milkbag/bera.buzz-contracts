@@ -46,9 +46,9 @@ contract TokenVesting is ReentrancyGuard {
         uint256 amount
     );
 
+    uint256 private vestingSchedulesTotalAmount;
     bytes32[] private vestingSchedulesIds;
     mapping(address => mapping(bytes32 => VestingSchedule)) private vestingSchedules;
-    uint256 private vestingSchedulesTotalAmount;
     mapping(address => uint256) private vestingSchedulesTotalAmountByToken;
     mapping(address => uint256) private holdersVestingCount;
 
@@ -59,17 +59,6 @@ contract TokenVesting is ReentrancyGuard {
         require(vestingSchedules[token][vestingScheduleId].duration > 0);
         _;
     }
-
-    /**
-     * @dev This function is called for plain Ether transfers, i.e. for every call with empty calldata.
-     */
-    receive() external payable {}
-
-    /**
-     * @dev Fallback function is executed if none of the other functions match the function
-     * identifier or no data was provided with the function call.
-     */
-    fallback() external payable {}
 
     /**
      * @notice Creates a new vesting schedule for a beneficiary.

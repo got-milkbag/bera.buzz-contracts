@@ -15,6 +15,29 @@ import "./interfaces/IFeeManager.sol";
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
 
+    /// @notice Event emitted when a new token is created
+    event TokenCreated(
+        address indexed token,
+        address indexed baseToken,
+        address indexed vault,
+        address deployer,
+        string name,
+        string symbol
+    );
+    /// @notice Event emitted when a vault address is enabled or disabled
+    event VaultSet(address indexed vault, bool status);
+    /// @notice Event emitted when token creation is enabled or disabled
+    event TokenCreationSet(bool status);
+    /// @notice Event emitted when the fee manager address is set
+    event FeeManagerSet(address indexed feeManager);
+    /// @notice Event emitted when a base token address is enabled or disabled
+    event BaseTokenWhitelisted(
+        address indexed baseToken, 
+        uint256 minReserveAmount, 
+        uint256 minRaiseAmount, 
+        bool enabled
+    );
+
     /// @notice Error code emitted when token creation is disabled
     error BuzzToken_TokenCreationDisabled();
     /// @notice Error code emitted when the vault is not registered
@@ -34,33 +57,25 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice Error code emitted when the final reserves are invalid
     error BuzzToken_InvalidFinalReserves();
 
-    event TokenCreated(
-        address indexed token,
-        address indexed baseToken,
-        address indexed vault,
-        address deployer,
-        string name,
-        string symbol
-    );
-    event VaultSet(address indexed vault, bool status);
-    event TokenCreationSet(bool status);
-    event FeeManagerSet(address indexed feeManager);
-    event BaseTokenWhitelisted(address indexed baseToken, uint256 minReserveAmount, uint256 minRaiseAmount, bool enabled);
-
+    /**
+     * @notice Struct containing the minimum reserve and raise amounts for a base token
+     * @param minReserveAmount The minimum reserve amount
+     * @param minRaiseAmount The minimum raise amount
+     */
     struct RaiseInfo {
         uint256 minReserveAmount;
         uint256 minRaiseAmount;
     }
 
-    /// @notice The initial supply of the token
-    uint256 public constant INITIAL_SUPPLY = 1e27;
     /// @notice The fee manager contract collecting the listing fee
     IFeeManager public feeManager;
 
+    /// @notice The initial supply of the token
+    uint256 public constant INITIAL_SUPPLY = 1e27;
     /// @dev access control owner role.
     bytes32 public immutable ownerRole;
+    /// @notice The address of the CREATE3 deployer
     address public immutable createDeployer;
-
     /// @notice Whether token creation is allowed. Controlled by accounts holding ownerRole.
     bool public allowTokenCreation;
 
@@ -79,7 +94,11 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param _createDeployer The address of the CREATE3 deployer
      * @param _feeManager The address of the feeManager contract
      */
-    constructor(address _owner, address _createDeployer, address _feeManager) {
+    constructor(
+        address _owner, 
+        address _createDeployer, 
+        address _feeManager
+    ) {
         ownerRole = keccak256("ownerRole");
         _grantRole(ownerRole, _owner);
 

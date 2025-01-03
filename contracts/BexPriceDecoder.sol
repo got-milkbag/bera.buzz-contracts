@@ -11,15 +11,6 @@ import "./interfaces/bex/ILPToken.sol";
 contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     using FixedPoint64 for uint128;
 
-    /// @notice Error emitted when the token already exists in the list
-    error BexPriceDecoder_TokenAlreadyExists();
-    /// @notice Error emitted when the token does not exist in the list
-    error BexPriceDecoder_TokenDoesNotExist();
-    /// @notice Error emitted when the length of the tokens and lpTokens arrays do not match
-    error BexPriceDecoder_TokensLengthMismatch();
-    /// @notice Error emitted when a token has address(0) in their list
-    error BexPriceDecoder_TokenAddressZero();
-
     /// @notice Emitted when the LP token is added
     event LpTokenAdded(
         address indexed lpToken,
@@ -35,13 +26,33 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         uint256 poolIdx
     );
 
-    ICrocQuery public immutable crocQuery;
+    /// @notice Error emitted when the token already exists in the list
+    error BexPriceDecoder_TokenAlreadyExists();
+    /// @notice Error emitted when the token does not exist in the list
+    error BexPriceDecoder_TokenDoesNotExist();
+    /// @notice Error emitted when the length of the tokens and lpTokens arrays do not match
+    error BexPriceDecoder_TokensLengthMismatch();
+    /// @notice Error emitted when a token has address(0) in their list
+    error BexPriceDecoder_TokenAddressZero();
+
+    /** 
+     * @notice Logs LP token information
+     * @param lpToken The LP token address
+     * @param baseToken The base token address
+     * @param quoteToken The quote token address
+     * @param poolIdx The pool index
+     */
     struct LPToken {
         address lpToken;
         address baseToken;
         address quoteToken;
         uint256 poolIdx;
     }
+
+    /// @notice The CROC query contract
+    ICrocQuery public immutable crocQuery;
+    
+    /// @notice The LP tokens
     mapping(address => LPToken) public lpTokens;
 
     constructor(
@@ -54,7 +65,10 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         crocQuery = _crocQuery;
     }
 
-    function addLpTokens(address[] memory tokens_, ILPToken[] memory lpTokens_) public onlyOwner {
+    function addLpTokens(
+        address[] memory tokens_, 
+        ILPToken[] memory lpTokens_
+    ) public onlyOwner {
         if (tokens_.length != lpTokens_.length) revert BexPriceDecoder_TokensLengthMismatch();
 
         for (uint256 i; i < tokens_.length;) {

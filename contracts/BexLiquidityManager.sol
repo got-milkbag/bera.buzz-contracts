@@ -55,7 +55,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param amount The amount of tokens to add
      */
     function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
-        if(vaults[msg.sender] == false) revert BexLiquidityManager_Unauthorized();
+        if(!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -113,7 +113,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function addVaults(address[] memory vault) external onlyOwner {
         for (uint256 i; i < vault.length;) {
-            if (vaults[vault[i]] == true) revert BexLiquidityManager_VaultAlreadyInWhitelist();
+            if (vaults[vault[i]]) revert BexLiquidityManager_VaultAlreadyInWhitelist();
             vaults[vault[i]] = true;
 
             emit VaultAdded(vault[i]);
@@ -130,7 +130,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function removeVaults(address[] calldata vault) external onlyOwner {
         for (uint256 i; i < vault.length;) {
-            if (vaults[vault[i]] == false) revert BexLiquidityManager_VaultNotInWhitelist();
+            if (!vaults[vault[i]]) revert BexLiquidityManager_VaultNotInWhitelist();
             vaults[vault[i]] = false;
 
             emit VaultRemoved(vault[i]);

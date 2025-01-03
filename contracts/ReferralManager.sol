@@ -64,9 +64,14 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
 
         if (tokens.length > 0) {
             if (tokens.length != _payoutThresholds.length) revert ReferralManager_ArrayLengthMismatch();
-            for (uint256 i = 0; i < tokens.length; i++) {
+            
+            for (uint256 i = 0; i < tokens.length;) {
                 payoutThreshold[tokens[i]] = _payoutThresholds[i];
                 emit PayoutThresholdSet(tokens[i], _payoutThresholds[i]);
+
+                unchecked {
+                    ++i;
+                }
             }
         }
 
@@ -182,9 +187,13 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
     function setPayoutThreshold(address[] calldata tokens, uint256[] calldata thresholds) external onlyOwner {
         if (tokens.length != thresholds.length) revert ReferralManager_ArrayLengthMismatch();
 
-        for (uint256 i = 0; i < tokens.length; i++) {
+        for (uint256 i; i < tokens.length;) {
             payoutThreshold[tokens[i]] = thresholds[i];
             emit PayoutThresholdSet(tokens[i], thresholds[i]);
+
+            unchecked{
+                ++i;
+            }
         }
     }
 

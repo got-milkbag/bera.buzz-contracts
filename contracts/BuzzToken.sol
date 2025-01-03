@@ -3,8 +3,9 @@ pragma solidity ^0.8.19;
 
 import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import "@openzeppelin/contracts/access/AccessControl.sol";
+import "./interfaces/IBuzzToken.sol";
 
-contract BuzzToken is ERC20, AccessControl {
+contract BuzzToken is ERC20, AccessControl, IBuzzToken {
     /// @dev access control minter role.
     bytes32 public immutable MINTER_ROLE;
     /// @dev The number of decimals
@@ -28,5 +29,9 @@ contract BuzzToken is ERC20, AccessControl {
 
     function mint(address account, uint256 amount) external onlyRole(MINTER_ROLE) {
         _mint(account, amount);
+    }
+
+    function totalSupply() public view override(ERC20, IBuzzToken) returns (uint256) {
+        return super.totalSupply();
     }
 }

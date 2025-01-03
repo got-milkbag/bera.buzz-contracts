@@ -122,9 +122,6 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1]);
 
         if (baseAmount > 0) {
-            // Buy tokens after deployment
-            uint256 quotedAmount = IBuzzVault(addr[1]).quote(token, baseAmount, true);
-
             if ((msg.value - listingFee) > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 uint256 remainingValue = msg.value - listingFee;

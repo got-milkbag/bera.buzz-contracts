@@ -79,7 +79,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         }
     }
 
-    function removeLpTokens(address[] memory _tokens) public onlyOwner {
+    function removeLpTokens(address[] memory _tokens) external onlyOwner {
         for (uint256 i; i < _tokens.length;) {
             if (_tokens[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
             if (lpTokens[_tokens[i]].baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();

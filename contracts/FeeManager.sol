@@ -104,7 +104,7 @@ contract FeeManager is Ownable, IFeeManager {
      * @param amount The amount to quote
      * @return fee The fee amount
      */
-    function quoteTradingFee(uint256 amount) public view returns (uint256 fee) {
+    function quoteTradingFee(uint256 amount) external view returns (uint256 fee) {
         fee = (amount * tradingFeeBps) / FEE_DIVISOR;
     }
 

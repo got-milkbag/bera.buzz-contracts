@@ -111,7 +111,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @notice Add a list of vaults to the whitelist
      * @param vault The array of vault addresses
      */
-    function addVaults(address[] memory vault) public onlyOwner {
+    function addVaults(address[] memory vault) external onlyOwner {
         for (uint256 i; i < vault.length;) {
             if (vaults[vault[i]] == true) revert BexLiquidityManager_VaultAlreadyInWhitelist();
             vaults[vault[i]] = true;

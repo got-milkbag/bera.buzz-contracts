@@ -57,11 +57,13 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     function createPoolAndAdd(address token, address baseToken, uint256 baseAmount, uint256 amount) external {
         if(!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
+        address crocSwapAddress = address(crocSwapDex);
+
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(msg.sender, address(this), baseAmount);
-        IERC20(token).safeApprove(address(crocSwapDex), amount);
-        IERC20(baseToken).safeApprove(address(crocSwapDex), baseAmount);
+        IERC20(token).safeApprove(crocSwapAddress, amount);
+        IERC20(baseToken).safeApprove(crocSwapAddress, baseAmount);
 
         address base;
         address quote;

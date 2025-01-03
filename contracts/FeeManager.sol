@@ -79,11 +79,12 @@ contract FeeManager is Ownable, IFeeManager {
      * @notice Collects the listing fee in native currency from the sender
      */
     function collectListingFee() external payable {
-        if (listingFee > 0) {
-            if (msg.value != listingFee) revert FeeManager_InsufficientFee();
-            (bool success, ) = treasury.call{value: listingFee}("");
+        uint256 listing = listingFee;
+        if (listing > 0) {
+            if (msg.value != listing) revert FeeManager_InsufficientFee();
+            (bool success, ) = treasury.call{value: listing}("");
             if (!success) revert FeeManager_InsufficientFee();
-            emit NativeFeeReceived(listingFee);
+            emit NativeFeeReceived(listing);
         }
     }
 

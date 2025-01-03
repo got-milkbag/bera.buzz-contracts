@@ -213,15 +213,16 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     ) internal returns (address token) {
         uint256 initialReserves = raiseData[0];
         uint256 finalReserves = raiseData[1];
+        uint256 initialSupply = INITIAL_SUPPLY;
 
-        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
+        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, initialSupply, address(this), vault));
 
         token = ICREATE3Factory(createDeployer).getDeployed(address(this), salt);
         isDeployed[token] = true;
 
         ICREATE3Factory(createDeployer).deploy(salt, bytecode);
 
-        IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
-        IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, initialReserves, finalReserves);
+        IERC20(token).safeApprove(vault, initialSupply);
+        IBuzzVault(vault).registerToken(token, baseToken, initialSupply, initialReserves, finalReserves);
     }
 }

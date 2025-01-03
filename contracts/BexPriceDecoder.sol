@@ -57,7 +57,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     function addLpTokens(address[] memory tokens_, ILPToken[] memory lpTokens_) public onlyOwner {
         if (tokens_.length != lpTokens_.length) revert BexPriceDecoder_TokensLengthMismatch();
 
-        for (uint256 i; i < _tokens.length;) {
+        for (uint256 i; i < tokens_.length;) {
             if (address(lpTokens_[i]) == address(0) || tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
             if (lpTokens[tokens_[i]].baseToken != address(0)) revert BexPriceDecoder_TokenAlreadyExists();
 
@@ -82,10 +82,11 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     function removeLpTokens(address[] memory tokens_) external onlyOwner {
         for (uint256 i; i < tokens_.length;) {
             if (tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
-            if (lpTokens[tokens_[i]].baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
+
+            address baseToken = lpTokens[tokens_[i]].baseToken;
+            if (baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
 
             address lpToken = lpTokens[tokens_[i]].lpToken;
-            address baseToken = lpTokens[tokens_[i]].baseToken;
             address quoteToken = lpTokens[tokens_[i]].quoteToken;
             uint256 poolIdx = lpTokens[tokens_[i]].poolIdx;
 

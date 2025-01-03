@@ -101,22 +101,25 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
      * @return fee The fee in wei
      */
     function quote(uint256 duration) public view returns (uint256 fee) {
+        uint256 expThreshold = EXP_THRESHOLD;
+        uint256 baseFeePs = baseFeePerSecond;
+
         if (duration == 0) revert HighlightsManager_ZeroDuration();
         if (duration < MIN_DURATION) revert HighlightsManager_DurationBelowMinimum();
         if (duration > hardCap) revert HighlightsManager_DurationExceedsHardCap();
-        if (duration <= EXP_THRESHOLD) {
-            fee = baseFeePerSecond * duration;
+        if (duration <= expThreshold) {
+            fee = baseFeePs * duration;
         } else {
-            uint256 extraTime = duration - EXP_THRESHOLD;
+            uint256 extraTime = duration - expThreshold;
 
             // Fixed growth factor G
             uint256 growthFactor = 98; // Representing 9.8 as an integer (fixed-point, scaled by 10) -> growth rate for 50x fee on 1 hour vs 10 minutes
 
             // Calculate exponential fee using the growth factor
-            uint256 exponentialFee = (baseFeePerSecond * extraTime * growthFactor) / 10;
+            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) / 10;
 
             // Total fee is the sum of the base fee and the exponential component
-            fee = (baseFeePerSecond * EXP_THRESHOLD) + exponentialFee;
+            fee = (baseFeePs * expThreshold) + exponentialFee;
         }
         return fee;
     }

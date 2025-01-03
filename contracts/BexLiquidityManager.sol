@@ -28,7 +28,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     event VaultRemoved(address indexed vault);
 
     /// @notice The pool index to use when creating a pool (1% fee)
-    uint256 private constant _poolIdx = 36002;
+    uint256 private constant POOL_IDX = 36002;
     /// @notice The amount of tokens to burn when adding liquidity
     uint256 private constant BURN_AMOUNT = 1e7;
     /// @notice The init code hash of the LP conduit
@@ -85,14 +85,14 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
         // Create pool
         // initPool subcode, base, quote, poolIdx, price ins q64.64
-        bytes memory cmd1 = abi.encode(71, base, quote, _poolIdx, _initPrice);
+        bytes memory cmd1 = abi.encode(71, base, quote, POOL_IDX, _initPrice);
 
         // Add liquidity
         // liquidity subcode (fixed in base tokens, fill-range liquidity)
         // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, res flags, lp conduit
         // because Bex burns a small insignificant amount of tokens, we reduce the liquidity by BURN_AMOUNT
         // any token dust will be burned and any BERA dust shall be sent back to the treasury or to the user that triggered the migration as a reward
-        bytes memory cmd2 = abi.encode(liqCode, base, quote, _poolIdx, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, lpConduit);
+        bytes memory cmd2 = abi.encode(liqCode, base, quote, POOL_IDX, 0, 0, liquidity - BURN_AMOUNT, _initPrice, _initPrice, 0, lpConduit);
 
         // Encode commands into a multipath call
         bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);
@@ -101,7 +101,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         crocSwapDex.userCmd(6, encodedCmd);
 
         // burn LP tokens - will use the conduit in the future for partnerships
-        IERC20(lpConduit).safeTransfer(address(0x1), IERC20(lpConduit).balanceOf(address(this)));
+        IERC20(lpConduit).safeTransfer(address(0xdead), IERC20(lpConduit).balanceOf(address(this)));
 
         // Emit event
         emit BexListed(token, baseAmount, _initPrice, lpConduit);

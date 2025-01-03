@@ -7,7 +7,6 @@ import "@openzeppelin/contracts/security/Pausable.sol";
 import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 
-import "./interfaces/IBuzzToken.sol";
 import "./interfaces/IBexLiquidityManager.sol";
 import "./interfaces/IReferralManager.sol";
 import "./interfaces/IWBera.sol";

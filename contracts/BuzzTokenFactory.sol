@@ -58,10 +58,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     IFeeManager public feeManager;
 
     /// @dev access control owner role.
-    bytes32 public immutable OWNER_ROLE;
-    address public immutable CREATE_DEPLOYER;
+    bytes32 public immutable ownerRole;
+    address public immutable createDeployer;
 
-    /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
+    /// @notice Whether token creation is allowed. Controlled by accounts holding ownerRole.
     bool public allowTokenCreation;
 
     /// @notice A mapping of whitelisted vault addresses that can be used as vaults
@@ -80,10 +80,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param _feeManager The address of the feeManager contract
      */
     constructor(address _owner, address _createDeployer, address _feeManager) {
-        OWNER_ROLE = keccak256("OWNER_ROLE");
-        _grantRole(OWNER_ROLE, _owner);
+        ownerRole = keccak256("ownerRole");
+        _grantRole(ownerRole, _owner);
 
-        CREATE_DEPLOYER = _createDeployer;
+        createDeployer = _createDeployer;
         feeManager = IFeeManager(_feeManager);
 
         emit FeeManagerSet(_feeManager);
@@ -138,34 +138,34 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
     /**
      * @notice Enables or disables a vault address that can be used to deploy tokens
-     * @param _vault The address of the vault
+     * @param vault The address of the vault
      * @param enable The status of the vault
      */
-    function setVault(address _vault, bool enable) external onlyRole(OWNER_ROLE) {
-        if (_vault == address(0)) revert BuzzToken_AddressZero();
-        vaults[_vault] = enable;
+    function setVault(address vault, bool enable) external onlyRole(ownerRole) {
+        if (vault == address(0)) revert BuzzToken_AddressZero();
+        vaults[vault] = enable;
 
-        emit VaultSet(_vault, enable);
+        emit VaultSet(vault, enable);
     }
 
     /**
      * @notice Enables or disables token creation
-     * @param _allowTokenCreation The status of token creation
+     * @param allowTokenCreation_ The status of token creation
      */
-    function setAllowTokenCreation(bool _allowTokenCreation) external onlyRole(OWNER_ROLE) {
-        allowTokenCreation = _allowTokenCreation;
+    function setAllowTokenCreation(bool allowTokenCreation_) external onlyRole(ownerRole) {
+        allowTokenCreation = allowTokenCreation_;
 
         emit TokenCreationSet(allowTokenCreation);
     }
 
     /**
      * @notice Sets the fee manager address
-     * @param _feeManager The address of the fee manager contract
+     * @param feeManager_ The address of the fee manager contract
      */
-    function setFeeManager(address payable _feeManager) external onlyRole(OWNER_ROLE) {
-        feeManager = IFeeManager(_feeManager);
+    function setFeeManager(address payable feeManager_) external onlyRole(ownerRole) {
+        feeManager = IFeeManager(feeManager_);
 
-        emit FeeManagerSet(_feeManager);
+        emit FeeManagerSet(feeManager_);
     }
 
     /**
@@ -180,7 +180,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         uint256 minReserveAmount, 
         uint256 minRaiseAmount,
         bool enable
-    ) external onlyRole(OWNER_ROLE) {
+    ) external onlyRole(ownerRole) {
         if (raiseAmounts[baseToken].minReserveAmount == 0 && raiseAmounts[baseToken].minRaiseAmount == 0) {
             raiseAmounts[baseToken] = RaiseInfo(minReserveAmount, minRaiseAmount);
         } 
@@ -216,10 +216,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
 
         bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, INITIAL_SUPPLY, address(this), vault));
 
-        token = ICREATE3Factory(CREATE_DEPLOYER).getDeployed(address(this), salt);
+        token = ICREATE3Factory(createDeployer).getDeployed(address(this), salt);
         isDeployed[token] = true;
 
-        ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
+        ICREATE3Factory(createDeployer).deploy(salt, bytecode);
 
         IERC20(token).safeApprove(vault, INITIAL_SUPPLY);
         IBuzzVault(vault).registerToken(token, baseToken, INITIAL_SUPPLY, initialReserves, finalReserves);

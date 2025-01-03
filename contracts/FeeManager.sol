@@ -123,45 +123,45 @@ contract FeeManager is Ownable, IFeeManager {
     /**
      * @notice Sets the trading fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The trading fee in basis points (one percent equals 100)
+     * @param feeBps_ The trading fee in basis points (one percent equals 100)
      */
-    function setTradingFeeBps(uint256 _feeBps) external onlyOwner {
-        if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
-        tradingFeeBps = _feeBps;
-        emit TradingFeeSet(_feeBps);
+    function setTradingFeeBps(uint256 feeBps_) external onlyOwner {
+        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+        tradingFeeBps = feeBps_;
+        emit TradingFeeSet(feeBps_);
     }
 
     /**
      * @notice Sets the listing fee amount in the native currency
      * @dev Only the owner can call this function
-     * @param _listingFee The listing fee amount
+     * @param listingFee_ The listing fee amount
      */
-    function setListingFee(uint256 _listingFee) external onlyOwner {
-        listingFee = _listingFee;
-        emit ListingFeeSet(_listingFee);
+    function setListingFee(uint256 listingFee_) external onlyOwner {
+        listingFee = listingFee_;
+        emit ListingFeeSet(listingFee_);
     }
 
     /**
      * @notice Sets the AMM migration fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The migration fee in basis points (one percent equals 100)
+     * @param feeBps_ The migration fee in basis points (one percent equals 100)
      */
-    function setMigrationFeeBps(uint256 _feeBps) external onlyOwner {
-        if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+    function setMigrationFeeBps(uint256 feeBps_) external onlyOwner {
+        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
 
-        migrationFeeBps = _feeBps;
-        emit MigrationFeeSet(_feeBps);
+        migrationFeeBps = feeBps_;
+        emit MigrationFeeSet(feeBps_);
     }
 
     /**
      * @notice Sets the treasury address
      * @dev Only the owner can call this function
-     * @param _treasury The treasury address where fees are sent
+     * @param treasury_ The treasury address where fees are sent
      */
-    function setTreasury(address _treasury) external onlyOwner {
-        if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    function setTreasury(address treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert FeeManager_TreasuryZeroAddress();
+        treasury = treasury_;
+        emit TreasurySet(treasury_);
     }
 
     // Internal functions

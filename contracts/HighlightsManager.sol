@@ -124,39 +124,39 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     /**
      * @notice Sets the treasury address
      * @dev Only the owner can call this function
-     * @param _treasury The treasury address where fees are sent
+     * @param treasury_ The treasury address where fees are sent
      */
-    function setTreasury(address payable _treasury) external onlyOwner {
-        if (_treasury == address(0)) revert HighlightsManager_TreasuryZeroAddress();
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    function setTreasury(address payable treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert HighlightsManager_TreasuryZeroAddress();
+        treasury = treasury_;
+        emit TreasurySet(treasury_);
     }
 
     /**
      * @notice Sets the hard cap for the duration
      * @dev Only the owner can call this function
-     * @param _hardCap The maximum duration allowed in seconds
+     * @param hardCap_ The maximum duration allowed in seconds
      */
-    function setHardCap(uint256 _hardCap) external onlyOwner {
+    function setHardCap(uint256 hardCap_) external onlyOwner {
         // require(_hardCap >= MIN_DURATION, "Hard cap must be >= minTime");
-        if (_hardCap < MIN_DURATION) revert HighlightsManager_HardCapBelowMinimumDuration();
-        hardCap = _hardCap;
-        emit HardCapSet(_hardCap);
+        if (hardCap_ < MIN_DURATION) revert HighlightsManager_HardCapBelowMinimumDuration();
+        hardCap = hardCap_;
+        emit HardCapSet(hardCap_);
     }
 
     /**
      * @notice Sets the base fee per second
      * @dev Only the owner can call this function
-     * @param _baseFeePerSecond The base fee per second to charge in wei
+     * @param baseFeePerSecond_ The base fee per second to charge in wei
      */
-    function setBaseFee(uint256 _baseFeePerSecond) external onlyOwner {
-        baseFeePerSecond = _baseFeePerSecond;
-        emit BaseFeeSet(_baseFeePerSecond);
+    function setBaseFee(uint256 baseFeePerSecond_) external onlyOwner {
+        baseFeePerSecond = baseFeePerSecond_;
+        emit BaseFeeSet(baseFeePerSecond_);
     }
 
-    function setCoolDownPeriod(uint256 _coolDownPeriod) external onlyOwner {
-        coolDownPeriod = _coolDownPeriod;
-        emit CoolDownPeriodSet(_coolDownPeriod);
+    function setCoolDownPeriod(uint256 coolDownPeriod_) external onlyOwner {
+        coolDownPeriod = coolDownPeriod_;
+        emit CoolDownPeriodSet(coolDownPeriod_);
     }
 
     /**

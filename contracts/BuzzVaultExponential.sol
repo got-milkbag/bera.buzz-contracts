@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import "./BuzzVault.sol";
-import "./interfaces/IBuzzToken.sol";
 
 /// @title BuzzVaultExponential contract
 /// @notice A contract implementing an exponential bonding curve

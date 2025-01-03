@@ -169,18 +169,18 @@ contract ReferralManager is Ownable, Pausable, ReentrancyGuard, IReferralManager
 
     // Admin functions
 
-    function setDirectRefFeeBps(uint256 _directRefFeeBps) external onlyOwner {
-        directRefFeeBps = _directRefFeeBps;
+    function setDirectRefFeeBps(uint256 directRefFeeBps_) external onlyOwner {
+        directRefFeeBps = directRefFeeBps_;
         emit DirectRefFeeBpsSet(directRefFeeBps);
     }
 
-    function setIndirectRefFeeBps(uint256 _indirectRefFeeBps) external onlyOwner {
-        indirectRefFeeBps = _indirectRefFeeBps;
+    function setIndirectRefFeeBps(uint256 indirectRefFeeBps_) external onlyOwner {
+        indirectRefFeeBps = indirectRefFeeBps_;
         emit IndirectRefFeeBpsSet(indirectRefFeeBps);
     }
 
-    function setValidUntil(uint256 _validUntil) external onlyOwner {
-        validUntil = _validUntil;
+    function setValidUntil(uint256 validUntil_) external onlyOwner {
+        validUntil = validUntil_;
         emit ReferralDeadlineSet(validUntil);
     }
 

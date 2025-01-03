@@ -54,23 +54,23 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         crocQuery = _crocQuery;
     }
 
-    function addLpTokens(address[] memory _tokens, ILPToken[] memory _lpTokens) public onlyOwner {
-        if (_tokens.length != _lpTokens.length) revert BexPriceDecoder_TokensLengthMismatch();
+    function addLpTokens(address[] memory tokens_, ILPToken[] memory lpTokens_) public onlyOwner {
+        if (tokens_.length != lpTokens_.length) revert BexPriceDecoder_TokensLengthMismatch();
 
         for (uint256 i; i < _tokens.length;) {
-            if (address(_lpTokens[i]) == address(0) || _tokens[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
-            if (lpTokens[_tokens[i]].baseToken != address(0)) revert BexPriceDecoder_TokenAlreadyExists();
+            if (address(lpTokens_[i]) == address(0) || tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
+            if (lpTokens[tokens_[i]].baseToken != address(0)) revert BexPriceDecoder_TokenAlreadyExists();
 
-            lpTokens[_tokens[i]].lpToken = address(_lpTokens[i]);
-            lpTokens[_tokens[i]].baseToken = _lpTokens[i].baseToken();
-            lpTokens[_tokens[i]].quoteToken = _lpTokens[i].quoteToken();
-            lpTokens[_tokens[i]].poolIdx = _lpTokens[i].poolType();
+            lpTokens[tokens_[i]].lpToken = address(lpTokens_[i]);
+            lpTokens[tokens_[i]].baseToken = lpTokens_[i].baseToken();
+            lpTokens[tokens_[i]].quoteToken = lpTokens_[i].quoteToken();
+            lpTokens[tokens_[i]].poolIdx = lpTokens_[i].poolType();
 
             emit LpTokenAdded(
-                address(_lpTokens[i]), 
-                _lpTokens[i].baseToken(), 
-                _lpTokens[i].quoteToken(),
-                _lpTokens[i].poolType()
+                address(lpTokens_[i]), 
+                lpTokens_[i].baseToken(), 
+                lpTokens_[i].quoteToken(),
+                lpTokens_[i].poolType()
             );
 
             unchecked {
@@ -79,20 +79,20 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         }
     }
 
-    function removeLpTokens(address[] memory _tokens) external onlyOwner {
-        for (uint256 i; i < _tokens.length;) {
-            if (_tokens[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
-            if (lpTokens[_tokens[i]].baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
+    function removeLpTokens(address[] memory tokens_) external onlyOwner {
+        for (uint256 i; i < tokens_.length;) {
+            if (tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
+            if (lpTokens[tokens_[i]].baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
 
-            address lpToken = lpTokens[_tokens[i]].lpToken;
-            address baseToken = lpTokens[_tokens[i]].baseToken;
-            address quoteToken = lpTokens[_tokens[i]].quoteToken;
-            uint256 poolIdx = lpTokens[_tokens[i]].poolIdx;
+            address lpToken = lpTokens[tokens_[i]].lpToken;
+            address baseToken = lpTokens[tokens_[i]].baseToken;
+            address quoteToken = lpTokens[tokens_[i]].quoteToken;
+            uint256 poolIdx = lpTokens[tokens_[i]].poolIdx;
 
-            lpTokens[_tokens[i]].lpToken = address(0);
-            lpTokens[_tokens[i]].baseToken = address(0);
-            lpTokens[_tokens[i]].quoteToken = address(0);
-            lpTokens[_tokens[i]].poolIdx = 0;
+            lpTokens[tokens_[i]].lpToken = address(0);
+            lpTokens[tokens_[i]].baseToken = address(0);
+            lpTokens[tokens_[i]].quoteToken = address(0);
+            lpTokens[tokens_[i]].poolIdx = 0;
 
             emit LpTokenRemoved(
                 lpToken, 

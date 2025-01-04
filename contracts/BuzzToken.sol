@@ -23,11 +23,19 @@ contract BuzzToken is ERC20, AccessControl, IBuzzToken {
         _grantRole(minterRole, _owner);
     }
 
-    function mint(address account, uint256 amount) external onlyRole(minterRole) {
+    function mint(
+        address account,
+        uint256 amount
+    ) external onlyRole(minterRole) {
         _mint(account, amount);
     }
 
-    function totalSupply() public view override(ERC20, IBuzzToken) returns (uint256) {
+    function totalSupply()
+        public
+        view
+        override(ERC20, IBuzzToken)
+        returns (uint256)
+    {
         return super.totalSupply();
     }
 

@@ -51,9 +51,15 @@ contract FeeManager is Ownable, IFeeManager {
      * @param _listingFee The listing fee amount in wei (in the native token)
      * @param _migrationFeeBps The AMM migration fee in basis points (one percent equals 100)
      */
-    constructor(address _treasury, uint256 _tradingFeeBps, uint256 _listingFee, uint256 _migrationFeeBps) {
+    constructor(
+        address _treasury,
+        uint256 _tradingFeeBps,
+        uint256 _listingFee,
+        uint256 _migrationFeeBps
+    ) {
         if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
-        if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR)) revert FeeManager_AmountAboveFeeDivisor();
+        if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR))
+            revert FeeManager_AmountAboveFeeDivisor();
         treasury = _treasury;
         tradingFeeBps = _tradingFeeBps;
         listingFee = _listingFee;
@@ -105,7 +111,9 @@ contract FeeManager is Ownable, IFeeManager {
      * @param amount The amount to quote
      * @return fee The fee amount
      */
-    function quoteTradingFee(uint256 amount) external view returns (uint256 fee) {
+    function quoteTradingFee(
+        uint256 amount
+    ) external view returns (uint256 fee) {
         fee = (amount * tradingFeeBps) / FEE_DIVISOR;
     }
 
@@ -115,7 +123,9 @@ contract FeeManager is Ownable, IFeeManager {
      * @param amount The amount to quote
      * @return fee The fee amount
      */
-    function quoteMigrationFee(uint256 amount) public view returns (uint256 fee) {
+    function quoteMigrationFee(
+        uint256 amount
+    ) public view returns (uint256 fee) {
         fee = (amount * migrationFeeBps) / FEE_DIVISOR;
     }
 

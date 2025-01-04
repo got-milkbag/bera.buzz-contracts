@@ -7,7 +7,13 @@ import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.
 
 contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     /// @notice Event emitted when a token is highlighted
-    event TokenHighlighted(address indexed token, address indexed buyer, uint256 duration, uint256 bookedUntil, uint256 fee);
+    event TokenHighlighted(
+        address indexed token,
+        address indexed buyer,
+        uint256 duration,
+        uint256 bookedUntil,
+        uint256 fee
+    );
     /// @notice Event emitted when the treasury address is set
     event TreasurySet(address indexed treasury);
     /// @notice Event emitted when the base fee is set
@@ -60,9 +66,16 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
      * @param _hardCap The maximum duration allowed in seconds
      * @param _baseFeePerSecond The base fee per second to charge in wei
      */
-    constructor(address payable _treasury, uint256 _hardCap, uint256 _baseFeePerSecond, uint256 _coolDownPeriod) {
-        if (_hardCap < MIN_DURATION) revert HighlightsManager_HardCapBelowMinimumDuration();
-        if (_treasury == address(0)) revert HighlightsManager_TreasuryZeroAddress();
+    constructor(
+        address payable _treasury,
+        uint256 _hardCap,
+        uint256 _baseFeePerSecond,
+        uint256 _coolDownPeriod
+    ) {
+        if (_hardCap < MIN_DURATION)
+            revert HighlightsManager_HardCapBelowMinimumDuration();
+        if (_treasury == address(0))
+            revert HighlightsManager_TreasuryZeroAddress();
 
         treasury = _treasury;
         hardCap = _hardCap;
@@ -77,13 +90,18 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
 
     /**
      * @notice Allows msg.sender to highlights a token for a given duration, paying the fee in native currency
-     * @notice BookedUntil must be in the past to allow a new highlight. quote() should be called beforehand to get the msg.value required.
+     * @dev BookedUntil must be in the past to allow a new highlight.
      * @param token The address of the token to highlight
      * @param duration The duration in seconds
      */
-    function highlightToken(address token, uint256 duration) external payable whenNotPaused nonReentrant {
-        if (bookedUntil > block.timestamp) revert HighlightsManager_SlotOccupied();
-        if (tokenCoolDownUntil[token] > block.timestamp) revert HighlightsManager_TokenWithinCoolDown();
+    function highlightToken(
+        address token,
+        uint256 duration
+    ) external payable whenNotPaused nonReentrant {
+        if (bookedUntil > block.timestamp)
+            revert HighlightsManager_SlotOccupied();
+        if (tokenCoolDownUntil[token] > block.timestamp)
+            revert HighlightsManager_TokenWithinCoolDown();
 
         uint256 fee = quote(duration);
         if (msg.value != fee) revert HighlightsManager_InsufficientFee();
@@ -102,7 +120,8 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
      * @param treasury_ The treasury address where fees are sent
      */
     function setTreasury(address payable treasury_) external onlyOwner {
-        if (treasury_ == address(0)) revert HighlightsManager_TreasuryZeroAddress();
+        if (treasury_ == address(0))
+            revert HighlightsManager_TreasuryZeroAddress();
         treasury = treasury_;
         emit TreasurySet(treasury_);
     }
@@ -114,7 +133,8 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
      */
     function setHardCap(uint256 hardCap_) external onlyOwner {
         // require(_hardCap >= MIN_DURATION, "Hard cap must be >= minTime");
-        if (hardCap_ < MIN_DURATION) revert HighlightsManager_HardCapBelowMinimumDuration();
+        if (hardCap_ < MIN_DURATION)
+            revert HighlightsManager_HardCapBelowMinimumDuration();
         hardCap = hardCap_;
         emit HardCapSet(hardCap_);
     }
@@ -165,18 +185,21 @@ contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
         uint256 baseFeePs = baseFeePerSecond;
 
         if (duration == 0) revert HighlightsManager_ZeroDuration();
-        if (duration < MIN_DURATION) revert HighlightsManager_DurationBelowMinimum();
-        if (duration > hardCap) revert HighlightsManager_DurationExceedsHardCap();
+        if (duration < MIN_DURATION)
+            revert HighlightsManager_DurationBelowMinimum();
+        if (duration > hardCap)
+            revert HighlightsManager_DurationExceedsHardCap();
         if (duration <= expThreshold) {
             fee = baseFeePs * duration;
         } else {
             uint256 extraTime = duration - expThreshold;
 
-            // Fixed growth factor G
-            uint256 growthFactor = 98; // Representing 9.8 as an integer (fixed-point, scaled by 10) -> growth rate for 50x fee on 1 hour vs 10 minutes
+            // Fixed growth factor G - growth rate for 50x fee on 1 hour vs 10 minutes
+            uint256 growthFactor = 98;
 
             // Calculate exponential fee using the growth factor
-            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) / 10;
+            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) /
+                10;
 
             // Total fee is the sum of the base fee and the exponential component
             fee = (baseFeePs * expThreshold) + exponentialFee;

@@ -14,15 +14,15 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     /// @notice Emitted when the LP token is added
     event LpTokenAdded(
         address indexed lpToken,
-        address indexed baseToken, 
-        address indexed quoteToken, 
+        address indexed baseToken,
+        address indexed quoteToken,
         uint256 poolIdx
     );
     /// @notice Emitted when the LP token is removed
     event LpTokenRemoved(
         address indexed lpToken,
-        address indexed baseToken, 
-        address indexed quoteToken, 
+        address indexed baseToken,
+        address indexed quoteToken,
         uint256 poolIdx
     );
 
@@ -35,7 +35,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     /// @notice Error emitted when a token has address(0) in their list
     error BexPriceDecoder_TokenAddressZero();
 
-    /** 
+    /**
      * @notice Logs LP token information
      * @param lpToken The LP token address
      * @param baseToken The base token address
@@ -51,13 +51,13 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
 
     /// @notice The CROC query contract
     ICrocQuery public immutable crocQuery;
-    
+
     /// @notice The LP tokens
     mapping(address => LPToken) public lpTokens;
 
     constructor(
-        ICrocQuery _crocQuery, 
-        address[] memory _tokens, 
+        ICrocQuery _crocQuery,
+        address[] memory _tokens,
         ILPToken[] memory _lpTokens
     ) {
         addLpTokens(_tokens, _lpTokens);
@@ -66,14 +66,17 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     }
 
     function addLpTokens(
-        address[] memory tokens_, 
+        address[] memory tokens_,
         ILPToken[] memory lpTokens_
     ) public onlyOwner {
-        if (tokens_.length != lpTokens_.length) revert BexPriceDecoder_TokensLengthMismatch();
+        if (tokens_.length != lpTokens_.length)
+            revert BexPriceDecoder_TokensLengthMismatch();
 
-        for (uint256 i; i < tokens_.length;) {
-            if (address(lpTokens_[i]) == address(0) || tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
-            if (lpTokens[tokens_[i]].baseToken != address(0)) revert BexPriceDecoder_TokenAlreadyExists();
+        for (uint256 i; i < tokens_.length; ) {
+            if (address(lpTokens_[i]) == address(0) || tokens_[i] == address(0))
+                revert BexPriceDecoder_TokenAddressZero();
+            if (lpTokens[tokens_[i]].baseToken != address(0))
+                revert BexPriceDecoder_TokenAlreadyExists();
 
             lpTokens[tokens_[i]].lpToken = address(lpTokens_[i]);
             lpTokens[tokens_[i]].baseToken = lpTokens_[i].baseToken();
@@ -81,8 +84,8 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
             lpTokens[tokens_[i]].poolIdx = lpTokens_[i].poolType();
 
             emit LpTokenAdded(
-                address(lpTokens_[i]), 
-                lpTokens_[i].baseToken(), 
+                address(lpTokens_[i]),
+                lpTokens_[i].baseToken(),
                 lpTokens_[i].quoteToken(),
                 lpTokens_[i].poolType()
             );
@@ -94,11 +97,13 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     }
 
     function removeLpTokens(address[] memory tokens_) external onlyOwner {
-        for (uint256 i; i < tokens_.length;) {
-            if (tokens_[i] == address(0)) revert BexPriceDecoder_TokenAddressZero();
+        for (uint256 i; i < tokens_.length; ) {
+            if (tokens_[i] == address(0))
+                revert BexPriceDecoder_TokenAddressZero();
 
             address baseToken = lpTokens[tokens_[i]].baseToken;
-            if (baseToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
+            if (baseToken == address(0))
+                revert BexPriceDecoder_TokenDoesNotExist();
 
             address lpToken = lpTokens[tokens_[i]].lpToken;
             address quoteToken = lpTokens[tokens_[i]].quoteToken;
@@ -109,12 +114,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
             lpTokens[tokens_[i]].quoteToken = address(0);
             lpTokens[tokens_[i]].poolIdx = 0;
 
-            emit LpTokenRemoved(
-                lpToken, 
-                baseToken, 
-                quoteToken, 
-                poolIdx
-            );
+            emit LpTokenRemoved(lpToken, baseToken, quoteToken, poolIdx);
 
             unchecked {
                 ++i;
@@ -124,11 +124,12 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
 
     function getPrice(address token) external view returns (uint256 price) {
         if (token == address(0)) revert BexPriceDecoder_TokenAddressZero();
-        if (lpTokens[token].lpToken == address(0)) revert BexPriceDecoder_TokenDoesNotExist();
+        if (lpTokens[token].lpToken == address(0))
+            revert BexPriceDecoder_TokenDoesNotExist();
 
         uint128 sqrtPriceX64 = crocQuery.queryPrice(
-            lpTokens[token].baseToken, 
-            lpTokens[token].quoteToken, 
+            lpTokens[token].baseToken,
+            lpTokens[token].quoteToken,
             lpTokens[token].poolIdx
         );
 
@@ -136,7 +137,9 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     }
 
     /// @notice Tokens should have 18 decimals
-    function _getPriceFromSqrtPriceX64(uint128 sqrtPriceX64) internal pure returns (uint256 price) {
+    function _getPriceFromSqrtPriceX64(
+        uint128 sqrtPriceX64
+    ) internal pure returns (uint256 price) {
         price = sqrtPriceX64.decodeSqrtPriceX64();
     }
 }

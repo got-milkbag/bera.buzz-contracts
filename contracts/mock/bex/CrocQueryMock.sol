@@ -12,7 +12,11 @@ contract CrocQueryMock {
         _price = price; // eg 83238796252293901415
     }
 
-    function queryPrice(address, address, uint256) external view returns (uint128) {
+    function queryPrice(
+        address,
+        address,
+        uint256
+    ) external view returns (uint128) {
         return _price;
     }
 }

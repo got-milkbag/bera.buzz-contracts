@@ -32,9 +32,9 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     event FeeManagerSet(address indexed feeManager);
     /// @notice Event emitted when a base token address is enabled or disabled
     event BaseTokenWhitelisted(
-        address indexed baseToken, 
-        uint256 minReserveAmount, 
-        uint256 minRaiseAmount, 
+        address indexed baseToken,
+        uint256 minReserveAmount,
+        uint256 minRaiseAmount,
         bool enabled
     );
 
@@ -94,11 +94,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param _createDeployer The address of the CREATE3 deployer
      * @param _feeManager The address of the feeManager contract
      */
-    constructor(
-        address _owner, 
-        address _createDeployer, 
-        address _feeManager
-    ) {
+    constructor(address _owner, address _createDeployer, address _feeManager) {
         ownerRole = keccak256("ownerRole");
         _grantRole(ownerRole, _owner);
 
@@ -127,9 +123,12 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
-        if (!whitelistedBaseTokens[addr[0]]) revert BuzzToken_BaseTokenNotWhitelisted();
-        if (raiseData[0] < raiseAmounts[addr[0]].minReserveAmount) revert BuzzToken_InvalidInitialReserves();
-        if (raiseData[1] < raiseData[0] + raiseAmounts[addr[0]].minRaiseAmount) revert BuzzToken_InvalidFinalReserves();
+        if (!whitelistedBaseTokens[addr[0]])
+            revert BuzzToken_BaseTokenNotWhitelisted();
+        if (raiseData[0] < raiseAmounts[addr[0]].minReserveAmount)
+            revert BuzzToken_InvalidInitialReserves();
+        if (raiseData[1] < raiseData[0] + raiseAmounts[addr[0]].minRaiseAmount)
+            revert BuzzToken_InvalidFinalReserves();
 
         uint256 listingFee = feeManager.listingFee();
         if (listingFee > 0) {
@@ -137,20 +136,50 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             feeManager.collectListingFee{value: listingFee}();
         }
 
-        token = _deployToken(metadata[0], metadata[1], addr[0], addr[1], salt, raiseData);
-        emit TokenCreated(token, addr[0], addr[1], msg.sender, metadata[0], metadata[1]);
+        token = _deployToken(
+            metadata[0],
+            metadata[1],
+            addr[0],
+            addr[1],
+            salt,
+            raiseData
+        );
+        emit TokenCreated(
+            token,
+            addr[0],
+            addr[1],
+            msg.sender,
+            metadata[0],
+            metadata[1]
+        );
 
         if (baseAmount > 0) {
             if ((msg.value - listingFee) > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 uint256 remainingValue = msg.value - listingFee;
-                if (remainingValue != baseAmount) revert BuzzToken_BaseAmountNotEnough();
-                IBuzzVault(addr[1]).buyNative{value: remainingValue}(token, 1e15, address(0), msg.sender);
+                if (remainingValue != baseAmount)
+                    revert BuzzToken_BaseAmountNotEnough();
+                IBuzzVault(addr[1]).buyNative{value: remainingValue}(
+                    token,
+                    1e15,
+                    address(0),
+                    msg.sender
+                );
             } else {
                 // Buy tokens using base token
-                IERC20(addr[0]).safeTransferFrom(msg.sender, address(this), baseAmount);
+                IERC20(addr[0]).safeTransferFrom(
+                    msg.sender,
+                    address(this),
+                    baseAmount
+                );
                 IERC20(addr[0]).safeApprove(addr[1], baseAmount);
-                IBuzzVault(addr[1]).buy(token, baseAmount, 1e15, address(0), msg.sender);
+                IBuzzVault(addr[1]).buy(
+                    token,
+                    baseAmount,
+                    1e15,
+                    address(0),
+                    msg.sender
+                );
             }
         }
     }
@@ -171,7 +200,9 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @notice Enables or disables token creation
      * @param allowTokenCreation_ The status of token creation
      */
-    function setAllowTokenCreation(bool allowTokenCreation_) external onlyRole(ownerRole) {
+    function setAllowTokenCreation(
+        bool allowTokenCreation_
+    ) external onlyRole(ownerRole) {
         allowTokenCreation = allowTokenCreation_;
 
         emit TokenCreationSet(allowTokenCreation);
@@ -181,7 +212,9 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @notice Sets the fee manager address
      * @param feeManager_ The address of the fee manager contract
      */
-    function setFeeManager(address payable feeManager_) external onlyRole(ownerRole) {
+    function setFeeManager(
+        address payable feeManager_
+    ) external onlyRole(ownerRole) {
         feeManager = IFeeManager(feeManager_);
 
         emit FeeManagerSet(feeManager_);
@@ -195,21 +228,31 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param enable True to whitelist, false to remove from the whitelist
      */
     function setAllowedBaseToken(
-        address baseToken, 
-        uint256 minReserveAmount, 
+        address baseToken,
+        uint256 minReserveAmount,
         uint256 minRaiseAmount,
         bool enable
     ) external onlyRole(ownerRole) {
-        if (raiseAmounts[baseToken].minReserveAmount == 0 && raiseAmounts[baseToken].minRaiseAmount == 0) {
-            raiseAmounts[baseToken] = RaiseInfo(minReserveAmount, minRaiseAmount);
-        } 
-        else {
+        if (
+            raiseAmounts[baseToken].minReserveAmount == 0 &&
+            raiseAmounts[baseToken].minRaiseAmount == 0
+        ) {
+            raiseAmounts[baseToken] = RaiseInfo(
+                minReserveAmount,
+                minRaiseAmount
+            );
+        } else {
             raiseAmounts[baseToken].minReserveAmount = minReserveAmount;
             raiseAmounts[baseToken].minRaiseAmount = minRaiseAmount;
         }
         whitelistedBaseTokens[baseToken] = enable;
 
-        emit BaseTokenWhitelisted(baseToken, minReserveAmount, minRaiseAmount, enable);
+        emit BaseTokenWhitelisted(
+            baseToken,
+            minReserveAmount,
+            minRaiseAmount,
+            enable
+        );
     }
 
     /**
@@ -234,14 +277,26 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         uint256 finalReserves = raiseData[1];
         uint256 initialSupply = INITIAL_SUPPLY;
 
-        bytes memory bytecode = abi.encodePacked(type(BuzzToken).creationCode, abi.encode(name, symbol, initialSupply, address(this), vault));
+        bytes memory bytecode = abi.encodePacked(
+            type(BuzzToken).creationCode,
+            abi.encode(name, symbol, initialSupply, address(this), vault)
+        );
 
-        token = ICREATE3Factory(createDeployer).getDeployed(address(this), salt);
+        token = ICREATE3Factory(createDeployer).getDeployed(
+            address(this),
+            salt
+        );
         isDeployed[token] = true;
 
         ICREATE3Factory(createDeployer).deploy(salt, bytecode);
 
         IERC20(token).safeApprove(vault, initialSupply);
-        IBuzzVault(vault).registerToken(token, baseToken, initialSupply, initialReserves, finalReserves);
+        IBuzzVault(vault).registerToken(
+            token,
+            baseToken,
+            initialSupply,
+            initialReserves,
+            finalReserves
+        );
     }
 }

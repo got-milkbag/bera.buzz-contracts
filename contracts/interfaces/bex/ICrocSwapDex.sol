@@ -10,5 +10,8 @@ interface ICrocSwapDex {
      * @param callpath The index of the proxy sidecar the command is being called on.
      * @param cmd The arbitrary call data the client is calling the proxy sidecar.
      * @return Arbitrary byte data (if any) returned by the command. */
-    function userCmd(uint16 callpath, bytes calldata cmd) external payable returns (bytes memory);
+    function userCmd(
+        uint16 callpath,
+        bytes calldata cmd
+    ) external payable returns (bytes memory);
 }

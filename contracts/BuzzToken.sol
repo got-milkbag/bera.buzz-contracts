@@ -1,13 +1,18 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/ERC20.sol";
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "./interfaces/IBuzzToken.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {IBuzzToken} from "./interfaces/IBuzzToken.sol";
 
+/**
+ * @title BuzzToken
+ * @notice This contract is the ERC20 token wrapper for bera.buzz
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract BuzzToken is ERC20, AccessControl, IBuzzToken {
     /// @dev access control minter role.
-    bytes32 public immutable minterRole;
+    bytes32 public immutable MINTER_ROLE;
     /// @dev The number of decimals
     uint8 private constant DECIMALS = 18;
 
@@ -19,14 +24,14 @@ contract BuzzToken is ERC20, AccessControl, IBuzzToken {
         address _owner
     ) ERC20(name, symbol) {
         _mint(mintTo, _initialSupply);
-        minterRole = keccak256("MINTER_ROLE");
-        _grantRole(minterRole, _owner);
+        MINTER_ROLE = keccak256("MINTER_ROLE");
+        _grantRole(MINTER_ROLE, _owner);
     }
 
     function mint(
         address account,
         uint256 amount
-    ) external onlyRole(minterRole) {
+    ) external onlyRole(MINTER_ROLE) {
         _mint(account, amount);
     }
 

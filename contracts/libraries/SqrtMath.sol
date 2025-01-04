@@ -9,7 +9,7 @@ library SqrtMath {
         uint256 reserve1,
         uint256 reserve0
     ) internal pure returns (uint128) {
-        require(reserve0 > 0, "Division by zero");
+        require(reserve0 > 0, "Division by zero"); // solhint-disable-line
         return
             uint128(
                 sqrt(
@@ -21,6 +21,7 @@ library SqrtMath {
     // Fast sqrt, taken from Solmate.
     function sqrt(uint256 x) internal pure returns (uint256 z) {
         assembly {
+            // solhint-disable-line
             // Start off with z at 1.
             z := 1
 

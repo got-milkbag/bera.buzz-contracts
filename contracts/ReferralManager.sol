@@ -1,13 +1,17 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {IReferralManager} from "./interfaces/IReferralManager.sol";
 
-import "./interfaces/IReferralManager.sol";
-
+/**
+ * @title ReferralManager
+ * @notice This contract manages the referral system for the protocol
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract ReferralManager is
     Ownable,
     Pausable,

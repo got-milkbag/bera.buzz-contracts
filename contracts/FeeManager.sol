@@ -1,14 +1,14 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
-import "./interfaces/IFeeManager.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
  * @title FeeManager
  * @notice This contract collects and forwards to the treasury the different types of fees in the protocol
+ * @author nexusflip, Zacharias Mitzelos
  */
 contract FeeManager is Ownable, IFeeManager {
     using SafeERC20 for IERC20;

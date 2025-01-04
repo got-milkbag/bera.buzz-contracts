@@ -1,15 +1,18 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {SqrtMath} from "./libraries/SqrtMath.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICrocSwapDex} from "./interfaces/bex/ICrocSwapDex.sol";
+import {IBexLiquidityManager} from "./interfaces/IBexLiquidityManager.sol";
 
-import "./interfaces/IBexLiquidityManager.sol";
-import "./interfaces/bex/ICrocSwapDex.sol";
-import "./libraries/SqrtMath.sol";
-import "./bex/CrocLpErc20.sol";
-
+/**
+ * @title BexLiquidityManager
+ * @notice This contract migrated bonding curve liquidity to BEX
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     using SafeERC20 for IERC20;
 
@@ -33,7 +36,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     error BexLiquidityManager_VaultNotInWhitelist();
 
     /// @notice The address of the CrocSwap DEX
-    ICrocSwapDex private immutable crocSwapDex;
+    ICrocSwapDex private immutable CROC_SWAP_DEX;
 
     /// @notice The pool index to use when creating a pool (1% fee)
     uint256 private constant POOL_IDX = 36002;
@@ -51,7 +54,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param _crocSwapDex The address of the CrocSwap DEX
      */
     constructor(address _crocSwapDex) {
-        crocSwapDex = ICrocSwapDex(_crocSwapDex);
+        CROC_SWAP_DEX = ICrocSwapDex(_crocSwapDex);
     }
 
     /**
@@ -70,7 +73,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     ) external {
         if (!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
-        address crocSwapAddress = address(crocSwapDex);
+        address crocSwapAddress = address(CROC_SWAP_DEX);
 
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
@@ -129,7 +132,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);
 
         // Execute multipath call
-        crocSwapDex.userCmd(6, encodedCmd);
+        CROC_SWAP_DEX.userCmd(6, encodedCmd);
 
         // burn LP tokens - will use the conduit in the future for partnerships
         IERC20(lpConduit).safeTransfer(
@@ -194,7 +197,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
                     keccak256(
                         abi.encodePacked(
                             bytes1(0xff),
-                            address(crocSwapDex),
+                            address(CROC_SWAP_DEX),
                             salt,
                             LP_CONDUIT_INIT_CODE_HASH
                         )

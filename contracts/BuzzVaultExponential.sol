@@ -1,10 +1,13 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "./BuzzVault.sol";
+import {BuzzVault, SafeERC20, IERC20} from "./BuzzVault.sol";
 
-/// @title BuzzVaultExponential contract
-/// @notice A contract implementing an exponential bonding curve
+/**
+ * @title BuzzVaultExponential contract
+ * @notice A contract implementing an exponential bonding curve
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract BuzzVaultExponential is BuzzVault {
     using SafeERC20 for IERC20;
 
@@ -55,7 +58,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         if (isBuyOrder) {
             uint256 amountAfterFee = amount -
-                feeManager.quoteTradingFee(amount);
+                FEE_MANAGER.quoteTradingFee(amount);
             (amountOut, ) = _calculateBuyPrice(
                 amountAfterFee,
                 baseBalance,
@@ -72,7 +75,7 @@ contract BuzzVaultExponential is BuzzVault {
             );
             if (amountOut > baseBalance - info.initialBase)
                 amountOut = baseBalance - info.initialBase;
-            amountOut -= feeManager.quoteTradingFee(amountOut);
+            amountOut -= FEE_MANAGER.quoteTradingFee(amountOut);
         }
     }
 
@@ -92,7 +95,7 @@ contract BuzzVaultExponential is BuzzVault {
         address recipient,
         TokenInfo storage info
     ) internal override returns (uint256 tokenAmount, bool needsMigration) {
-        uint256 tradingFee = feeManager.quoteTradingFee(baseAmount);
+        uint256 tradingFee = FEE_MANAGER.quoteTradingFee(baseAmount);
         uint256 netBaseAmount = baseAmount - tradingFee;
 
         (uint256 tokenAmountBuy, bool exceeded) = _calculateBuyPrice(
@@ -165,7 +168,7 @@ contract BuzzVaultExponential is BuzzVault {
         info.baseBalance -= baseAmountSell;
         info.tokenBalance += tokenAmount;
 
-        uint256 tradingFee = feeManager.quoteTradingFee(baseAmountSell);
+        uint256 tradingFee = FEE_MANAGER.quoteTradingFee(baseAmountSell);
 
         netBaseAmount = baseAmountSell - tradingFee;
 
@@ -174,7 +177,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-        if (unwrap && info.baseToken == address(wbera)) {
+        if (unwrap && info.baseToken == address(WBERA)) {
             _unwrap(recipient, netBaseAmount);
         } else {
             IERC20(info.baseToken).safeTransfer(recipient, netBaseAmount);
@@ -234,14 +237,14 @@ contract BuzzVaultExponential is BuzzVault {
         address user,
         uint256 amount
     ) internal returns (uint256 tradingFee, uint256 referralFee) {
-        tradingFee = feeManager.quoteTradingFee(amount);
+        tradingFee = FEE_MANAGER.quoteTradingFee(amount);
         if (tradingFee > 0) {
-            referralFee = referralManager.quoteReferralFee(user, tradingFee);
+            referralFee = REFERRAL_MANAGER.quoteReferralFee(user, tradingFee);
             // will never underflow because ref fee is a % of trading fee
             uint256 tradingMinusRef = tradingFee - referralFee;
 
-            IERC20(token).safeApprove(address(feeManager), tradingMinusRef);
-            feeManager.collectTradingFee(token, tradingMinusRef);
+            IERC20(token).safeApprove(address(FEE_MANAGER), tradingMinusRef);
+            FEE_MANAGER.collectTradingFee(token, tradingMinusRef);
             _collectReferralFee(user, token, tradingFee);
         }
     }

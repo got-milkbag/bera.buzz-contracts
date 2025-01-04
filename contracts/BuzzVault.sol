@@ -1,20 +1,22 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "@openzeppelin/contracts/security/Pausable.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IWBera} from "./interfaces/IWBera.sol";
+import {IBexLiquidityManager} from "./interfaces/IBexLiquidityManager.sol";
+import {IReferralManager} from "./interfaces/IReferralManager.sol";
+import {IBuzzVault} from "./interfaces/IBuzzVault.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
-import "./interfaces/IBexLiquidityManager.sol";
-import "./interfaces/IReferralManager.sol";
-import "./interfaces/IWBera.sol";
-import "./interfaces/IBuzzVault.sol";
-import "./interfaces/IFeeManager.sol";
-
-/// @title BuzzVault contract
-/// @notice An abstract contract holding logic for bonding curve operations
+/**
+ * @title BuzzVault contract
+ * @notice An abstract contract holding logic for bonding curve operations
+ * @author nexusflip, Zacharias Mitzelos
+ */
 abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     using SafeERC20 for IERC20;
 
@@ -86,18 +88,18 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     }
 
     /// @notice The fee manager contract collecting protocol fees
-    IFeeManager public immutable feeManager;
+    IFeeManager public immutable FEE_MANAGER;
     /// @notice The referral manager contract
-    IReferralManager public immutable referralManager;
+    IReferralManager public immutable REFERRAL_MANAGER;
     /// @notice The liquidity manager contract
-    IBexLiquidityManager public immutable liquidityManager;
+    IBexLiquidityManager public immutable LIQUIDITY_MANAGER;
     /// @notice The WBERA contract
-    IWBera public immutable wbera;
+    IWBera public immutable WBERA;
 
     /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 1e27;
     /// @notice The factory contract that can register tokens
-    address public immutable factory;
+    address public immutable FACTORY;
 
     /// @notice Map token address to token info
     mapping(address => TokenInfo) public tokenInfo;
@@ -117,11 +119,11 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address _liquidityManager,
         address _wbera
     ) {
-        feeManager = IFeeManager(_feeManager);
-        factory = _factory;
-        referralManager = IReferralManager(_referralManager);
-        liquidityManager = IBexLiquidityManager(_liquidityManager);
-        wbera = IWBera(_wbera);
+        FEE_MANAGER = IFeeManager(_feeManager);
+        FACTORY = _factory;
+        REFERRAL_MANAGER = IReferralManager(_referralManager);
+        LIQUIDITY_MANAGER = IBexLiquidityManager(_liquidityManager);
+        WBERA = IWBera(_wbera);
     }
 
     // Fallback function
@@ -143,10 +145,10 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
-        if (tokenInfo[token].baseToken == address(wbera)) {
-            uint256 balancePrior = wbera.balanceOf(address(this));
-            wbera.deposit{value: msg.value}();
-            baseAmount = wbera.balanceOf(address(this)) - balancePrior;
+        if (tokenInfo[token].baseToken == address(WBERA)) {
+            uint256 balancePrior = WBERA.balanceOf(address(this));
+            WBERA.deposit{value: msg.value}();
+            baseAmount = WBERA.balanceOf(address(this)) - balancePrior;
             if (baseAmount != msg.value)
                 revert BuzzVault_WBeraConversionFailed();
         } else {
@@ -245,7 +247,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         uint256 initialReserves,
         uint256 finalReserves
     ) external override {
-        if (msg.sender != factory) revert BuzzVault_Unauthorized();
+        if (msg.sender != FACTORY) revert BuzzVault_Unauthorized();
         if (
             tokenInfo[token].tokenBalance > 0 ||
             tokenInfo[token].baseBalance > 0
@@ -379,15 +381,18 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         info.bexListed = true;
 
         // collect fee
-        uint256 dexFee = feeManager.quoteMigrationFee(baseBalance);
-        IERC20(baseToken).safeApprove(address(feeManager), dexFee);
-        feeManager.collectMigrationFee(baseToken, baseBalance);
+        uint256 dexFee = FEE_MANAGER.quoteMigrationFee(baseBalance);
+        IERC20(baseToken).safeApprove(address(FEE_MANAGER), dexFee);
+        FEE_MANAGER.collectMigrationFee(baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
-        IERC20(token).safeApprove(address(liquidityManager), tokenBalance);
-        IERC20(baseToken).safeApprove(address(liquidityManager), netBaseAmount);
+        IERC20(token).safeApprove(address(LIQUIDITY_MANAGER), tokenBalance);
+        IERC20(baseToken).safeApprove(
+            address(LIQUIDITY_MANAGER),
+            netBaseAmount
+        );
 
-        liquidityManager.createPoolAndAdd(
+        LIQUIDITY_MANAGER.createPoolAndAdd(
             token,
             baseToken,
             netBaseAmount,
@@ -454,16 +459,16 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
     }
 
     /**
-     * @notice Registers the referral for a user in ReferralManager
+     * @notice Registers the referral for a user in REFERRAL_MANAGER
      * @param referrer The referrer address
      * @param user The user address
      */
     function _setReferral(address referrer, address user) internal {
-        referralManager.setReferral(referrer, user);
+        REFERRAL_MANAGER.setReferral(referrer, user);
     }
 
     /**
-     * @notice Calculates and forwards the referral fee to ReferralManager
+     * @notice Calculates and forwards the referral fee to REFERRAL_MANAGER
      * @param user The user address making the trade
      * @param token The base token address
      * @param amount The base amount to calculate the fee on
@@ -473,12 +478,12 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address token,
         uint256 amount
     ) internal returns (uint256 referralFee) {
-        uint256 bps = referralManager.getReferralBpsFor(user);
+        uint256 bps = REFERRAL_MANAGER.getReferralBpsFor(user);
 
         if (bps > 0) {
             referralFee = (amount * bps) / 1e4;
-            IERC20(token).safeApprove(address(referralManager), referralFee);
-            referralManager.receiveReferral(user, token, referralFee);
+            IERC20(token).safeApprove(address(REFERRAL_MANAGER), referralFee);
+            REFERRAL_MANAGER.receiveReferral(user, token, referralFee);
         }
     }
 
@@ -489,9 +494,9 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
      */
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
-        IERC20(address(wbera)).safeApprove(address(wbera), amount);
+        IERC20(address(WBERA)).safeApprove(address(WBERA), amount);
 
-        wbera.withdraw(amount);
+        WBERA.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;
         if (withdrawal != amount) revert BuzzVault_WBeraConversionFailed();
 

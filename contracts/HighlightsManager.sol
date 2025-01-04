@@ -1,10 +1,15 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 
+/**
+ * @title HighlightsManager
+ * @notice This contract manages the highlighting of tokens
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract HighlightsManager is Ownable, Pausable, ReentrancyGuard {
     /// @notice Event emitted when a token is highlighted
     event TokenHighlighted(

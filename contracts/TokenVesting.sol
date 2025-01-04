@@ -1,7 +1,7 @@
 // contracts/TokenVesting.sol
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.19;
-
+/* solhint-disable */
 // OpenZeppelin dependencies
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";

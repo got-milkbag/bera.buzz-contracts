@@ -1,13 +1,17 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.0;
 
-import "@openzeppelin/contracts/access/Ownable.sol";
-import "./libraries/FixedPoint64.sol";
+import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {FixedPoint64} from "./libraries/FixedPoint64.sol";
+import {IBexPriceDecoder} from "./interfaces/IBexPriceDecoder.sol";
+import {ICrocQuery} from "./interfaces/bex/ICrocQuery.sol";
+import {ILPToken} from "./interfaces/bex/ILPToken.sol";
 
-import "./interfaces/IBexPriceDecoder.sol";
-import "./interfaces/bex/ICrocQuery.sol";
-import "./interfaces/bex/ILPToken.sol";
-
+/**
+ * @title BexPriceDecoder
+ * @notice A contract that decodes the price of LP tokens on BEX
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     using FixedPoint64 for uint128;
 
@@ -50,7 +54,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     }
 
     /// @notice The CROC query contract
-    ICrocQuery public immutable crocQuery;
+    ICrocQuery public immutable CROC_QUERY;
 
     /// @notice The LP tokens
     mapping(address => LPToken) public lpTokens;
@@ -62,7 +66,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
     ) {
         addLpTokens(_tokens, _lpTokens);
 
-        crocQuery = _crocQuery;
+        CROC_QUERY = _crocQuery;
     }
 
     function addLpTokens(
@@ -127,7 +131,7 @@ contract BexPriceDecoder is Ownable, IBexPriceDecoder {
         if (lpTokens[token].lpToken == address(0))
             revert BexPriceDecoder_TokenDoesNotExist();
 
-        uint128 sqrtPriceX64 = crocQuery.queryPrice(
+        uint128 sqrtPriceX64 = CROC_QUERY.queryPrice(
             lpTokens[token].baseToken,
             lpTokens[token].quoteToken,
             lpTokens[token].poolIdx

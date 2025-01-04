@@ -1,17 +1,21 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import "@openzeppelin/contracts/access/AccessControl.sol";
-import "@openzeppelin/contracts/security/ReentrancyGuard.sol";
-import "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
-import "./interfaces/create3/ICREATE3Factory.sol";
+import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
+import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
+import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
+import {BuzzToken} from "./BuzzToken.sol";
+import {ICREATE3Factory} from "./interfaces/create3/ICREATE3Factory.sol";
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {IBuzzTokenFactory} from "./interfaces/IBuzzTokenFactory.sol";
+import {IBuzzVault} from "./interfaces/IBuzzVault.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
-import "./BuzzToken.sol";
-import "./interfaces/IBuzzTokenFactory.sol";
-import "./interfaces/IBuzzVault.sol";
-import "./interfaces/IFeeManager.sol";
-
+/**
+ * @title BuzzTokenFactory
+ * @notice This contract is the factory for deploying new tokens
+ * @author nexusflip, Zacharias Mitzelos
+ */
 contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
 
@@ -73,10 +77,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
     /// @notice The initial supply of the token
     uint256 public constant INITIAL_SUPPLY = 1e27;
     /// @dev access control owner role.
-    bytes32 public immutable ownerRole;
+    bytes32 public immutable OWNER_ROLE;
     /// @notice The address of the CREATE3 deployer
-    address public immutable createDeployer;
-    /// @notice Whether token creation is allowed. Controlled by accounts holding ownerRole.
+    address public immutable CREATE_DEPLOYER;
+    /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
     bool public allowTokenCreation;
 
     /// @notice A mapping of whitelisted vault addresses that can be used as vaults
@@ -95,10 +99,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param _feeManager The address of the feeManager contract
      */
     constructor(address _owner, address _createDeployer, address _feeManager) {
-        ownerRole = keccak256("ownerRole");
-        _grantRole(ownerRole, _owner);
+        OWNER_ROLE = keccak256("OWNER_ROLE");
+        _grantRole(OWNER_ROLE, _owner);
 
-        createDeployer = _createDeployer;
+        CREATE_DEPLOYER = _createDeployer;
         feeManager = IFeeManager(_feeManager);
 
         emit FeeManagerSet(_feeManager);
@@ -189,7 +193,10 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      * @param vault The address of the vault
      * @param enable The status of the vault
      */
-    function setVault(address vault, bool enable) external onlyRole(ownerRole) {
+    function setVault(
+        address vault,
+        bool enable
+    ) external onlyRole(OWNER_ROLE) {
         if (vault == address(0)) revert BuzzToken_AddressZero();
         vaults[vault] = enable;
 
@@ -202,7 +209,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      */
     function setAllowTokenCreation(
         bool allowTokenCreation_
-    ) external onlyRole(ownerRole) {
+    ) external onlyRole(OWNER_ROLE) {
         allowTokenCreation = allowTokenCreation_;
 
         emit TokenCreationSet(allowTokenCreation);
@@ -214,7 +221,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
      */
     function setFeeManager(
         address payable feeManager_
-    ) external onlyRole(ownerRole) {
+    ) external onlyRole(OWNER_ROLE) {
         feeManager = IFeeManager(feeManager_);
 
         emit FeeManagerSet(feeManager_);
@@ -232,7 +239,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         uint256 minReserveAmount,
         uint256 minRaiseAmount,
         bool enable
-    ) external onlyRole(ownerRole) {
+    ) external onlyRole(OWNER_ROLE) {
         if (
             raiseAmounts[baseToken].minReserveAmount == 0 &&
             raiseAmounts[baseToken].minRaiseAmount == 0
@@ -282,13 +289,13 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
             abi.encode(name, symbol, initialSupply, address(this), vault)
         );
 
-        token = ICREATE3Factory(createDeployer).getDeployed(
+        token = ICREATE3Factory(CREATE_DEPLOYER).getDeployed(
             address(this),
             salt
         );
         isDeployed[token] = true;
 
-        ICREATE3Factory(createDeployer).deploy(salt, bytecode);
+        ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
         IERC20(token).safeApprove(vault, initialSupply);
         IBuzzVault(vault).registerToken(

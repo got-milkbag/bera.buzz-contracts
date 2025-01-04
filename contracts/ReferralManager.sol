@@ -231,6 +231,10 @@ contract ReferralManager is
 
     // User functions
 
+    /**
+     * @notice Claims the referral reward for a given base token for the msg.sender
+     * @param token The token address
+     */
     function claimReferralReward(
         address token
     ) external nonReentrant whenNotPaused {

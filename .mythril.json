@@ -1,0 +1,9 @@
+{
+    "remappings": [ "@openzeppelin/contracts/token/ERC20/=node_modules/@openzeppelin/contracts/token/ERC20/",
+                    "@openzeppelin/contracts/token/ERC20/utils/=node_modules/@openzeppelin/contracts/token/ERC20/utils/",
+                    "@openzeppelin/contracts/access/=node_modules/@openzeppelin/contracts/access/",
+                    "@openzeppelin/contracts/security/=node_modules/@openzeppelin/contracts/security/",
+                    "solmate/src/tokens/=node_modules/solmate/src/tokens/",
+                    "solmate/src/utils/=node_modules/solmate/src/utils/"
+                ]
+}

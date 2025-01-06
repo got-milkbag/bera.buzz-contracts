@@ -28,7 +28,6 @@ describe("BuzzVaultExponential Tests", () => {
     let token: Contract;
     let referralManager: Contract;
     let expVault: Contract;
-    let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let wBera: Contract;
@@ -57,14 +56,6 @@ describe("BuzzVaultExponential Tests", () => {
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
-
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
-            crocQueryAddress,
-            [wBera.address],
-            [bexLpTokenAddress]
-        );
 
         // Deploy FeeManager
         const FeeManager = await ethers.getContractFactory("FeeManager");

@@ -31,7 +31,6 @@ describe("BuzzVaultLinear Tests", () => {
     let expVault: Contract;
     let bexLpToken: Contract;
     let crocQuery: Contract;
-    let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
 
@@ -59,10 +58,6 @@ describe("BuzzVaultLinear Tests", () => {
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
         crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));
 
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(bexLpToken.address, crocQuery.address);
-
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
         referralManager = await ReferralManager.connect(ownerSigner).deploy(directRefFeeBps, indirectRefFeeBps, validUntil, payoutThreshold);
@@ -86,7 +81,6 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address,
             bexLiquidityManager.address
         );
 
@@ -97,7 +91,6 @@ describe("BuzzVaultLinear Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address,
             bexLiquidityManager.address
         );
 

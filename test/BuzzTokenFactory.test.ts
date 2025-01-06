@@ -78,7 +78,6 @@ describe("BuzzTokenFactory Tests", () => {
             factory.address,
             referralManager.address,
             eventTracker.address,
-            bexPriceDecoder.address,
             bexLiquidityManager.address
         );*/
 

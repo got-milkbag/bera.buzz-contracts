@@ -21,7 +21,6 @@ describe("ReferralManager Tests", () => {
     let tx: any;
     let bexLpToken: Contract;
     let crocQuery: Contract;
-    let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let wBera: Contract;

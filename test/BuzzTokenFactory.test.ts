@@ -109,10 +109,10 @@ describe("BuzzTokenFactory Tests", () => {
     });
     describe("constructor", () => {
         it("should set the createDeployer", async () => {
-            expect(await factory.createDeployer()).to.be.equal(create3Factory.address);
+            expect(await factory.CREATE_DEPLOYER()).to.be.equal(create3Factory.address);
         });
         it("should grant the ownerRole to the owner", async () => {
-            const ownerRoleHash = await factory.ownerRole();
+            const ownerRoleHash = await factory.OWNER_ROLE();
             expect(await factory.hasRole(ownerRoleHash, ownerSigner.address)).to.be.equal(true);
         });
         it("should set the feeManager", async () => {
@@ -428,12 +428,12 @@ describe("BuzzTokenFactory Tests", () => {
             await expect(factory.connect(ownerSigner).setVault(expVault.address, true)).to.emit(factory, "VaultSet").withArgs(expVault.address, true);
         });
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setVault(expVault.address, true)).to.be.reverted;
+            await expect(factory.connect(user1Signer).setVault(expVault.address, true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
         });
     });
     describe("setAllowTokenCreation", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setAllowTokenCreation(true)).to.be.reverted;
+            await expect(factory.connect(user1Signer).setAllowTokenCreation(true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
         });
         it("should set the token creation status", async () => {
             expect(await factory.allowTokenCreation()).to.be.equal(true);
@@ -447,7 +447,7 @@ describe("BuzzTokenFactory Tests", () => {
     });
     describe("setFeeManager", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setFeeManager(user1Signer.address)).to.be.reverted;
+            await expect(factory.connect(user1Signer).setFeeManager(user1Signer.address)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
         });
         it("should set the feeManager", async () => {
             expect(await factory.feeManager()).to.be.equal(feeManager.address);
@@ -463,7 +463,7 @@ describe("BuzzTokenFactory Tests", () => {
     });
     describe("setAllowedBaseToken", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
-            await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xef9601d24635ad31384c7350515a0fc1278494eeac14501e1be3d265f369a3be');
+            await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
         });
         it("should set the base token status", async () => {
             expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(true);

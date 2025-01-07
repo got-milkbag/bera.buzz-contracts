@@ -5,12 +5,11 @@ pragma solidity ^0.8.19;
 // OpenZeppelin dependencies
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "solmate/src/utils/ReentrancyGuard.sol";
 
 /**
  * @title TokenVesting
  */
-contract TokenVesting is ReentrancyGuard {
+contract TokenVesting {
     struct VestingSchedule {
         // beneficiary of tokens after they are released
         address beneficiary;
@@ -147,11 +146,7 @@ contract TokenVesting is ReentrancyGuard {
     function release(
         address token,
         bytes32 vestingScheduleId
-    )
-        public
-        nonReentrant
-        onlyIfVestingScheduleExists(token, vestingScheduleId)
-    {
+    ) public onlyIfVestingScheduleExists(token, vestingScheduleId) {
         VestingSchedule storage vestingSchedule = vestingSchedules[token][
             vestingScheduleId
         ];
@@ -164,17 +159,12 @@ contract TokenVesting is ReentrancyGuard {
         uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
 
         vestingSchedule.released = vestingSchedule.released + vestedAmount;
-        address payable beneficiaryPayable = payable(
-            vestingSchedule.beneficiary
-        );
+        address beneficiary = vestingSchedule.beneficiary;
+
         vestingSchedulesTotalAmount =
             vestingSchedulesTotalAmount -
             vestedAmount;
-        SafeTransferLib.safeTransfer(
-            ERC20(token),
-            beneficiaryPayable,
-            vestedAmount
-        );
+        SafeTransferLib.safeTransfer(ERC20(token), beneficiary, vestedAmount);
 
         emit TokensReleased(
             vestingScheduleId,

@@ -2,7 +2,6 @@
 pragma solidity ^0.8.19;
 
 import {AccessControl} from "@openzeppelin/contracts/access/AccessControl.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {BuzzToken} from "./BuzzToken.sol";
 import {ICREATE3Factory} from "./interfaces/create3/ICREATE3Factory.sol";
@@ -16,7 +15,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
  * @notice This contract is the factory for deploying new tokens
  * @author nexusflip, Zacharias Mitzelos
  */
-contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
+contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     using SafeERC20 for IERC20;
 
     /// @notice Event emitted when a new token is created
@@ -123,7 +122,7 @@ contract BuzzTokenFactory is AccessControl, ReentrancyGuard, IBuzzTokenFactory {
         uint256[2] calldata raiseData, //initialReserves, finalReserves
         uint256 baseAmount,
         bytes32 salt
-    ) external payable nonReentrant returns (address token) {
+    ) external payable returns (address token) {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();

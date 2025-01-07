@@ -126,19 +126,19 @@ describe("BuzzVaultExponential Tests", () => {
 
     describe("constructor", () => {
         it("should set the feeManager address", async () => {
-            expect(await expVault.feeManager()).to.be.equal(feeManager.address);
+            expect(await expVault.FEE_MANAGER()).to.be.equal(feeManager.address);
         });
         it("should set the factory address", async () => {
-            expect(await expVault.factory()).to.be.equal(factory.address);
+            expect(await expVault.FACTORY()).to.be.equal(factory.address);
         });
         it("should set the referralManager address", async () => {
-            expect(await expVault.referralManager()).to.be.equal(referralManager.address);
+            expect(await expVault.REFERRAL_MANAGER()).to.be.equal(referralManager.address);
         });
         it("should set the bexLiquidityManager address", async () => {
-            expect(await expVault.liquidityManager()).to.be.equal(bexLiquidityManager.address);
+            expect(await expVault.LIQUIDITY_MANAGER()).to.be.equal(bexLiquidityManager.address);
         });
         it("should set the wBera address", async () => {
-            expect(await expVault.wbera()).to.be.equal(wBera.address);
+            expect(await expVault.WBERA()).to.be.equal(wBera.address);
         });
     });
     describe("registerToken", () => {

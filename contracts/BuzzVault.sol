@@ -1,7 +1,6 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
@@ -17,7 +16,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
  * @notice An abstract contract holding logic for bonding curve operations
  * @author nexusflip, Zacharias Mitzelos
  */
-abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
+abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     using SafeERC20 for IERC20;
 
     /// @notice Event emitted when a trade occurs
@@ -141,7 +140,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         uint256 minTokensOut,
         address affiliate,
         address recipient
-    ) external payable override nonReentrant whenNotPaused {
+    ) external payable override whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
 
         uint256 baseAmount;
@@ -172,7 +171,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         uint256 minTokensOut,
         address affiliate,
         address recipient
-    ) external override nonReentrant whenNotPaused {
+    ) external override whenNotPaused {
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(
             msg.sender,
             address(this),
@@ -197,7 +196,7 @@ abstract contract BuzzVault is Ownable, Pausable, ReentrancyGuard, IBuzzVault {
         address affiliate,
         address recipient,
         bool unwrap
-    ) external override nonReentrant whenNotPaused {
+    ) external override whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
         if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
 

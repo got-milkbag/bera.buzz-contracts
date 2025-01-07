@@ -4,7 +4,6 @@ pragma solidity ^0.8.19;
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
-import {ReentrancyGuard} from "@openzeppelin/contracts/security/ReentrancyGuard.sol";
 import {IReferralManager} from "./interfaces/IReferralManager.sol";
 
 /**
@@ -12,12 +11,7 @@ import {IReferralManager} from "./interfaces/IReferralManager.sol";
  * @notice This contract manages the referral system for the protocol
  * @author nexusflip, Zacharias Mitzelos
  */
-contract ReferralManager is
-    Ownable,
-    Pausable,
-    ReentrancyGuard,
-    IReferralManager
-{
+contract ReferralManager is Ownable, Pausable, IReferralManager {
     using SafeERC20 for IERC20;
 
     /// @notice Event emitted when a referral is set
@@ -125,7 +119,7 @@ contract ReferralManager is
         address user,
         address token,
         uint256 amount
-    ) external nonReentrant {
+    ) external {
         if (!whitelistedVault[msg.sender])
             revert ReferralManager_Unauthorised();
         address referrer = referredBy[user];
@@ -170,7 +164,7 @@ contract ReferralManager is
      * @param referrer The address of the referrer
      * @param user The address of the referred user
      */
-    function setReferral(address referrer, address user) external nonReentrant {
+    function setReferral(address referrer, address user) external {
         if (!whitelistedVault[msg.sender])
             revert ReferralManager_Unauthorised();
 
@@ -235,9 +229,7 @@ contract ReferralManager is
      * @notice Claims the referral reward for a given base token for the msg.sender
      * @param token The token address
      */
-    function claimReferralReward(
-        address token
-    ) external nonReentrant whenNotPaused {
+    function claimReferralReward(address token) external whenNotPaused {
         uint256 reward = _referrerBalances[msg.sender][token];
 
         if (reward < payoutThreshold[token])

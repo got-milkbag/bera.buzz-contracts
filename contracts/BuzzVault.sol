@@ -69,23 +69,23 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     /**
      * @notice Data about a token in the bonding curve
      * @param baseToken The base token address
+     * @param bexListed Whether the token is listed in Bex
      * @param tokenBalance The token balance
      * @param baseBalance The base amount balance
      * @param initialBase The initial base amount
      * @param baseThreshold The amount of bera on the curve to lock it
      * @param quoteThreshold The amount of tokens on the curve to lock it
      * @param k The k value of the token
-     * @param bexListed Whether the token is listed in Bex
      */
     struct TokenInfo {
         address baseToken;
+        bool bexListed;
         uint256 tokenBalance;
         uint256 baseBalance; // aka reserve balance
         uint256 initialBase;
         uint256 baseThreshold;
         uint256 quoteThreshold;
         uint256 k;
-        bool bexListed;
     }
 
     /// @notice The fee manager contract collecting protocol fees
@@ -96,7 +96,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     IBexLiquidityManager public immutable LIQUIDITY_MANAGER;
     /// @notice The WBERA contract
     IWBera public immutable WBERA;
-    
+
     /// @notice The factory contract that can register tokens
     address public immutable FACTORY;
 
@@ -263,13 +263,13 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
 
         tokenInfo[token] = TokenInfo(
             baseToken,
+            false,
             initialTokenBalance,
             initialReserves,
             initialReserves,
             finalReserves,
             k / finalReserves,
-            k,
-            false
+            k
         );
 
         IERC20(token).safeTransferFrom(
@@ -378,13 +378,13 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         uint256 baseBalance = info.baseBalance - info.initialBase;
         address baseToken = info.baseToken;
 
+        info.bexListed = true;
         info.baseBalance = 0;
         info.tokenBalance = 0;
         info.initialBase = 0;
         info.baseThreshold = 0;
         info.quoteThreshold = 0;
         info.k = 0;
-        info.bexListed = true;
 
         // collect fee
         uint256 dexFee = FEE_MANAGER.quoteMigrationFee(baseBalance);

@@ -3,7 +3,6 @@ pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 import {IReferralManager} from "./interfaces/IReferralManager.sol";
 
 /**
@@ -11,7 +10,7 @@ import {IReferralManager} from "./interfaces/IReferralManager.sol";
  * @notice This contract manages the referral system for the protocol
  * @author nexusflip, Zacharias Mitzelos
  */
-contract ReferralManager is Ownable, Pausable, IReferralManager {
+contract ReferralManager is Ownable, IReferralManager {
     using SafeERC20 for IERC20;
 
     /// @notice Event emitted when a referral is set
@@ -229,7 +228,7 @@ contract ReferralManager is Ownable, Pausable, IReferralManager {
      * @notice Claims the referral reward for a given base token for the msg.sender
      * @param token The token address
      */
-    function claimReferralReward(address token) external whenNotPaused {
+    function claimReferralReward(address token) external {
         if (token == address(0)) revert ReferralManager_AddressZero();
         uint256 reward = _referrerBalances[msg.sender][token];
 
@@ -311,22 +310,6 @@ contract ReferralManager is Ownable, Pausable, IReferralManager {
 
         whitelistedVault[vault] = enable;
         emit WhitelistedVaultSet(vault, enable);
-    }
-
-    /**
-     * @notice Pauses the contract
-     * @dev Only the owner can call this function.
-     */
-    function pause() external onlyOwner {
-        _pause();
-    }
-
-    /**
-     * @notice Unpauses the contract
-     * @dev Only the owner can call this function.
-     */
-    function unpause() external onlyOwner {
-        _unpause();
     }
 
     /**

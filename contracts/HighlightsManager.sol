@@ -50,6 +50,8 @@ contract HighlightsManager is Ownable, Pausable {
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
     /// @notice The threshold after which the fee increases exponentially
     uint256 public constant EXP_THRESHOLD = 600; // 600 = 10 minutes
+    /// @notice Growth rate for 50x fee on 1 hour vs 10 minutes
+    uint256 public constant GROWTH_FACTOR = 98;
     /// @notice The maximum duration allowed in seconds
     uint256 public hardCap;
     /// @notice The cool down period for a token in seconds
@@ -198,11 +200,8 @@ contract HighlightsManager is Ownable, Pausable {
         } else {
             uint256 extraTime = duration - expThreshold;
 
-            // Fixed growth factor G - growth rate for 50x fee on 1 hour vs 10 minutes
-            uint256 growthFactor = 98;
-
             // Calculate exponential fee using the growth factor
-            uint256 exponentialFee = (baseFeePs * extraTime * growthFactor) /
+            uint256 exponentialFee = (baseFeePs * extraTime * GROWTH_FACTOR) /
                 10;
 
             // Total fee is the sum of the base fee and the exponential component

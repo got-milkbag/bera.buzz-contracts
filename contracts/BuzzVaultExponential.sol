@@ -55,7 +55,6 @@ contract BuzzVaultExponential is BuzzVault {
 
         uint256 tokenBalance = info.tokenBalance;
         uint256 baseBalance = info.baseBalance;
-
         if (tokenBalance == 0 && baseBalance == 0)
             revert BuzzVault_UnknownToken();
 
@@ -100,10 +99,10 @@ contract BuzzVaultExponential is BuzzVault {
     ) internal override returns (uint256 tokenAmount, bool needsMigration) {
         uint256 tradingFee = FEE_MANAGER.quoteTradingFee(baseAmount);
         uint256 netBaseAmount = baseAmount - tradingFee;
-
+        uint256 baseBalance = info.baseBalance;
         (uint256 tokenAmountBuy, bool exceeded) = _calculateBuyPrice(
             netBaseAmount,
-            info.baseBalance,
+            baseBalance,
             info.tokenBalance,
             info.quoteThreshold,
             info.k
@@ -112,7 +111,7 @@ contract BuzzVaultExponential is BuzzVault {
 
         uint256 baseSurplus;
         if (exceeded) {
-            uint256 basePlusNet = info.baseBalance + netBaseAmount;
+            uint256 basePlusNet = baseBalance + netBaseAmount;
             if (basePlusNet > info.baseThreshold) {
                 baseSurplus = basePlusNet - info.baseThreshold;
                 netBaseAmount -= baseSurplus;
@@ -155,6 +154,8 @@ contract BuzzVaultExponential is BuzzVault {
         TokenInfo storage info,
         bool unwrap
     ) internal override returns (uint256 netBaseAmount) {
+        address baseToken = info.baseToken;
+        uint256 baseBalance = info.baseBalance;
         uint256 baseAmountSell = _calculateSellPrice(
             tokenAmount,
             info.tokenBalance,
@@ -162,7 +163,7 @@ contract BuzzVaultExponential is BuzzVault {
             info.k
         );
 
-        if (info.baseBalance - info.initialBase < baseAmountSell)
+        if (baseBalance - info.initialBase < baseAmountSell)
             revert BuzzVault_InvalidReserves();
         if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
         if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();
@@ -176,14 +177,14 @@ contract BuzzVaultExponential is BuzzVault {
         netBaseAmount = baseAmountSell - tradingFee;
 
         // Collect trading and referral fee
-        _collectFees(info.baseToken, msg.sender, baseAmountSell);
+        _collectFees(baseToken, msg.sender, baseAmountSell);
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), tokenAmount);
 
-        if (unwrap && info.baseToken == address(WBERA)) {
+        if (unwrap && baseToken == address(WBERA)) {
             _unwrap(recipient, netBaseAmount);
         } else {
-            IERC20(info.baseToken).safeTransfer(recipient, netBaseAmount);
+            IERC20(baseToken).safeTransfer(recipient, netBaseAmount);
         }
     }
 

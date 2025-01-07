@@ -96,9 +96,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     IBexLiquidityManager public immutable LIQUIDITY_MANAGER;
     /// @notice The WBERA contract
     IWBera public immutable WBERA;
-
-    /// @notice The initial supply of the token
-    uint256 public constant INITIAL_SUPPLY = 1e27;
+    
     /// @notice The factory contract that can register tokens
     address public immutable FACTORY;
 

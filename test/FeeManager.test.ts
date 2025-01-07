@@ -228,7 +228,7 @@ describe("FeeManager Tests", () => {
         it("should revert if the treasury is the zero address", async () => {
             await expect(feeManager.setTreasury(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
                 feeManager,
-                "FeeManager_TreasuryZeroAddress"
+                "FeeManager_TreasuryAddressZero"
             );
         });
         it("should revert if the caller is not the owner", async () => {

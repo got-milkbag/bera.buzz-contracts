@@ -152,8 +152,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         for (uint256 i; i < vault.length; ) {
             if (vaults[vault[i]])
                 revert BexLiquidityManager_VaultAlreadyInWhitelist();
-            vaults[vault[i]] = true;
 
+            vaults[vault[i]] = true;
             emit VaultAdded(vault[i]);
 
             unchecked {
@@ -170,8 +170,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         for (uint256 i; i < vault.length; ) {
             if (!vaults[vault[i]])
                 revert BexLiquidityManager_VaultNotInWhitelist();
-            vaults[vault[i]] = false;
 
+            vaults[vault[i]] = false;
             emit VaultRemoved(vault[i]);
 
             unchecked {

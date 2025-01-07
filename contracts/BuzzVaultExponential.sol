@@ -47,6 +47,9 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 amount,
         bool isBuyOrder
     ) external view override returns (uint256 amountOut) {
+        if (amount == 0) revert BuzzVault_QuoteAmountZero();
+        if (token == address(0)) revert BuzzVault_AddressZeroToken();
+
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
 
@@ -199,8 +202,6 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 quoteThreshold,
         uint256 k
     ) internal pure returns (uint256 amountOut, bool exceeded) {
-        if (baseAmountIn == 0) revert BuzzVault_QuoteAmountZero();
-
         uint256 amountAux = quoteBalance - k / (baseBalance + baseAmountIn);
         exceeded = amountAux >= quoteBalance - quoteThreshold;
         amountOut = exceeded ? quoteBalance - quoteThreshold : amountAux;
@@ -220,7 +221,6 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 baseBalance,
         uint256 k
     ) internal pure returns (uint256 amountOut) {
-        if (quoteAmountIn == 0) revert BuzzVault_QuoteAmountZero();
         amountOut = baseBalance - k / (quoteBalance + quoteAmountIn);
     }
 

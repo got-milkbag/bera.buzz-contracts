@@ -62,7 +62,9 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     /// @notice Error code emitted when WBera transfer fails (depositing or withdrawing)
     error BuzzVault_WBeraConversionFailed();
     /// @notice Error code emitted when the recipient is the zero address
-    error BuzzVault_ZeroAddressRecipient();
+    error BuzzVault_AddressZeroRecipient();
+    /// @notice Error code emitted when the token is the zero address
+    error BuzzVault_AddressZeroToken();
 
     /**
      * @notice Data about a token in the bonding curve
@@ -118,8 +120,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address _liquidityManager,
         address _wbera
     ) {
-        FEE_MANAGER = IFeeManager(_feeManager);
         FACTORY = _factory;
+        FEE_MANAGER = IFeeManager(_feeManager);
         REFERRAL_MANAGER = IReferralManager(_referralManager);
         LIQUIDITY_MANAGER = IBexLiquidityManager(_liquidityManager);
         WBERA = IWBera(_wbera);
@@ -142,6 +144,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address recipient
     ) external payable override whenNotPaused {
         if (msg.value == 0) revert BuzzVault_QuoteAmountZero();
+        if (recipient == address(0)) revert BuzzVault_AddressZeroRecipient();
+        if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         uint256 baseAmount;
         if (tokenInfo[token].baseToken == address(WBERA)) {
@@ -172,6 +176,10 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address affiliate,
         address recipient
     ) external override whenNotPaused {
+        if (baseAmount == 0) revert BuzzVault_QuoteAmountZero();
+        if (recipient == address(0)) revert BuzzVault_AddressZeroRecipient();
+        if (token == address(0)) revert BuzzVault_AddressZeroToken();
+
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(
             msg.sender,
             address(this),
@@ -198,7 +206,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         bool unwrap
     ) external override whenNotPaused {
         if (tokenAmount == 0) revert BuzzVault_QuoteAmountZero();
-        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
+        if (recipient == address(0)) revert BuzzVault_AddressZeroRecipient();
+        if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
@@ -422,8 +431,6 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address affiliate,
         address recipient
     ) internal {
-        if (recipient == address(0)) revert BuzzVault_ZeroAddressRecipient();
-
         TokenInfo storage info = tokenInfo[token];
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)

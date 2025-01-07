@@ -166,10 +166,19 @@ describe("BuzzVaultExponential Tests", () => {
     });
     describe("quote", () => {
         beforeEach(async () => {});
+        it("should revert if amountIn is zero", async () => {
+            await expect(expVault.quote(token.address, 0, true)).to.be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
+        });
         it("should revert if token doesn't exist", async () => {
             await expect(expVault.quote(ownerSigner.address, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(
                 expVault,
                 "BuzzVault_UnknownToken"
+            );
+        });
+        it("should revert if token is zero address", async () => {
+            await expect(expVault.quote(ethers.constants.AddressZero, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(
+                expVault,
+                "BuzzVault_AddressZeroToken"
             );
         });
         it("should revert if the token has already been listed on Bex", async () => {
@@ -317,6 +326,21 @@ describe("BuzzVaultExponential Tests", () => {
     describe("buy (ERC20)", () => {
         beforeEach(async () => {
             await wBera.deposit({ value: ethers.utils.parseEther("1") });
+        });
+        it("should revert if token amount is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(token.address, 0, 0, ethers.constants.AddressZero, user1Signer.address)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
+        });
+        it("should revert if token address is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(ethers.constants.AddressZero, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero, user1Signer.address)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroToken");
+        });
+        it("should revert if recipient address is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(token.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero, ethers.constants.AddressZero)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroRecipient");
         });
         it("should transfer the erc20 tokens", async () => {
             const balanceBefore = await wBera.balanceOf(ownerSigner.address);
@@ -543,6 +567,16 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault.sell(token.address, ethers.utils.parseEther("10000000000000000000000"), 0, ethers.constants.AddressZero, user1Signer.address, false)
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidUserBalance");
         });
+        it("should revert if token is address zero", async () => {
+            await expect(
+                expVault.sell(ethers.constants.AddressZero, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero, user1Signer.address, false)
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroToken");
+        });
+        it("should revert if recipient is address zero", async () => {
+            await expect(
+                expVault.sell(token.address, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero, ethers.constants.AddressZero, false)
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroRecipient");
+        });
         it("should set a referral if one is provided", async () => {
             await expVault
                 .connect(user1Signer)
@@ -572,7 +606,6 @@ describe("BuzzVaultExponential Tests", () => {
             const tradingFee = await feeManager.quoteTradingFee(expectedGrossBaseAmount);
             expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee);
         });
-
         it("should transfer the referral fee, and a lower trading fee", async () => {
             expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
 

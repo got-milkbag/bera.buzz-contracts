@@ -27,7 +27,7 @@ contract FeeManager is Ownable, IFeeManager {
     event MigrationFeeSet(uint256 migrationFeeBps);
 
     /// @notice Error thrown when treasury is the zero address
-    error FeeManager_TreasuryZeroAddress();
+    error FeeManager_TreasuryAddressZero();
     /// @notice Error thrown when the amount is above the fee divisor
     error FeeManager_AmountAboveFeeDivisor();
     /// @notice Error thrown when the fee is insufficient
@@ -57,9 +57,9 @@ contract FeeManager is Ownable, IFeeManager {
         uint256 _listingFee,
         uint256 _migrationFeeBps
     ) {
-        if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
         if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR))
             revert FeeManager_AmountAboveFeeDivisor();
+
         treasury = _treasury;
         tradingFeeBps = _tradingFeeBps;
         listingFee = _listingFee;
@@ -138,6 +138,7 @@ contract FeeManager is Ownable, IFeeManager {
      */
     function setTradingFeeBps(uint256 feeBps_) external onlyOwner {
         if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+
         tradingFeeBps = feeBps_;
         emit TradingFeeSet(feeBps_);
     }
@@ -170,7 +171,8 @@ contract FeeManager is Ownable, IFeeManager {
      * @param treasury_ The treasury address where fees are sent
      */
     function setTreasury(address treasury_) external onlyOwner {
-        if (treasury_ == address(0)) revert FeeManager_TreasuryZeroAddress();
+        if (treasury_ == address(0)) revert FeeManager_TreasuryAddressZero();
+
         treasury = treasury_;
         emit TreasurySet(treasury_);
     }

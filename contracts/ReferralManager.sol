@@ -230,6 +230,7 @@ contract ReferralManager is Ownable, Pausable, IReferralManager {
      * @param token The token address
      */
     function claimReferralReward(address token) external whenNotPaused {
+        if (token == address(0)) revert ReferralManager_AddressZero();
         uint256 reward = _referrerBalances[msg.sender][token];
 
         if (reward < payoutThreshold[token])
@@ -286,6 +287,8 @@ contract ReferralManager is Ownable, Pausable, IReferralManager {
             revert ReferralManager_ArrayLengthMismatch();
 
         for (uint256 i; i < tokens.length; ) {
+            if (tokens[i] == address(0)) revert ReferralManager_AddressZero();
+
             payoutThreshold[tokens[i]] = thresholds[i];
             emit PayoutThresholdSet(tokens[i], thresholds[i]);
 
@@ -304,6 +307,8 @@ contract ReferralManager is Ownable, Pausable, IReferralManager {
         address vault,
         bool enable
     ) external onlyOwner {
+        if (vault == address(0)) revert ReferralManager_AddressZero();
+
         whitelistedVault[vault] = enable;
         emit WhitelistedVaultSet(vault, enable);
     }

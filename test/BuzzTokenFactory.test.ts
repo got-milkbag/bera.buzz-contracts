@@ -223,6 +223,34 @@ describe("BuzzTokenFactory Tests", () => {
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidFinalReserves");
         });
+        it("should revert if the token name is empty", async () => {
+            await expect(
+                factory.createToken(
+                    ["", "TST"],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                    0,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidTokenName");
+        });
+        it("should revert if the token symbol is empty", async () => {
+            await expect(
+                factory.createToken(
+                    ["TEST", ""],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                    0,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidTokenSymbol");
+        });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
@@ -449,6 +477,9 @@ describe("BuzzTokenFactory Tests", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
             await expect(factory.connect(user1Signer).setFeeManager(user1Signer.address)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
         });
+        it("should revert if the feeManager address is the zero address", async () => {
+            await expect(factory.connect(ownerSigner).setFeeManager(ethers.constants.AddressZero)).to.be.revertedWithCustomError(factory, "BuzzToken_AddressZero");
+        });
         it("should set the feeManager", async () => {
             expect(await factory.feeManager()).to.be.equal(feeManager.address);
             await factory.connect(ownerSigner).setFeeManager(user1Signer.address);
@@ -464,6 +495,9 @@ describe("BuzzTokenFactory Tests", () => {
     describe("setAllowedBaseToken", () => {
         it("should revert if the caller doesn't have an owner role", async () => {
             await expect(factory.connect(user1Signer).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWith('AccessControl: account 0x70997970c51812dc3a010c7d01b50e0d17dc79c8 is missing role 0xb19546dff01e856fb3f010c267a7b1c60363cf8a4664e21cc89c26224620214e');
+        });
+        it("should revert if the base token address is the zero address", async () => {
+            await expect(factory.connect(ownerSigner).setAllowedBaseToken(ethers.constants.AddressZero, ethers.utils.parseEther("1"), ethers.utils.parseEther("1000"), true)).to.be.revertedWithCustomError(factory, "BuzzToken_AddressZero");
         });
         it("should set the base token status", async () => {
             expect(await factory.whitelistedBaseTokens(wBera.address)).to.be.equal(true);

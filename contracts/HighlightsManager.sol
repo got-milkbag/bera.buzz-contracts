@@ -38,7 +38,7 @@ contract HighlightsManager is Ownable, Pausable {
     /// @notice Error thrown when the hard cap is below the MIN_DURATION
     error HighlightsManager_HardCapBelowMinimumDuration();
     /// @notice Error thrown when the treasury is the zero address
-    error HighlightsManager_TreasuryZeroAddress();
+    error HighlightsManager_TreasuryAddressZero();
     /// @notice Error thrown when the transfer in native currency fails
     error HighlightsManager_EthTransferFailed();
     /// @notice Error thrown when the slot is already occupied
@@ -80,8 +80,6 @@ contract HighlightsManager is Ownable, Pausable {
     ) {
         if (_hardCap < MIN_DURATION)
             revert HighlightsManager_HardCapBelowMinimumDuration();
-        if (_treasury == address(0))
-            revert HighlightsManager_TreasuryZeroAddress();
 
         treasury = _treasury;
         hardCap = _hardCap;
@@ -127,7 +125,8 @@ contract HighlightsManager is Ownable, Pausable {
      */
     function setTreasury(address payable treasury_) external onlyOwner {
         if (treasury_ == address(0))
-            revert HighlightsManager_TreasuryZeroAddress();
+            revert HighlightsManager_TreasuryAddressZero();
+
         treasury = treasury_;
         emit TreasurySet(treasury_);
     }
@@ -138,9 +137,9 @@ contract HighlightsManager is Ownable, Pausable {
      * @param hardCap_ The maximum duration allowed in seconds
      */
     function setHardCap(uint256 hardCap_) external onlyOwner {
-        // require(_hardCap >= MIN_DURATION, "Hard cap must be >= minTime");
         if (hardCap_ < MIN_DURATION)
             revert HighlightsManager_HardCapBelowMinimumDuration();
+
         hardCap = hardCap_;
         emit HardCapSet(hardCap_);
     }

@@ -59,6 +59,10 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     error BuzzToken_InvalidInitialReserves();
     /// @notice Error code emitted when the final reserves are invalid
     error BuzzToken_InvalidFinalReserves();
+    /// @notice Error code emitted when the token name is invalid
+    error BuzzToken_InvalidTokenName();
+    /// @notice Error code emitted when the token symbol is invalid
+    error BuzzToken_InvalidTokenSymbol();
 
     /**
      * @notice Struct containing the minimum reserve and raise amounts for a base token
@@ -126,6 +130,9 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
+        if (bytes(metadata[0]).length == 0) revert BuzzToken_InvalidTokenName();
+        if (bytes(metadata[1]).length == 0)
+            revert BuzzToken_InvalidTokenSymbol();
         if (!whitelistedBaseTokens[addr[0]])
             revert BuzzToken_BaseTokenNotWhitelisted();
         if (raiseData[0] < raiseAmounts[addr[0]].minReserveAmount)
@@ -197,8 +204,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         bool enable
     ) external onlyRole(OWNER_ROLE) {
         if (vault == address(0)) revert BuzzToken_AddressZero();
-        vaults[vault] = enable;
 
+        vaults[vault] = enable;
         emit VaultSet(vault, enable);
     }
 
@@ -221,8 +228,9 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     function setFeeManager(
         address payable feeManager_
     ) external onlyRole(OWNER_ROLE) {
-        feeManager = IFeeManager(feeManager_);
+        if (feeManager_ == address(0)) revert BuzzToken_AddressZero();
 
+        feeManager = IFeeManager(feeManager_);
         emit FeeManagerSet(feeManager_);
     }
 
@@ -239,6 +247,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         uint256 minRaiseAmount,
         bool enable
     ) external onlyRole(OWNER_ROLE) {
+        if (baseToken == address(0)) revert BuzzToken_AddressZero();
+
         if (
             raiseAmounts[baseToken].minReserveAmount == 0 &&
             raiseAmounts[baseToken].minRaiseAmount == 0

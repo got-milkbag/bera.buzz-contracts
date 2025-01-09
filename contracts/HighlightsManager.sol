@@ -112,6 +112,7 @@ contract HighlightsManager is Ownable, Pausable {
 
         bookedUntil = block.timestamp + duration;
         tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
+        
         (bool success, ) = treasury.call{value: fee}("");
         if (!success) revert HighlightsManager_EthTransferFailed();
 

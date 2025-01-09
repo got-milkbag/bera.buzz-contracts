@@ -8,7 +8,7 @@ import {IBuzzToken} from "./interfaces/IBuzzToken.sol";
 /**
  * @title BuzzToken
  * @notice This contract is the ERC20 token wrapper for bera.buzz
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract BuzzToken is ERC20, AccessControl, IBuzzToken {
     /// @dev access control minter role.

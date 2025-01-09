@@ -7,7 +7,7 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 /**
  * @title HighlightsManager
  * @notice This contract manages the highlighting of tokens
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract HighlightsManager is Ownable, Pausable {
     /// @notice Event emitted when a token is highlighted

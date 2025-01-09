@@ -14,7 +14,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
 /**
  * @title BuzzVault contract
  * @notice An abstract contract holding logic for bonding curve operations
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     using SafeERC20 for IERC20;

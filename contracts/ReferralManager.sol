@@ -8,7 +8,7 @@ import {IReferralManager} from "./interfaces/IReferralManager.sol";
 /**
  * @title ReferralManager
  * @notice This contract manages the referral system for the protocol
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract ReferralManager is Ownable, IReferralManager {
     using SafeERC20 for IERC20;

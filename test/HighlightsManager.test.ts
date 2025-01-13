@@ -37,12 +37,6 @@ describe("HighlightsManager Tests", () => {
                 "HighlightsManager_HardCapBelowMinimumDuration"
             );
         });
-        it("should revert if treasury is address zero", async () => {
-            const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(
-                HighlightsManager.deploy(ethers.constants.AddressZero, hardcap, baseFeePerSecond, coolDownPeriod)
-            ).to.be.revertedWithCustomError(highlightsManager, "HighlightsManager_TreasuryZeroAddress");
-        });
         it("should set the treasury", async () => {
             expect(await highlightsManager.treasury()).to.be.equal(treasury.address);
         });
@@ -158,7 +152,7 @@ describe("HighlightsManager Tests", () => {
         it("should revert if the treasury is the zero address", async () => {
             await expect(highlightsManager.setTreasury(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
                 highlightsManager,
-                "HighlightsManager_TreasuryZeroAddress"
+                "HighlightsManager_TreasuryAddressZero"
             );
         });
         it("should revert if the caller is not the owner", async () => {

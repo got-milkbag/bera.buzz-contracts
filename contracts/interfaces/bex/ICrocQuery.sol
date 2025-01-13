@@ -2,5 +2,9 @@
 pragma solidity 0.8.19;
 
 interface ICrocQuery {
-    function queryPrice(address base, address quote, uint256 poolIdx) external view returns (uint128);
+    function queryPrice(
+        address base,
+        address quote,
+        uint256 poolIdx
+    ) external view returns (uint128);
 }

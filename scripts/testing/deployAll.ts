@@ -46,11 +46,6 @@ async function main() {
     const deployerAddress = await deployer.getAddress();
     console.log(`Deployer's address (owner): `, deployerAddress);
 
-    // Deploy BexPriceDecoder
-    const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-    const bexPriceDecoder = await BexPriceDecoder.deploy(crocQueryAddress, [wberaAddress], [wberaHoneyLpToken]);
-    console.log("BexPriceDecoder deployed to:", bexPriceDecoder.address);
-
     // Deploy FeeManager
     const FeeManager = await ethers.getContractFactory("FeeManager");
     const feeManager = await FeeManager.deploy(feeRecipient, tradingFeeBps, listingFee, migrationFeeBps);
@@ -90,7 +85,6 @@ async function main() {
     //     feeRecipient,
     //     factoryInstance.address,
     //     referralManager.address,
-    //     bexPriceDecoder.address,
     //     bexLiquidityManager.address
     // );
     // console.log("Linear Vault deployed to:", vault.address);

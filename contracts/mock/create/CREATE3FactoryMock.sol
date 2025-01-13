@@ -11,24 +11,20 @@ import {ICREATE3Factory} from "../../interfaces/create3/ICREATE3Factory.sol";
 /// its own namespace for deployed addresses.
 contract CREATE3FactoryMock is ICREATE3Factory {
     /// @inheritdoc	ICREATE3Factory
-    function deploy(bytes32 salt, bytes memory creationCode)
-        external
-        payable
-        override
-        returns (address deployed)
-    {
+    function deploy(
+        bytes32 salt,
+        bytes memory creationCode
+    ) external payable override returns (address deployed) {
         // hash salt with the deployer address to give each deployer its own namespace
         salt = keccak256(abi.encodePacked(msg.sender, salt));
         return CREATE3.deploy(salt, creationCode, msg.value);
     }
 
     /// @inheritdoc	ICREATE3Factory
-    function getDeployed(address deployer, bytes32 salt)
-        external
-        view
-        override
-        returns (address deployed)
-    {
+    function getDeployed(
+        address deployer,
+        bytes32 salt
+    ) external view override returns (address deployed) {
         // hash salt with the deployer address to give each deployer its own namespace
         salt = keccak256(abi.encodePacked(deployer, salt));
         return CREATE3.getDeployed(salt);

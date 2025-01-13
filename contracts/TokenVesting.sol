@@ -1,16 +1,15 @@
 // contracts/TokenVesting.sol
 // SPDX-License-Identifier: Apache-2.0
 pragma solidity ^0.8.19;
-
+/* solhint-disable */
 // OpenZeppelin dependencies
 import {ERC20} from "solmate/src/tokens/ERC20.sol";
 import {SafeTransferLib} from "solmate/src/utils/SafeTransferLib.sol";
-import {ReentrancyGuard} from "solmate/src/utils/ReentrancyGuard.sol";
 
 /**
  * @title TokenVesting
  */
-contract TokenVesting is ReentrancyGuard {
+contract TokenVesting {
     struct VestingSchedule {
         // beneficiary of tokens after they are released
         address beneficiary;
@@ -46,30 +45,23 @@ contract TokenVesting is ReentrancyGuard {
         uint256 amount
     );
 
-    bytes32[] private vestingSchedulesIds;
-    mapping(address => mapping(bytes32 => VestingSchedule)) private vestingSchedules;
     uint256 private vestingSchedulesTotalAmount;
+    bytes32[] private vestingSchedulesIds;
+    mapping(address => mapping(bytes32 => VestingSchedule))
+        private vestingSchedules;
     mapping(address => uint256) private vestingSchedulesTotalAmountByToken;
     mapping(address => uint256) private holdersVestingCount;
 
     /**
      * @dev Reverts if the vesting schedule does not exist
      */
-    modifier onlyIfVestingScheduleExists(address token, bytes32 vestingScheduleId) {
+    modifier onlyIfVestingScheduleExists(
+        address token,
+        bytes32 vestingScheduleId
+    ) {
         require(vestingSchedules[token][vestingScheduleId].duration > 0);
         _;
     }
-
-    /**
-     * @dev This function is called for plain Ether transfers, i.e. for every call with empty calldata.
-     */
-    receive() external payable {}
-
-    /**
-     * @dev Fallback function is executed if none of the other functions match the function
-     * identifier or no data was provided with the function call.
-     */
-    fallback() external payable {}
 
     /**
      * @notice Creates a new vesting schedule for a beneficiary.
@@ -97,8 +89,14 @@ contract TokenVesting is ReentrancyGuard {
             "TokenVesting: slicePeriodSeconds must be >= 1"
         );
         require(_duration >= _cliff, "TokenVesting: duration must be >= cliff");
-        require(_beneficiary != address(0), "TokenVesting: beneficiary cannot be the zero address");
-        require(_token != address(0), "TokenVesting: token cannot be the zero address");
+        require(
+            _beneficiary != address(0),
+            "TokenVesting: beneficiary cannot be the zero address"
+        );
+        require(
+            _token != address(0),
+            "TokenVesting: token cannot be the zero address"
+        );
         bytes32 vestingScheduleId = computeNextVestingScheduleIdForHolder(
             _beneficiary
         );
@@ -114,12 +112,19 @@ contract TokenVesting is ReentrancyGuard {
             0
         );
         vestingSchedulesTotalAmount = vestingSchedulesTotalAmount + _amount;
-        vestingSchedulesTotalAmountByToken[_token] = vestingSchedulesTotalAmountByToken[_token] + _amount;
+        vestingSchedulesTotalAmountByToken[_token] =
+            vestingSchedulesTotalAmountByToken[_token] +
+            _amount;
         vestingSchedulesIds.push(vestingScheduleId);
         uint256 currentVestingCount = holdersVestingCount[_beneficiary];
         holdersVestingCount[_beneficiary] = currentVestingCount + 1;
 
-        SafeTransferLib.safeTransferFrom(ERC20(_token), msg.sender, address(this), _amount);
+        SafeTransferLib.safeTransferFrom(
+            ERC20(_token),
+            msg.sender,
+            address(this),
+            _amount
+        );
 
         emit VestingScheduleCreated(
             vestingScheduleId,
@@ -141,7 +146,7 @@ contract TokenVesting is ReentrancyGuard {
     function release(
         address token,
         bytes32 vestingScheduleId
-    ) public nonReentrant onlyIfVestingScheduleExists(token, vestingScheduleId) {
+    ) public onlyIfVestingScheduleExists(token, vestingScheduleId) {
         VestingSchedule storage vestingSchedule = vestingSchedules[token][
             vestingScheduleId
         ];
@@ -154,13 +159,18 @@ contract TokenVesting is ReentrancyGuard {
         uint256 vestedAmount = _computeReleasableAmount(vestingSchedule);
 
         vestingSchedule.released = vestingSchedule.released + vestedAmount;
-        address payable beneficiaryPayable = payable(
-            vestingSchedule.beneficiary
-        );
-        vestingSchedulesTotalAmount = vestingSchedulesTotalAmount - vestedAmount;
-        SafeTransferLib.safeTransfer(ERC20(token), beneficiaryPayable, vestedAmount);
+        address beneficiary = vestingSchedule.beneficiary;
 
-        emit TokensReleased(vestingScheduleId, vestingSchedule.beneficiary, vestedAmount);
+        vestingSchedulesTotalAmount =
+            vestingSchedulesTotalAmount -
+            vestedAmount;
+        SafeTransferLib.safeTransfer(ERC20(token), beneficiary, vestedAmount);
+
+        emit TokensReleased(
+            vestingScheduleId,
+            vestingSchedule.beneficiary,
+            vestedAmount
+        );
     }
 
     /**
@@ -225,7 +235,9 @@ contract TokenVesting is ReentrancyGuard {
      * @notice Returns the total amount of vesting schedules by token.
      * @return the total amount of vesting schedules
      */
-    function getVestingSchedulesTotalAmountByToken(address token) external view returns (uint256) {
+    function getVestingSchedulesTotalAmountByToken(
+        address token
+    ) external view returns (uint256) {
         return vestingSchedulesTotalAmountByToken[token];
     }
 

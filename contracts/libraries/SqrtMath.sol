@@ -1,22 +1,31 @@
 // SPDX-License-Identifier: GPL2.0
 pragma solidity ^0.8.13;
 
-uint256 constant Q64_64_PRECISION = 2**64;
+uint256 constant Q64_64_PRECISION = 2 ** 64;
 
-library SqrtMath{
+library SqrtMath {
     // Computes the sqrt of the u64x64 fixed point price given the AMM reserves
-    function encodePriceSqrt(uint256 reserve1, uint256 reserve0) internal pure returns (uint128) {
-        require(reserve0 > 0, "Division by zero");
-        return uint128(sqrt((reserve1 * Q64_64_PRECISION * Q64_64_PRECISION) / reserve0));
+    function encodePriceSqrt(
+        uint256 reserve1,
+        uint256 reserve0
+    ) internal pure returns (uint128) {
+        require(reserve0 > 0, "Division by zero"); // solhint-disable-line
+        return
+            uint128(
+                sqrt(
+                    (reserve1 * Q64_64_PRECISION * Q64_64_PRECISION) / reserve0
+                )
+            );
     }
 
     // Fast sqrt, taken from Solmate.
     function sqrt(uint256 x) internal pure returns (uint256 z) {
         assembly {
+            // solhint-disable-line
             // Start off with z at 1.
             z := 1
 
-           // Used below to help find a nearby power of 2.
+            // Used below to help find a nearby power of 2.
             let y := x
 
             // Find the lowest power of 2 that is at least sqrt(x).

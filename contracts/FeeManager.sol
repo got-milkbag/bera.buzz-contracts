@@ -1,24 +1,17 @@
-// SPDX-License-Identifier: UNLICENSED
+// SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-
-import "./interfaces/IFeeManager.sol";
+import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
  * @title FeeManager
  * @notice This contract collects and forwards to the treasury the different types of fees in the protocol
+ * @author nexusflip, 0xMitzie
  */
 contract FeeManager is Ownable, IFeeManager {
     using SafeERC20 for IERC20;
-
-    /// @notice Error thrown when treasury is the zero address
-    error FeeManager_TreasuryZeroAddress();
-    /// @notice Error thrown when the amount is above the fee divisor
-    error FeeManager_AmountAboveFeeDivisor();
-    /// @notice Error thrown when the fee is insufficient
-    error FeeManager_InsufficientFee();
 
     /// @notice Event emitted when an ERC20 fee is received
     event FeeReceived(address indexed token, uint256 amount);
@@ -32,6 +25,13 @@ contract FeeManager is Ownable, IFeeManager {
     event ListingFeeSet(uint256 listingFee);
     /// @notice Event emitted when the migration fee is set
     event MigrationFeeSet(uint256 migrationFeeBps);
+
+    /// @notice Error thrown when treasury is the zero address
+    error FeeManager_TreasuryAddressZero();
+    /// @notice Error thrown when the amount is above the fee divisor
+    error FeeManager_AmountAboveFeeDivisor();
+    /// @notice Error thrown when the fee is insufficient
+    error FeeManager_InsufficientFee();
 
     /// @notice The divisor used to calculate fees (one percent equals 100)
     uint256 public constant FEE_DIVISOR = 1e4;
@@ -51,9 +51,15 @@ contract FeeManager is Ownable, IFeeManager {
      * @param _listingFee The listing fee amount in wei (in the native token)
      * @param _migrationFeeBps The AMM migration fee in basis points (one percent equals 100)
      */
-    constructor(address _treasury, uint256 _tradingFeeBps, uint256 _listingFee, uint256 _migrationFeeBps) {
-        if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
-        if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR)) revert FeeManager_AmountAboveFeeDivisor();
+    constructor(
+        address _treasury,
+        uint256 _tradingFeeBps,
+        uint256 _listingFee,
+        uint256 _migrationFeeBps
+    ) {
+        if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR))
+            revert FeeManager_AmountAboveFeeDivisor();
+
         treasury = _treasury;
         tradingFeeBps = _tradingFeeBps;
         listingFee = _listingFee;
@@ -79,11 +85,12 @@ contract FeeManager is Ownable, IFeeManager {
      * @notice Collects the listing fee in native currency from the sender
      */
     function collectListingFee() external payable {
-        if (listingFee > 0) {
-            if (msg.value != listingFee) revert FeeManager_InsufficientFee();
-            (bool success, ) = treasury.call{value: listingFee}("");
+        uint256 listing = listingFee;
+        if (listing > 0) {
+            if (msg.value != listing) revert FeeManager_InsufficientFee();
+            (bool success, ) = treasury.call{value: listing}("");
             if (!success) revert FeeManager_InsufficientFee();
-            emit NativeFeeReceived(listingFee);
+            emit NativeFeeReceived(listing);
         }
     }
 
@@ -104,7 +111,9 @@ contract FeeManager is Ownable, IFeeManager {
      * @param amount The amount to quote
      * @return fee The fee amount
      */
-    function quoteTradingFee(uint256 amount) public view returns (uint256 fee) {
+    function quoteTradingFee(
+        uint256 amount
+    ) external view returns (uint256 fee) {
         fee = (amount * tradingFeeBps) / FEE_DIVISOR;
     }
 
@@ -114,7 +123,9 @@ contract FeeManager is Ownable, IFeeManager {
      * @param amount The amount to quote
      * @return fee The fee amount
      */
-    function quoteMigrationFee(uint256 amount) public view returns (uint256 fee) {
+    function quoteMigrationFee(
+        uint256 amount
+    ) public view returns (uint256 fee) {
         fee = (amount * migrationFeeBps) / FEE_DIVISOR;
     }
 
@@ -123,45 +134,47 @@ contract FeeManager is Ownable, IFeeManager {
     /**
      * @notice Sets the trading fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The trading fee in basis points (one percent equals 100)
+     * @param feeBps_ The trading fee in basis points (one percent equals 100)
      */
-    function setTradingFeeBps(uint256 _feeBps) external onlyOwner {
-        if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
-        tradingFeeBps = _feeBps;
-        emit TradingFeeSet(_feeBps);
+    function setTradingFeeBps(uint256 feeBps_) external onlyOwner {
+        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+
+        tradingFeeBps = feeBps_;
+        emit TradingFeeSet(feeBps_);
     }
 
     /**
      * @notice Sets the listing fee amount in the native currency
      * @dev Only the owner can call this function
-     * @param _listingFee The listing fee amount
+     * @param listingFee_ The listing fee amount
      */
-    function setListingFee(uint256 _listingFee) external onlyOwner {
-        listingFee = _listingFee;
-        emit ListingFeeSet(_listingFee);
+    function setListingFee(uint256 listingFee_) external onlyOwner {
+        listingFee = listingFee_;
+        emit ListingFeeSet(listingFee_);
     }
 
     /**
      * @notice Sets the AMM migration fee basis points
      * @dev Only the owner can call this function
-     * @param _feeBps The migration fee in basis points (one percent equals 100)
+     * @param feeBps_ The migration fee in basis points (one percent equals 100)
      */
-    function setMigrationFeeBps(uint256 _feeBps) external onlyOwner {
-        if (_feeBps > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+    function setMigrationFeeBps(uint256 feeBps_) external onlyOwner {
+        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
 
-        migrationFeeBps = _feeBps;
-        emit MigrationFeeSet(_feeBps);
+        migrationFeeBps = feeBps_;
+        emit MigrationFeeSet(feeBps_);
     }
 
     /**
      * @notice Sets the treasury address
      * @dev Only the owner can call this function
-     * @param _treasury The treasury address where fees are sent
+     * @param treasury_ The treasury address where fees are sent
      */
-    function setTreasury(address _treasury) external onlyOwner {
-        if (_treasury == address(0)) revert FeeManager_TreasuryZeroAddress();
-        treasury = _treasury;
-        emit TreasurySet(_treasury);
+    function setTreasury(address treasury_) external onlyOwner {
+        if (treasury_ == address(0)) revert FeeManager_TreasuryAddressZero();
+
+        treasury = treasury_;
+        emit TreasurySet(treasury_);
     }
 
     // Internal functions
@@ -175,7 +188,4 @@ contract FeeManager is Ownable, IFeeManager {
         IERC20(token).safeTransferFrom(_msgSender(), treasury, amount);
         emit FeeReceived(token, amount);
     }
-
-    // Fallback function
-    receive() external payable {}
 }

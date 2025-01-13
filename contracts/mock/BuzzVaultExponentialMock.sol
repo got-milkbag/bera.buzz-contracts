@@ -11,12 +11,20 @@ contract BuzzVaultExponentialMock is BuzzVaultExponential {
         address _referralManager,
         address _liquidityManager,
         address _wbera
-    ) BuzzVaultExponential(_feeManager, _factory, _referralManager, _liquidityManager, _wbera) {}
+    )
+        BuzzVaultExponential(
+            _feeManager,
+            _factory,
+            _referralManager,
+            _liquidityManager,
+            _wbera
+        )
+    {}
 
     function calculateSellPrice_(
         uint256 quoteAmountIn,
         uint256 quoteBalance,
-        uint256 baseBalance,  
+        uint256 baseBalance,
         uint256 k
     ) external pure returns (uint256 amountOut) {
         return _calculateSellPrice(quoteAmountIn, quoteBalance, baseBalance, k);

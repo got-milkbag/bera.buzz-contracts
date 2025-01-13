@@ -28,7 +28,6 @@ describe("BuzzVaultExponential Tests", () => {
     let token: Contract;
     let referralManager: Contract;
     let expVault: Contract;
-    let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let wBera: Contract;
@@ -57,14 +56,6 @@ describe("BuzzVaultExponential Tests", () => {
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();
-
-        // Deploy BexPriceDecoder
-        const BexPriceDecoder = await ethers.getContractFactory("BexPriceDecoder");
-        bexPriceDecoder = await BexPriceDecoder.connect(ownerSigner).deploy(
-            crocQueryAddress,
-            [wBera.address],
-            [bexLpTokenAddress]
-        );
 
         // Deploy FeeManager
         const FeeManager = await ethers.getContractFactory("FeeManager");
@@ -135,19 +126,19 @@ describe("BuzzVaultExponential Tests", () => {
 
     describe("constructor", () => {
         it("should set the feeManager address", async () => {
-            expect(await expVault.feeManager()).to.be.equal(feeManager.address);
+            expect(await expVault.FEE_MANAGER()).to.be.equal(feeManager.address);
         });
         it("should set the factory address", async () => {
-            expect(await expVault.factory()).to.be.equal(factory.address);
+            expect(await expVault.FACTORY()).to.be.equal(factory.address);
         });
         it("should set the referralManager address", async () => {
-            expect(await expVault.referralManager()).to.be.equal(referralManager.address);
+            expect(await expVault.REFERRAL_MANAGER()).to.be.equal(referralManager.address);
         });
         it("should set the bexLiquidityManager address", async () => {
-            expect(await expVault.liquidityManager()).to.be.equal(bexLiquidityManager.address);
+            expect(await expVault.LIQUIDITY_MANAGER()).to.be.equal(bexLiquidityManager.address);
         });
         it("should set the wBera address", async () => {
-            expect(await expVault.wbera()).to.be.equal(wBera.address);
+            expect(await expVault.WBERA()).to.be.equal(wBera.address);
         });
     });
     describe("registerToken", () => {
@@ -175,10 +166,19 @@ describe("BuzzVaultExponential Tests", () => {
     });
     describe("quote", () => {
         beforeEach(async () => {});
+        it("should revert if amountIn is zero", async () => {
+            await expect(expVault.quote(token.address, 0, true)).to.be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
+        });
         it("should revert if token doesn't exist", async () => {
             await expect(expVault.quote(ownerSigner.address, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(
                 expVault,
                 "BuzzVault_UnknownToken"
+            );
+        });
+        it("should revert if token is zero address", async () => {
+            await expect(expVault.quote(ethers.constants.AddressZero, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(
+                expVault,
+                "BuzzVault_AddressZeroToken"
             );
         });
         it("should revert if the token has already been listed on Bex", async () => {
@@ -232,8 +232,8 @@ describe("BuzzVaultExponential Tests", () => {
                 });
                 
             const tokenInfo = await expVault.tokenInfo(token.address);
-            const beraBalance = tokenInfo[2];
-            const initialBera = tokenInfo[3];
+            const beraBalance = tokenInfo[3];
+            const initialBera = tokenInfo[4];
             const resultingBera = beraBalance.sub(initialBera);
 
             const quote = await expVault.quote(token.address, ethers.utils.parseEther("1000000000000000000000000000"), false);
@@ -326,6 +326,21 @@ describe("BuzzVaultExponential Tests", () => {
     describe("buy (ERC20)", () => {
         beforeEach(async () => {
             await wBera.deposit({ value: ethers.utils.parseEther("1") });
+        });
+        it("should revert if token amount is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(token.address, 0, 0, ethers.constants.AddressZero, user1Signer.address)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
+        });
+        it("should revert if token address is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(ethers.constants.AddressZero, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero, user1Signer.address)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroToken");
+        });
+        it("should revert if recipient address is zero", async () => {
+            await wBera.approve(expVault.address, ethers.utils.parseEther("1"));
+            await expect(expVault.buy(token.address, ethers.utils.parseEther("1"), ethers.utils.parseEther("1"), ethers.constants.AddressZero, ethers.constants.AddressZero)).to
+                .be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroRecipient");
         });
         it("should transfer the erc20 tokens", async () => {
             const balanceBefore = await wBera.balanceOf(ownerSigner.address);
@@ -480,7 +495,7 @@ describe("BuzzVaultExponential Tests", () => {
             const userBaseBalanceBefore = await wBera.balanceOf(user1Signer.address);
 
             const tokenInfoBefore = await expVault.tokenInfo(token.address);
-            const beraThreshold = tokenInfoBefore[5];
+            const beraThreshold = tokenInfoBefore[6];
             console.log("Bera thresholdA: ", beraThreshold.toString());
 
             const tx = await expVault.connect(user1Signer).buyNative(token.address, ethers.utils.parseEther("1000"), ethers.constants.AddressZero, user1Signer.address, {
@@ -499,15 +514,15 @@ describe("BuzzVaultExponential Tests", () => {
             const pricePerToken = calculateTokenPrice(baseAmount, userTokenBalance);
             console.log("Price per token in BeraA: ", pricePerToken);
 
-            const tokenBalance = tokenInfoAfter[1];
+            const tokenBalance = tokenInfoAfter[2];
             console.log("Token balanceA: ", tokenBalance.toString());
 
-            const beraBalance = tokenInfoAfter[2];
-            const initialBase = tokenInfoAfter[3];
-            const beraThresholdAfter = tokenInfoAfter[4];
-            const quoteThresholdAfter = tokenInfoAfter[5];
-            const k = tokenInfoAfter[6];
-            const bexListed = tokenInfoAfter[7];
+            const beraBalance = tokenInfoAfter[3];
+            const initialBase = tokenInfoAfter[4];
+            const beraThresholdAfter = tokenInfoAfter[5];
+            const quoteThresholdAfter = tokenInfoAfter[6];
+            const k = tokenInfoAfter[7];
+            const bexListed = tokenInfoAfter[1];
 
             // check balances
             expect(tokenBalance).to.be.equal(0);
@@ -552,6 +567,16 @@ describe("BuzzVaultExponential Tests", () => {
                 expVault.sell(token.address, ethers.utils.parseEther("10000000000000000000000"), 0, ethers.constants.AddressZero, user1Signer.address, false)
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_InvalidUserBalance");
         });
+        it("should revert if token is address zero", async () => {
+            await expect(
+                expVault.sell(ethers.constants.AddressZero, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero, user1Signer.address, false)
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroToken");
+        });
+        it("should revert if recipient is address zero", async () => {
+            await expect(
+                expVault.sell(token.address, ethers.utils.parseEther("1"), 0, ethers.constants.AddressZero, ethers.constants.AddressZero, false)
+            ).to.be.revertedWithCustomError(expVault, "BuzzVault_AddressZeroRecipient");
+        });
         it("should set a referral if one is provided", async () => {
             await expVault
                 .connect(user1Signer)
@@ -572,7 +597,7 @@ describe("BuzzVaultExponential Tests", () => {
 
             // Calculate the expected gross base amount before calling sell
             const tokenInfoPre = await expVault.tokenInfo(token.address);
-            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[1], tokenInfoPre[2], tokenInfoPre[6]);
+            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3], tokenInfoPre[7]);
 
             await expVault.connect(user1Signer).sell(token.address, sellAmount, ethers.utils.parseEther("0.0000000001"), ethers.constants.AddressZero, user1Signer.address, false);
 
@@ -581,7 +606,6 @@ describe("BuzzVaultExponential Tests", () => {
             const tradingFee = await feeManager.quoteTradingFee(expectedGrossBaseAmount);
             expect(treasuryBalanceAfter.sub(treasuryBalanceBefore)).to.be.equal(tradingFee);
         });
-
         it("should transfer the referral fee, and a lower trading fee", async () => {
             expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
 
@@ -590,7 +614,7 @@ describe("BuzzVaultExponential Tests", () => {
 
             // Calculate the expected gross base amount before calling sell
             const tokenInfoPre = await expVault.tokenInfo(token.address);
-            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[1], tokenInfoPre[2], tokenInfoPre[6]);
+            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3], tokenInfoPre[7]);
 
             await expVault.connect(user1Signer).sell(token.address, sellAmount, ethers.utils.parseEther("0.000000001"), ethers.constants.AddressZero, user1Signer.address, false);
 
@@ -670,7 +694,7 @@ describe("BuzzVaultExponential Tests", () => {
             await expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero, user1Signer.address, false);
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
 
-            expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(userTokenBalance));
+            expect(tokenInfoAfter[2]).to.be.equal(tokenInfoBefore[2].add(userTokenBalance));
         });
     });
     describe("pause", () => {
@@ -737,7 +761,7 @@ describe("BuzzVaultExponential Tests", () => {
             await token.connect(user1Signer).approve(expVault.address, userTokenBalance);
             await expVault.connect(user1Signer).sell(token.address, userTokenBalance, 0, ethers.constants.AddressZero, user1Signer.address, false);
             const tokenInfoAfter = await expVault.tokenInfo(token.address);
-            expect(tokenInfoAfter[1]).to.be.equal(tokenInfoBefore[1].add(userTokenBalance));
+            expect(tokenInfoAfter[2]).to.be.equal(tokenInfoBefore[2].add(userTokenBalance));
         });
         it("should allow calling buyNative", async () => {
             await expVault.unpause();

@@ -8,7 +8,9 @@ library FixedPoint64 {
     /// @notice Decodes a Q64.64 value and returns the actual price in terms of the underlying tokens.
     /// @param sqrtPriceX64 The square root price in Q64.64 format.
     /// @return price The price of token0 in terms of token1, scaled to 18 decimal places.
-    function decodeSqrtPriceX64(uint128 sqrtPriceX64) internal pure returns (uint256 price) {
+    function decodeSqrtPriceX64(
+        uint128 sqrtPriceX64
+    ) internal pure returns (uint256 price) {
         // Convert Q64.64 square root price to the actual price ratio
         // price = (sqrtPriceX64^2) / 2^64
 
@@ -21,4 +23,3 @@ library FixedPoint64 {
         price = (priceRatio * DECIMALS) / Q64_64;
     }
 }
-

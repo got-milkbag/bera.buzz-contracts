@@ -21,7 +21,6 @@ describe("ReferralManager Tests", () => {
     let tx: any;
     let bexLpToken: Contract;
     let crocQuery: Contract;
-    let bexPriceDecoder: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let wBera: Contract;
@@ -299,6 +298,12 @@ describe("ReferralManager Tests", () => {
                 "ReferralManager_ZeroPayout"
             );
         });
+        it("should revert if the token address is zero", async () => {
+            await expect(referralManager.connect(ownerSigner).claimReferralReward(ethers.constants.AddressZero)).to.be.revertedWithCustomError(
+                referralManager,
+                "ReferralManager_AddressZero"
+            );
+        });
         it("should payout any reward", async () => {
             const referralAmount = ethers.utils.parseEther("0.01");
             await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
@@ -347,6 +352,16 @@ describe("ReferralManager Tests", () => {
         });
     });
     describe("setPayoutThreshold", () => {
+        it("should revert if there is an array mismatch", async () => {
+            await expect(
+                referralManager.connect(ownerSigner).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.01"), ethers.utils.parseEther("0.01")])
+            ).to.be.revertedWithCustomError(referralManager, "ReferralManager_ArrayLengthMismatch");
+        });
+        it("should revert if the token address is zero", async () => {
+            await expect(referralManager.connect(ownerSigner).setPayoutThreshold([ethers.constants.AddressZero], [ethers.utils.parseEther("0.01")])).to.be.revertedWithCustomError(
+                referralManager, "ReferralManager_AddressZero"
+            );
+        });
         it("should revert if caller is not owner", async () => {
             await expect(
                 referralManager.connect(user1Signer).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.01")])
@@ -363,65 +378,15 @@ describe("ReferralManager Tests", () => {
                 "Ownable: caller is not the owner"
             );
         });
+        it("should revert if the vault is address zero", async () => {
+            await expect(referralManager.connect(ownerSigner).setWhitelistedVault(ethers.constants.AddressZero, true)).to.be.revertedWithCustomError(
+                referralManager,
+                "ReferralManager_AddressZero"
+            );
+        });
         it("should update the whitelisted vault", async () => {
             await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
             expect(await referralManager.whitelistedVault(ownerSigner.address)).to.be.equal(true);
-        });
-    });
-    describe("pause", () => {
-        beforeEach(async () => {});
-        it("should pause the contract", async () => {
-            await referralManager.pause();
-            expect(await referralManager.paused()).to.be.true;
-        });
-        it("should emit a Paused event", async () => {
-            await expect(referralManager.pause()).to.emit(referralManager, "Paused");
-        });
-        it("should revert if the caller is not the owner", async () => {
-            await expect(referralManager.connect(treasury).pause()).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-        it("should not allow calling claimReferralReward", async () => {
-            await referralManager.pause();
-
-            await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
-            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
-
-            const referralAmount = ethers.utils.parseEther("0.01");
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
-            // store user ether balance
-            await expect(referralManager.connect(user1Signer).claimReferralReward(wBera.address)).to.be.revertedWith("Pausable: paused");
-        });
-    });
-    describe("unpause", () => {
-        beforeEach(async () => {
-            await referralManager.pause();
-        });
-        it("should unpause the contract", async () => {
-            await referralManager.unpause();
-            expect(await referralManager.paused()).to.be.false;
-        });
-        it("should emit a Unpaused event", async () => {
-            await expect(referralManager.unpause()).to.emit(referralManager, "Unpaused");
-        });
-        it("should revert if the caller is not the owner", async () => {
-            await expect(referralManager.connect(treasury).unpause()).to.be.revertedWith("Ownable: caller is not the owner");
-        });
-        it("should allow calling claimReferralReward", async () => {
-            await referralManager.unpause();
-
-            await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
-            await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
-
-            const referralAmount = ethers.utils.parseEther("0.01");
-            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, referralAmount);
-            // store user ether balance
-            const userBalanceBefore = await wBera.balanceOf(ownerSigner.address);
-            const tx = await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
-
-            // check event
-            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, wBera.address, referralAmount);
-            // check user ether balance
-            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
         });
     });
 });

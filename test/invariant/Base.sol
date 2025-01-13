@@ -128,6 +128,18 @@ contract Base is PropertiesAsserts {
             BASE_TOKEN_MIN_RAISE_AMOUNT,
             true
         );
+        buzzTokenFactory.setAllowedBaseToken(
+            address(iBGT),
+            BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
+        );
+        buzzTokenFactory.setAllowedBaseToken(
+            address(NECT),
+            BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
+        );
         buzzTokenFactory.setVault(address(buzzVaultExponential), true);
         buzzTokenFactory.setAllowTokenCreation(true);
     }
@@ -139,24 +151,25 @@ contract Base is PropertiesAsserts {
     }
 
     function _deployTokens() internal {
-        address tokenOne = buzzTokenFactory.createToken(
+        hevm.deal(address(this), LISTING_FEE * 3);
+        address tokenOne = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 1", "T1"],
             [address(wBERA), address(buzzVaultExponential)],
-            [uint256(1e18), uint256(2e18)],
+            [uint256(1e18), uint256(100e18)],
             0,
             "0x1"
         );
-        address tokenTwo = buzzTokenFactory.createToken(
+        address tokenTwo = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 2", "T2"],
             [address(iBGT), address(buzzVaultExponential)],
-            [uint256(1e18), uint256(2e18)],
+            [uint256(1e18), uint256(100e18)],
             0,
             "0x2"
         );
-        address tokenThree = buzzTokenFactory.createToken(
+        address tokenThree = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 3", "T3"],
             [address(NECT), address(buzzVaultExponential)],
-            [uint256(1e18), uint256(2e18)],
+            [uint256(10000e18), uint256(100000e18)],
             0,
             "0x3"
         );

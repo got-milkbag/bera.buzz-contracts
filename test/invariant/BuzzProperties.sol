@@ -15,6 +15,7 @@ contract BuzzProperties is Base {
         for (uint256 i; i < NUMBER_OF_USERS; ++i) {
             User user = users[i];
 
+            hevm.deal(address(user), WBERA_AMOUNT);
             hevm.prank(address(user));
             wBERA.deposit{value: WBERA_AMOUNT}();
             iBGT.mint(address(user), IBGT_AMOUNT);

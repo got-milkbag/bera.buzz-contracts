@@ -22,6 +22,6 @@ contract BexLiquidityManagerMock {
             baseAmount
         );
         IERC20(token).safeTransfer(address(0xdead), amount);
-        IERC20(baseToken).safeTransfer(address(0xdead), baseAmount);     
+        IERC20(baseToken).safeTransfer(address(0xdead), baseAmount);
     }
 }

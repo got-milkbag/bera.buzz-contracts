@@ -50,11 +50,15 @@ contract Base is PropertiesAsserts {
 
     User[] internal users;
 
+    address[] internal baseTokens;
+    address[] internal quoteTokens;
+
     constructor() {
         _deployBaseTokens();
         _deployProtocol();
         _initializeProtocol();
         _createUsers();
+        _deployTokens();
     }
 
     function _deployBaseTokens() internal {
@@ -64,8 +68,10 @@ contract Base is PropertiesAsserts {
     }
 
     function _deployProtocol() internal {
-        address[] memory baseTokens = new address[](NUMBER_OF_BASE_TOKENS);
-        uint256[] memory baseTokenPayouts = new uint256[](NUMBER_OF_BASE_TOKENS);
+        baseTokens = new address[](NUMBER_OF_BASE_TOKENS);
+        uint256[] memory baseTokenPayouts = new uint256[](
+            NUMBER_OF_BASE_TOKENS
+        );
 
         baseTokens[0] = address(wBERA);
         baseTokens[1] = address(iBGT);
@@ -76,9 +82,9 @@ contract Base is PropertiesAsserts {
         baseTokenPayouts[2] = PAYOUT_THRESHOLD_NECT;
 
         feeManager = new FeeManager(
-            FEE_RECIPIENT, 
-            TRADING_FEE_BPS,     
-            LISTING_FEE, 
+            FEE_RECIPIENT,
+            TRADING_FEE_BPS,
+            LISTING_FEE,
             MIGRATION_FEE_BPS
         );
         createDeployer = new CREATE3FactoryMock();
@@ -89,9 +95,9 @@ contract Base is PropertiesAsserts {
             address(feeManager)
         );
         referralManager = new ReferralManager(
-            DIRECT_REF_FEE_BPS, 
-            INDIRECT_REF_FEE_BPS, 
-            VALID_UNTIL, 
+            DIRECT_REF_FEE_BPS,
+            INDIRECT_REF_FEE_BPS,
+            VALID_UNTIL,
             baseTokens,
             baseTokenPayouts
         );
@@ -103,12 +109,25 @@ contract Base is PropertiesAsserts {
             address(bexLiquidityManagerMock),
             address(wBERA)
         );
-        highlightsManager = new HighlightsManager(FEE_RECIPIENT, HARD_CAP, HIGHLIGHTS_BASE_FEE, COOL_DOWN_PERIOD);
+        highlightsManager = new HighlightsManager(
+            FEE_RECIPIENT,
+            HARD_CAP,
+            HIGHLIGHTS_BASE_FEE,
+            COOL_DOWN_PERIOD
+        );
     }
 
     function _initializeProtocol() internal {
-        referralManager.setWhitelistedVault(address(buzzVaultExponential), true);
-        buzzTokenFactory.setAllowedBaseToken(address(wBERA), BASE_TOKEN_MIN_RESERVE_AMOUNT, BASE_TOKEN_MIN_RAISE_AMOUNT, true);
+        referralManager.setWhitelistedVault(
+            address(buzzVaultExponential),
+            true
+        );
+        buzzTokenFactory.setAllowedBaseToken(
+            address(wBERA),
+            BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
+        );
         buzzTokenFactory.setVault(address(buzzVaultExponential), true);
         buzzTokenFactory.setAllowTokenCreation(true);
     }
@@ -118,4 +137,32 @@ contract Base is PropertiesAsserts {
             users.push(new User());
         }
     }
-} 
+
+    function _deployTokens() internal {
+        address tokenOne = buzzTokenFactory.createToken(
+            ["TOKEN 1", "T1"],
+            [address(wBERA), address(buzzVaultExponential)],
+            [uint256(1e18), uint256(2e18)],
+            0,
+            "0x1"
+        );
+        address tokenTwo = buzzTokenFactory.createToken(
+            ["TOKEN 2", "T2"],
+            [address(iBGT), address(buzzVaultExponential)],
+            [uint256(1e18), uint256(2e18)],
+            0,
+            "0x2"
+        );
+        address tokenThree = buzzTokenFactory.createToken(
+            ["TOKEN 3", "T3"],
+            [address(NECT), address(buzzVaultExponential)],
+            [uint256(1e18), uint256(2e18)],
+            0,
+            "0x3"
+        );
+
+        quoteTokens.push(tokenOne);
+        quoteTokens.push(tokenTwo);
+        quoteTokens.push(tokenThree);
+    }
+}

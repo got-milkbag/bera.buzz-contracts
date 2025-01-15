@@ -102,6 +102,27 @@ describe("HighlightsManager Tests", () => {
                 "HighlightsManager_InsufficientFee"
             );
         });
+        it("should refund the difference if the user overpays", async () => {
+            const quotedFee = await highlightsManager.quote(duration);
+      
+            const balanceBefore = await ethers.provider.getBalance(
+              ownerSigner.address
+            );
+            const tx = await highlightsManager.highlightToken(
+              token.address,
+              duration,
+              { value: quotedFee.add(100) } // Overpay by 100 wei
+            );
+      
+            const txReceipt = await tx.wait();
+            const gasUsed = txReceipt.cumulativeGasUsed.mul(
+              txReceipt.effectiveGasPrice
+            );
+      
+            expect(await ethers.provider.getBalance(ownerSigner.address)).to.be.equal(
+              balanceBefore.sub(quotedFee).sub(gasUsed)
+            );
+        });
         it("should collect and redirect the fee to the treasury", async () => {
             const quotedFee = await highlightsManager.quote(duration);
 

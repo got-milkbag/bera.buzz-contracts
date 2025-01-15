@@ -107,12 +107,17 @@ contract HighlightsManager is Ownable, Pausable {
         if (tokenCoolDownUntil[token] > block.timestamp)
             revert HighlightsManager_TokenWithinCoolDown();
 
+        bool success;
         uint256 fee = quote(duration);
-        if (msg.value != fee) revert HighlightsManager_InsufficientFee();
+        if (msg.value < fee) revert HighlightsManager_InsufficientFee();
+        if (msg.value > fee) {
+            (success, ) = msg.sender.call{value: msg.value - fee}("");
+            if (!success) revert HighlightsManager_EthTransferFailed();
+        }
 
         bookedUntil = block.timestamp + duration;
         tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
-        (bool success, ) = treasury.call{value: fee}("");
+        (success, ) = treasury.call{value: fee}("");
         if (!success) revert HighlightsManager_EthTransferFailed();
 
         emit TokenHighlighted(token, msg.sender, duration, bookedUntil, fee);

@@ -3,6 +3,7 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {Contract, BigNumber} from "ethers";
 import {time} from "@nomicfoundation/hardhat-network-helpers";
+import { Bytes } from "ethers";
 
 describe("HighlightsManager Tests", () => {
     let ownerSigner: SignerWithAddress;
@@ -12,7 +13,7 @@ describe("HighlightsManager Tests", () => {
     let token: Contract;
 
     let duration: number;
-    let tx: any;
+    let suffix: any;
 
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
@@ -25,14 +26,20 @@ describe("HighlightsManager Tests", () => {
         const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
         token = await SimpleERC20.connect(ownerSigner).deploy();
 
+        // get last 4 characters from contract address and add it as the suffix in HighlightsManager
+        let suffixString = token.address.slice(-4);
+        // append "0x" at the begginning of the suffix:
+        suffixString = "0x" + suffixString;
+        suffix = ethers.utils.arrayify(suffixString);
+
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod);
+        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod, suffix);
     });
     describe("constructor", () => {
         it("should revert if hardCap is less than MIN_DURATION", async () => {
             const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
+            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod, suffix)).to.be.revertedWithCustomError(
                 highlightsManager,
                 "HighlightsManager_HardCapBelowMinimumDuration"
             );
@@ -100,6 +107,38 @@ describe("HighlightsManager Tests", () => {
             await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee.sub(1)})).to.be.revertedWithCustomError(
                 highlightsManager,
                 "HighlightsManager_InsufficientFee"
+            );
+        });
+        it("should refund the difference if the user overpays", async () => {
+            const quotedFee = await highlightsManager.quote(duration);
+      
+            const balanceBefore = await ethers.provider.getBalance(
+              ownerSigner.address
+            );
+            const tx = await highlightsManager.highlightToken(
+              token.address,
+              duration,
+              { value: quotedFee.add(100) } // Overpay by 100 wei
+            );
+      
+            const txReceipt = await tx.wait();
+            const gasUsed = txReceipt.cumulativeGasUsed.mul(
+              txReceipt.effectiveGasPrice
+            );
+      
+            expect(await ethers.provider.getBalance(ownerSigner.address)).to.be.equal(
+              balanceBefore.sub(quotedFee).sub(gasUsed)
+            );
+        });
+        it("should revert if the token address doesn't contain the right suffix", async () => {
+            // Redeploy token contract to get a different suffix
+            const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
+            token = await SimpleERC20.connect(ownerSigner).deploy();
+
+            const quotedFee = await highlightsManager.quote(duration);
+            await expect(highlightsManager.highlightToken(ownerSigner.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
+                highlightsManager,
+                "HighlightsManager_UnrecognisedToken"
             );
         });
         it("should collect and redirect the fee to the treasury", async () => {

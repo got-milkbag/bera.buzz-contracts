@@ -3,6 +3,7 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {Contract, BigNumber} from "ethers";
 import {time} from "@nomicfoundation/hardhat-network-helpers";
+import { Bytes } from "ethers";
 
 describe("HighlightsManager Tests", () => {
     let ownerSigner: SignerWithAddress;
@@ -12,7 +13,7 @@ describe("HighlightsManager Tests", () => {
     let token: Contract;
 
     let duration: number;
-    let suffix: string;
+    let suffix: any;
 
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
@@ -25,9 +26,11 @@ describe("HighlightsManager Tests", () => {
         const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
         token = await SimpleERC20.connect(ownerSigner).deploy();
 
-        // get last 3 characters from contract address and add it as the suffix in HighlightsManager
-        suffix = token.address.slice(-3);
-        suffix = suffix.toLowerCase();
+        // get last 4 characters from contract address and add it as the suffix in HighlightsManager
+        let suffixString = token.address.slice(-4);
+        // append "0x" at the begginning of the suffix:
+        suffixString = "0x" + suffixString;
+        suffix = ethers.utils.arrayify(suffixString);
 
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");

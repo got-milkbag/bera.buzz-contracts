@@ -65,7 +65,7 @@ contract HighlightsManager is Ownable, Pausable {
     /// @notice The treasury address where fees are sent
     address payable public treasury;
     /// @notice The contract suffix that is checked against the token address
-    string public suffix;
+    bytes public suffix;
 
     /// @notice The timestamp when a token can be highlighted again
     mapping(address => uint256) public tokenCoolDownUntil;
@@ -83,7 +83,7 @@ contract HighlightsManager is Ownable, Pausable {
         uint256 _hardCap,
         uint256 _baseFeePerSecond,
         uint256 _coolDownPeriod,
-        string memory _suffix
+        bytes memory _suffix
     ) {
         if (_hardCap < MIN_DURATION)
             revert HighlightsManager_HardCapBelowMinimumDuration();
@@ -223,48 +223,11 @@ contract HighlightsManager is Ownable, Pausable {
     }
 
     function _verifySuffix(address token) internal view {
-        string memory addressString = _toAsciiString(token);
-        string memory calcSuffix = _substring(
-            addressString,
-            bytes(addressString).length - bytes(suffix).length,
-            bytes(addressString).length
-        );
-
-        if (
-            keccak256(abi.encodePacked(calcSuffix)) !=
-            keccak256(abi.encodePacked(suffix))
-        ) revert HighlightsManager_UnrecognisedToken();
-    }
-
-    function _toAsciiString(address x) internal pure returns (string memory) {
-        bytes memory s = new bytes(40);
-        for (uint256 i = 0; i < 20; i++) {
-            bytes1 b = bytes1(
-                uint8(uint256(uint160(x)) / (2 ** (8 * (19 - i))))
-            );
-            bytes1 hi = bytes1(uint8(b) / 16);
-            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
-            s[2 * i] = _char(hi);
-            s[2 * i + 1] = _char(lo);
+        bytes memory tokenBytes = abi.encodePacked(token);
+        for (uint256 i = 0; i < suffix.length; i++) {
+            if (suffix[i] != tokenBytes[tokenBytes.length - suffix.length + i]) {
+                revert HighlightsManager_UnrecognisedToken();
+            }
         }
-        return string(s);
-    }
-
-    function _char(bytes1 b) internal pure returns (bytes1 c) {
-        if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
-        else return bytes1(uint8(b) + 0x57);
-    }
-
-    function _substring(
-        string memory str,
-        uint256 startIndex,
-        uint256 endIndex
-    ) internal pure returns (string memory) {
-        bytes memory strBytes = bytes(str);
-        bytes memory result = new bytes(endIndex - startIndex);
-        for (uint256 i = startIndex; i < endIndex; i++) {
-            result[i - startIndex] = strBytes[i];
-        }
-        return string(result);
     }
 }

@@ -11,7 +11,8 @@ const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
 const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
 const wberaAddress = "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8";
 
-const highlightsSuffix = "bee";
+const highlightsSuffix = ethers.utils.arrayify("0x1bee");
+
 
 // protocol fee is hardcoded in vaults
 

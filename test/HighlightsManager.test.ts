@@ -12,7 +12,7 @@ describe("HighlightsManager Tests", () => {
     let token: Contract;
 
     let duration: number;
-    let tx: any;
+    let suffix: string;
 
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
@@ -25,14 +25,18 @@ describe("HighlightsManager Tests", () => {
         const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
         token = await SimpleERC20.connect(ownerSigner).deploy();
 
+        // get last 3 characters from contract address and add it as the suffix in HighlightsManager
+        suffix = token.address.slice(-3);
+        suffix = suffix.toLowerCase();
+
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod);
+        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod, suffix);
     });
     describe("constructor", () => {
         it("should revert if hardCap is less than MIN_DURATION", async () => {
             const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
+            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod, suffix)).to.be.revertedWithCustomError(
                 highlightsManager,
                 "HighlightsManager_HardCapBelowMinimumDuration"
             );
@@ -121,6 +125,17 @@ describe("HighlightsManager Tests", () => {
       
             expect(await ethers.provider.getBalance(ownerSigner.address)).to.be.equal(
               balanceBefore.sub(quotedFee).sub(gasUsed)
+            );
+        });
+        it("should revert if the token address doesn't contain the right suffix", async () => {
+            // Redeploy token contract to get a different suffix
+            const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
+            token = await SimpleERC20.connect(ownerSigner).deploy();
+
+            const quotedFee = await highlightsManager.quote(duration);
+            await expect(highlightsManager.highlightToken(ownerSigner.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
+                highlightsManager,
+                "HighlightsManager_UnrecognisedToken"
             );
         });
         it("should collect and redirect the fee to the treasury", async () => {

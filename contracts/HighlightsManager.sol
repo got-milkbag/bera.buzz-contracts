@@ -45,6 +45,8 @@ contract HighlightsManager is Ownable, Pausable {
     error HighlightsManager_SlotOccupied();
     /// @notice Error thrown when the token is within the cool down period
     error HighlightsManager_TokenWithinCoolDown();
+    /// @notice Error thrown when the token suffix does not match the contract suffix
+    error HighlightsManager_UnrecognisedToken();
 
     /// @notice The minimum duration allowed in seconds
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
@@ -62,6 +64,8 @@ contract HighlightsManager is Ownable, Pausable {
     uint256 public bookedUntil;
     /// @notice The treasury address where fees are sent
     address payable public treasury;
+    /// @notice The contract suffix that is checked against the token address
+    string public suffix;
 
     /// @notice The timestamp when a token can be highlighted again
     mapping(address => uint256) public tokenCoolDownUntil;
@@ -71,12 +75,15 @@ contract HighlightsManager is Ownable, Pausable {
      * @param _treasury The treasury address where fees are sent
      * @param _hardCap The maximum duration allowed in seconds
      * @param _baseFeePerSecond The base fee per second to charge in wei
+     * @param _coolDownPeriod The cool down period for a token in seconds
+     * @param _suffix The contract suffix that is checked against the token address
      */
     constructor(
         address payable _treasury,
         uint256 _hardCap,
         uint256 _baseFeePerSecond,
-        uint256 _coolDownPeriod
+        uint256 _coolDownPeriod,
+        string memory _suffix
     ) {
         if (_hardCap < MIN_DURATION)
             revert HighlightsManager_HardCapBelowMinimumDuration();
@@ -85,6 +92,7 @@ contract HighlightsManager is Ownable, Pausable {
         hardCap = _hardCap;
         baseFeePerSecond = _baseFeePerSecond;
         coolDownPeriod = _coolDownPeriod;
+        suffix = _suffix;
 
         emit TreasurySet(_treasury);
         emit HardCapSet(_hardCap);
@@ -106,7 +114,7 @@ contract HighlightsManager is Ownable, Pausable {
             revert HighlightsManager_SlotOccupied();
         if (tokenCoolDownUntil[token] > block.timestamp)
             revert HighlightsManager_TokenWithinCoolDown();
-
+        _verifySuffix(token);
         bool success;
         uint256 fee = quote(duration);
         if (msg.value < fee) revert HighlightsManager_InsufficientFee();
@@ -212,5 +220,51 @@ contract HighlightsManager is Ownable, Pausable {
             fee = (baseFeePs * expThreshold) + exponentialFee;
         }
         return fee;
+    }
+
+    function _verifySuffix(address token) internal view {
+        string memory addressString = _toAsciiString(token);
+        string memory calcSuffix = _substring(
+            addressString,
+            bytes(addressString).length - bytes(suffix).length,
+            bytes(addressString).length
+        );
+
+        if (
+            keccak256(abi.encodePacked(calcSuffix)) !=
+            keccak256(abi.encodePacked(suffix))
+        ) revert HighlightsManager_UnrecognisedToken();
+    }
+
+    function _toAsciiString(address x) internal pure returns (string memory) {
+        bytes memory s = new bytes(40);
+        for (uint256 i = 0; i < 20; i++) {
+            bytes1 b = bytes1(
+                uint8(uint256(uint160(x)) / (2 ** (8 * (19 - i))))
+            );
+            bytes1 hi = bytes1(uint8(b) / 16);
+            bytes1 lo = bytes1(uint8(b) - 16 * uint8(hi));
+            s[2 * i] = _char(hi);
+            s[2 * i + 1] = _char(lo);
+        }
+        return string(s);
+    }
+
+    function _char(bytes1 b) internal pure returns (bytes1 c) {
+        if (uint8(b) < 10) return bytes1(uint8(b) + 0x30);
+        else return bytes1(uint8(b) + 0x57);
+    }
+
+    function _substring(
+        string memory str,
+        uint256 startIndex,
+        uint256 endIndex
+    ) internal pure returns (string memory) {
+        bytes memory strBytes = bytes(str);
+        bytes memory result = new bytes(endIndex - startIndex);
+        for (uint256 i = startIndex; i < endIndex; i++) {
+            result[i - startIndex] = strBytes[i];
+        }
+        return string(result);
     }
 }

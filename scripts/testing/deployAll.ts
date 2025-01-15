@@ -11,6 +11,8 @@ const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
 const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
 const wberaAddress = "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8";
 
+const highlightsSuffix = "bee";
+
 // protocol fee is hardcoded in vaults
 
 // Factory config
@@ -104,7 +106,7 @@ async function main() {
 
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-    const highlightsManager = await HighlightsManager.deploy(feeRecipient, hardCap, highlightsBaseFee, coolDownPeriod);
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, hardCap, highlightsBaseFee, coolDownPeriod, highlightsSuffix);
     console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager

@@ -145,6 +145,14 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (recipient == address(0)) revert BuzzVault_AddressZeroRecipient();
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
+        TokenInfo storage info = tokenInfo[token];
+        if (info.bexListed) revert BuzzVault_BexListed();
+        if (info.tokenBalance == 0 && info.baseBalance == 0)
+            revert BuzzVault_UnknownToken();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
+
         uint256 baseAmount;
         if (tokenInfo[token].baseToken == address(WBERA)) {
             uint256 balancePrior = WBERA.balanceOf(address(this));
@@ -156,7 +164,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             revert BuzzVault_NativeTradeUnsupported();
         }
 
-        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient, info);
     }
 
     /**
@@ -178,12 +186,20 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (recipient == address(0)) revert BuzzVault_AddressZeroRecipient();
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
+        TokenInfo storage info = tokenInfo[token];
+        if (info.bexListed) revert BuzzVault_BexListed();
+        if (info.tokenBalance == 0 && info.baseBalance == 0)
+            revert BuzzVault_UnknownToken();
+
+        uint256 contractBalance = IERC20(token).balanceOf(address(this));
+        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
+
         IERC20(tokenInfo[token].baseToken).safeTransferFrom(
             msg.sender,
             address(this),
             baseAmount
         );
-        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient);
+        _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient, info);
     }
 
     /**
@@ -421,22 +437,16 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
      * @param minTokensOut The minimum amount of tokens to buy, will revert if slippage exceeds this value
      * @param affiliate The affiliate address, zero address if none
      * @param recipient The recipient address
+     * @param info The token info struct
      */
     function _buyTokens(
         address token,
         uint256 baseAmount,
         uint256 minTokensOut,
         address affiliate,
-        address recipient
-    ) internal {
-        TokenInfo storage info = tokenInfo[token];
-        if (info.bexListed) revert BuzzVault_BexListed();
-        if (info.tokenBalance == 0 && info.baseBalance == 0)
-            revert BuzzVault_UnknownToken();
-
-        uint256 contractBalance = IERC20(token).balanceOf(address(this));
-        if (contractBalance < minTokensOut) revert BuzzVault_InvalidReserves();
-
+        address recipient,
+        TokenInfo storage info
+    ) internal { 
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         (uint256 amountBought, bool needsMigration) = _buy(

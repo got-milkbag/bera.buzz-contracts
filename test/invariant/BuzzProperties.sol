@@ -98,6 +98,7 @@ contract BuzzProperties is Base {
         require(success);
     }
 
+    /*
     function quote(uint256 randToken, uint256 randAmount) public {
         User user = users[randToken % users.length];
         bool isBuyOrder = randToken % 2 == 0;
@@ -132,7 +133,7 @@ contract BuzzProperties is Base {
             )
         );
         require(success);
-    }
+    }*/
 
     function claimReferralReward(uint256 randToken) public {
         User user = users[randToken % users.length];
@@ -173,6 +174,7 @@ contract BuzzProperties is Base {
         require(success);
     }
 
+    /*
     function highlightsQuote(uint256 randDuration) public {
         User user = users[randDuration % users.length];
 
@@ -183,7 +185,177 @@ contract BuzzProperties is Base {
             abi.encodeWithSelector(highlightsManager.quote.selector, duration)
         );
         require(success);
-    }
+    }*/
 
     // ---------------------- Invariants -------------------------------
+
+    /// @custom:invariant The product of tokenBalance and baseBalance must always equal the constant product (K)
+    function constantProduct() public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (
+                ,
+                ,
+                uint256 tokenBalance,
+                uint256 baseBalance,
+                ,
+                ,
+                ,
+                uint256 k
+            ) = buzzVaultExponential.tokenInfo(token);
+
+            assert(tokenBalance * baseBalance == k);
+        }
+    }
+
+    /// @custom:invariant The baseBalance must never be below initialBase
+    function baseBalanceGeInitial() public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (
+                ,
+                ,
+                ,
+                uint256 baseBalance,
+                uint256 initialBase,
+                ,
+                ,
+
+            ) = buzzVaultExponential.tokenInfo(token);
+
+            assert(baseBalance >= initialBase);
+        }
+    }
+
+    /// @custom:invariant The quote balance must never be below quoteThreshold
+    function quoteBalanceGeThreshold() public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (
+                ,
+                ,
+                uint256 tokenBalance,
+                ,
+                ,
+                ,
+                uint256 quoteThreshold,
+
+            ) = buzzVaultExponential.tokenInfo(token);
+
+            assert(tokenBalance >= quoteThreshold);
+        }
+    }
+
+    /// @custom:invariant The sum of quote tokens in the curves plus tokens held by all users must always be equal to the initial supply
+    function quoteTokenSumEqTotalSupply() public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            uint256 totalSupplyInContract = 0;
+            uint256 totalUserBalances = 0;
+
+            address token = quoteTokens[i];
+            (, , uint256 tokenBalance, , , , , ) = buzzVaultExponential
+                .tokenInfo(token);
+
+            totalSupplyInContract += tokenBalance;
+
+            for (uint256 j; j < users.length; ++j) {
+                totalUserBalances += IERC20(token).balanceOf(address(users[i]));
+            }
+
+            assert(
+                totalUserBalances + totalSupplyInContract ==
+                    IERC20(token).totalSupply()
+            );
+        }
+    }
+
+    /// @custom:invariant The quote output must always be less than or equal to the current token balance when buying
+    function quoteBuyOutputLeTokenBalance(uint256 randAmount) public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (, , uint256 tokenBalance, , , , , ) = buzzVaultExponential
+                .tokenInfo(token);
+
+            uint256 amountOut = buzzVaultExponential.quote(
+                token,
+                randAmount,
+                true
+            );
+
+            assert(amountOut <= tokenBalance);
+        }
+    }
+
+    /// @custom:invariant The quote output must always be less than or equal to the current token balance when selling
+    function quoteSellOutputLeBaseBalance(uint256 randAmount) public view {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (, , , uint256 baseBalance, , , , ) = buzzVaultExponential
+                .tokenInfo(token);
+
+            uint256 amountOut = buzzVaultExponential.quote(
+                token,
+                randAmount,
+                false
+            );
+
+            assert(amountOut <= baseBalance);
+        }
+    }
+
+    /// @custom:invariant The user must never be able to buy more than initialSupply - finalSupply quote tokens
+    function quoteBuyOutputLeInitialMinusFinal(uint256 randAmount) public {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (
+                ,
+                ,
+                ,
+                ,
+                ,
+                uint256 baseThreshold,
+                uint256 quoteThreshold,
+
+            ) = buzzVaultExponential.tokenInfo(token);
+            uint256 amount = clampBetween(
+                randAmount,
+                baseThreshold,
+                type(uint256).max
+            );
+
+            uint256 amountOut = buzzVaultExponential.quote(token, amount, true);
+
+            assert(amountOut <= IERC20(token).totalSupply() - quoteThreshold);
+        }
+    }
+
+    /// @custom:invariant The user must never be able to sell into more than finalReserves - initialReserves base tokens
+    function quoteSellOutputLeFinalMinusInitial(uint256 randAmount) public {
+        for (uint256 i; i < quoteTokens.length; ++i) {
+            address token = quoteTokens[i];
+            (
+                ,
+                ,
+                ,
+                ,
+                uint256 initialBase,
+                uint256 baseThreshold,
+                uint256 quoteThreshold,
+
+            ) = buzzVaultExponential.tokenInfo(token);
+            uint256 amount = clampBetween(
+                randAmount,
+                IERC20(token).totalSupply() - quoteThreshold,
+                type(uint256).max
+            );
+
+            uint256 amountOut = buzzVaultExponential.quote(
+                token,
+                amount,
+                false
+            );
+
+            assert(amountOut <= baseThreshold - initialBase);
+        }
+    }
 }

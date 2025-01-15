@@ -112,8 +112,9 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 baseSurplus;
         if (exceeded) {
             uint256 basePlusNet = baseBalance + netBaseAmount;
-            if (basePlusNet > info.baseThreshold) {
-                baseSurplus = basePlusNet - info.baseThreshold;
+            uint256 baseThreshold = info.baseThreshold;
+            if (basePlusNet > baseThreshold) {
+                baseSurplus = basePlusNet - baseThreshold;
                 netBaseAmount -= baseSurplus;
             }
         }
@@ -159,14 +160,13 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 baseAmountSell = _calculateSellPrice(
             tokenAmount,
             info.tokenBalance,
-            info.baseBalance,
-            info.k
-        );
+            baseBalance,
+            info.k      
+        ); 
 
-        if (baseBalance - info.initialBase < baseAmountSell)
-            revert BuzzVault_InvalidReserves();
+        uint256 baseSurplus = baseBalance - info.initialBase;
+        if (baseSurplus < baseAmountSell) baseAmountSell = baseSurplus;
         if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
-        if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();
 
         // Update balances
         info.baseBalance -= baseAmountSell;

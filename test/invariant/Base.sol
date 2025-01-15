@@ -155,21 +155,21 @@ contract Base is PropertiesAsserts {
         address tokenOne = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 1", "T1"],
             [address(wBERA), address(buzzVaultExponential)],
-            [uint256(1e18), uint256(100e18)],
+            [uint256(1e18), uint256(1e36)],
             0,
             "0x1"
         );
         address tokenTwo = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 2", "T2"],
             [address(iBGT), address(buzzVaultExponential)],
-            [uint256(1e18), uint256(100e18)],
+            [uint256(1e18), uint256(1e36)],
             0,
             "0x2"
         );
         address tokenThree = buzzTokenFactory.createToken{value: LISTING_FEE}(
             ["TOKEN 3", "T3"],
             [address(NECT), address(buzzVaultExponential)],
-            [uint256(10000e18), uint256(100000e18)],
+            [uint256(10000e18), uint256(1e36)],
             0,
             "0x3"
         );

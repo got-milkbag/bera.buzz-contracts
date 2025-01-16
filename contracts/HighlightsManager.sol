@@ -228,9 +228,18 @@ contract HighlightsManager is Ownable, Pausable {
 
     function _verifySuffix(address token) internal view {
         bytes memory tokenBytes = abi.encodePacked(token);
-        for (uint256 i = 0; i < suffix.length; i++) {
-            if (suffix[i] != tokenBytes[tokenBytes.length - suffix.length + i]) {
+        bytes memory cachedSuffix = suffix;
+
+        uint256 suffixLength = cachedSuffix.length;
+        uint256 tokenLength = tokenBytes.length;
+        
+        for (uint256 i; i < suffixLength; ) {
+            if (cachedSuffix[i] != tokenBytes[tokenLength - suffixLength + i]) {
                 revert HighlightsManager_UnrecognisedToken();
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }

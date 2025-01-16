@@ -157,6 +157,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (tokenInfo[token].baseToken == address(WBERA)) {
             uint256 balancePrior = WBERA.balanceOf(address(this));
             WBERA.deposit{value: msg.value}();
+
             baseAmount = WBERA.balanceOf(address(this)) - balancePrior;
             if (baseAmount != msg.value)
                 revert BuzzVault_WBeraConversionFailed();
@@ -242,6 +243,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             info,
             unwrap
         );
+
         emit Trade(
             recipient,
             token,
@@ -457,6 +459,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             recipient,
             info
         );
+
         emit Trade(
             recipient,
             token,

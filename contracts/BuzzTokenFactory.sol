@@ -154,6 +154,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             salt,
             raiseData
         );
+        
         emit TokenCreated(
             token,
             addr[0],
@@ -217,7 +218,6 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         bool allowTokenCreation_
     ) external onlyRole(OWNER_ROLE) {
         allowTokenCreation = allowTokenCreation_;
-
         emit TokenCreationSet(allowTokenCreation);
     }
 

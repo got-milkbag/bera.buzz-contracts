@@ -150,7 +150,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param vault The array of vault addresses
      */
     function addVaults(address[] memory vault) external onlyOwner {
-        for (uint256 i; i < vault.length; ) {
+        uint256 vaultLength = vault.length;
+        for (uint256 i; i < vaultLength; ) {
             if (vaults[vault[i]])
                 revert BexLiquidityManager_VaultAlreadyInWhitelist();
 
@@ -168,7 +169,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param vault The array of vault addresses
      */
     function removeVaults(address[] calldata vault) external onlyOwner {
-        for (uint256 i; i < vault.length; ) {
+        uint256 vaultLength = vault.length;
+        for (uint256 i; i < vaultLength; ) {
             if (!vaults[vault[i]])
                 revert BexLiquidityManager_VaultNotInWhitelist();
 

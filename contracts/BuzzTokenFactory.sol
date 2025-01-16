@@ -154,7 +154,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             salt,
             raiseData
         );
-        
+
         emit TokenCreated(
             token,
             addr[0],

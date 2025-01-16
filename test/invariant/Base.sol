@@ -113,7 +113,8 @@ contract Base is PropertiesAsserts {
             FEE_RECIPIENT,
             HARD_CAP,
             HIGHLIGHTS_BASE_FEE,
-            COOL_DOWN_PERIOD
+            COOL_DOWN_PERIOD,
+            "0x1bee"
         );
     }
 

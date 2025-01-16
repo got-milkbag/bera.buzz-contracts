@@ -91,7 +91,7 @@ contract FeeManager is Ownable, IFeeManager {
 
             (bool success, ) = treasury.call{value: listing}("");
             if (!success) revert FeeManager_InsufficientFee();
-            
+
             emit NativeFeeReceived(listing);
         }
     }

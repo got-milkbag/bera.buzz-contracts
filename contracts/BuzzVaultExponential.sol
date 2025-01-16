@@ -163,8 +163,8 @@ contract BuzzVaultExponential is BuzzVault {
             tokenAmount,
             info.tokenBalance,
             baseBalance,
-            info.k      
-        ); 
+            info.k
+        );
 
         uint256 baseSurplus = baseBalance - info.initialBase;
         if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();

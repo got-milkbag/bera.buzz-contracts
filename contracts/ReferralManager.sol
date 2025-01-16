@@ -146,7 +146,7 @@ contract ReferralManager is Ownable, IReferralManager {
 
             uint256 directReferralAmount = amount - indirectReferralAmount;
             _referrerBalances[referrer][token] += directReferralAmount;
-            
+
             emit ReferralRewardReceived(
                 referrer,
                 token,

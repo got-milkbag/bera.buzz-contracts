@@ -165,9 +165,9 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         );
 
         if (baseAmount > 0) {
-            if ((msg.value - listingFee) > 0) {
+            uint256 remainingValue = msg.value - listingFee;
+            if (remainingValue > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
-                uint256 remainingValue = msg.value - listingFee;
                 if (remainingValue != baseAmount)
                     revert BuzzToken_BaseAmountNotEnough();
                 IBuzzVault(addr[1]).buyNative{value: remainingValue}(

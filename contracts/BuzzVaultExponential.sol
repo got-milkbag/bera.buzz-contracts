@@ -75,8 +75,10 @@ contract BuzzVaultExponential is BuzzVault {
                 baseBalance,
                 info.k
             );
-            if (amountOut > baseBalance - info.initialBase)
-                amountOut = baseBalance - info.initialBase;
+
+            uint256 finalBase = baseBalance - info.initialBase;
+            if (amountOut > finalBase)
+                amountOut = finalBase;
             amountOut -= FEE_MANAGER.quoteTradingFee(amountOut);
         }
     }
@@ -125,15 +127,16 @@ contract BuzzVaultExponential is BuzzVault {
         info.baseBalance += netBaseAmount;
         info.tokenBalance -= tokenAmountBuy;
 
+        address baseToken = info.baseToken;
         // Collect trading and referral fee
-        _collectFees(info.baseToken, msg.sender, baseAmount);
+        _collectFees(baseToken, msg.sender, baseAmount);
 
         // Transfer tokens to the buyer
         IERC20(token).safeTransfer(recipient, tokenAmountBuy);
 
         // refund user if they paid too much
         if (baseSurplus > 0) {
-            IERC20(info.baseToken).safeTransfer(recipient, baseSurplus);
+            IERC20(baseToken).safeTransfer(recipient, baseSurplus);
         }
 
         (tokenAmount, needsMigration) = (tokenAmountBuy, exceeded);

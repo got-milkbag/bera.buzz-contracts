@@ -6,7 +6,7 @@ import {BuzzVault, SafeERC20, IERC20} from "./BuzzVault.sol";
 /**
  * @title BuzzVaultExponential contract
  * @notice A contract implementing an exponential bonding curve
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract BuzzVaultExponential is BuzzVault {
     using SafeERC20 for IERC20;

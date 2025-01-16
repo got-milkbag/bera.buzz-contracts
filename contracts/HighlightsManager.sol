@@ -7,7 +7,7 @@ import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
 /**
  * @title HighlightsManager
  * @notice This contract manages the highlighting of tokens
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract HighlightsManager is Ownable, Pausable {
     /// @notice Event emitted when a token is highlighted
@@ -45,6 +45,8 @@ contract HighlightsManager is Ownable, Pausable {
     error HighlightsManager_SlotOccupied();
     /// @notice Error thrown when the token is within the cool down period
     error HighlightsManager_TokenWithinCoolDown();
+    /// @notice Error thrown when the token suffix does not match the contract suffix
+    error HighlightsManager_UnrecognisedToken();
 
     /// @notice The minimum duration allowed in seconds
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
@@ -62,6 +64,8 @@ contract HighlightsManager is Ownable, Pausable {
     uint256 public bookedUntil;
     /// @notice The treasury address where fees are sent
     address payable public treasury;
+    /// @notice The contract suffix that is checked against the token address
+    bytes public suffix;
 
     /// @notice The timestamp when a token can be highlighted again
     mapping(address => uint256) public tokenCoolDownUntil;
@@ -71,12 +75,15 @@ contract HighlightsManager is Ownable, Pausable {
      * @param _treasury The treasury address where fees are sent
      * @param _hardCap The maximum duration allowed in seconds
      * @param _baseFeePerSecond The base fee per second to charge in wei
+     * @param _coolDownPeriod The cool down period for a token in seconds
+     * @param _suffix The contract suffix that is checked against the token address
      */
     constructor(
         address payable _treasury,
         uint256 _hardCap,
         uint256 _baseFeePerSecond,
-        uint256 _coolDownPeriod
+        uint256 _coolDownPeriod,
+        bytes memory _suffix
     ) {
         if (_hardCap < MIN_DURATION)
             revert HighlightsManager_HardCapBelowMinimumDuration();
@@ -85,6 +92,7 @@ contract HighlightsManager is Ownable, Pausable {
         hardCap = _hardCap;
         baseFeePerSecond = _baseFeePerSecond;
         coolDownPeriod = _coolDownPeriod;
+        suffix = _suffix;
 
         emit TreasurySet(_treasury);
         emit HardCapSet(_hardCap);
@@ -107,14 +115,22 @@ contract HighlightsManager is Ownable, Pausable {
         if (tokenCoolDownUntil[token] > block.timestamp)
             revert HighlightsManager_TokenWithinCoolDown();
 
+        _verifySuffix(token);
+        
+        bool success;
         uint256 fee = quote(duration);
-        if (msg.value != fee) revert HighlightsManager_InsufficientFee();
+        if (msg.value < fee) revert HighlightsManager_InsufficientFee();
 
         bookedUntil = block.timestamp + duration;
         tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
         
-        (bool success, ) = treasury.call{value: fee}("");
+        (success, ) = treasury.call{value: fee}("");
         if (!success) revert HighlightsManager_EthTransferFailed();
+        
+        if (msg.value > fee) {
+            (success, ) = msg.sender.call{value: msg.value - fee}("");
+            if (!success) revert HighlightsManager_EthTransferFailed();
+        }
 
         emit TokenHighlighted(token, msg.sender, duration, bookedUntil, fee);
     }
@@ -208,5 +224,14 @@ contract HighlightsManager is Ownable, Pausable {
             fee = (baseFeePs * expThreshold) + exponentialFee;
         }
         return fee;
+    }
+
+    function _verifySuffix(address token) internal view {
+        bytes memory tokenBytes = abi.encodePacked(token);
+        for (uint256 i = 0; i < suffix.length; i++) {
+            if (suffix[i] != tokenBytes[tokenBytes.length - suffix.length + i]) {
+                revert HighlightsManager_UnrecognisedToken();
+            }
+        }
     }
 }

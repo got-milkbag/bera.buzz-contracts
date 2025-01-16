@@ -8,7 +8,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
 /**
  * @title FeeManager
  * @notice This contract collects and forwards to the treasury the different types of fees in the protocol
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract FeeManager is Ownable, IFeeManager {
     using SafeERC20 for IERC20;

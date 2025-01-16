@@ -13,7 +13,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
 /**
  * @title BuzzTokenFactory
  * @notice This contract is the factory for deploying new tokens
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     using SafeERC20 for IERC20;

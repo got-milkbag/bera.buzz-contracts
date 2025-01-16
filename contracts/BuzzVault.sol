@@ -14,7 +14,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
 /**
  * @title BuzzVault contract
  * @notice An abstract contract holding logic for bonding curve operations
- * @author nexusflip, Zacharias Mitzelos
+ * @author nexusflip, 0xMitzie
  */
 abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     using SafeERC20 for IERC20;
@@ -199,6 +199,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             address(this),
             baseAmount
         );
+
         _buyTokens(token, baseAmount, minTokensOut, affiliate, recipient, info);
     }
 
@@ -446,7 +447,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address affiliate,
         address recipient,
         TokenInfo storage info
-    ) internal { 
+    ) internal {
         if (affiliate != address(0)) _setReferral(affiliate, msg.sender);
 
         (uint256 amountBought, bool needsMigration) = _buy(

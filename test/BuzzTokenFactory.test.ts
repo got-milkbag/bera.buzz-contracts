@@ -235,7 +235,7 @@ describe("BuzzTokenFactory Tests", () => {
                         value: listingFee,
                     }
                 )
-            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidTokenName");
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_EmptyTokenName");
         });
         it("should revert if the token symbol is empty", async () => {
             await expect(
@@ -249,7 +249,35 @@ describe("BuzzTokenFactory Tests", () => {
                         value: listingFee,
                     }
                 )
-            ).to.be.revertedWithCustomError(factory, "BuzzToken_InvalidTokenSymbol");
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_EmptyTokenSymbol");
+        });
+        it("should revert if the token name is too long", async () => {
+            await expect(
+                factory.createToken(
+                    ["aaaaaaaaaaaaaaaaa", "TST"],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                    0,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenNameTooLong");
+        });
+        it("should revert if the token symbol is too long", async () => {
+            await expect(
+                factory.createToken(
+                    ["TEST", "aaaaaaaaaaa"],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                    0,
+                    formatBytes32String("12345"),
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenSymbolTooLong");
         });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";

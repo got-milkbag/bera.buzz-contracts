@@ -107,6 +107,8 @@ contract BuzzVaultExponential is BuzzVault {
             info.quoteThreshold,
             info.k
         );
+
+        if (tokenAmountBuy == 0) revert BuzzVault_QuoteAmountZero();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
 
         uint256 baseSurplus;
@@ -165,7 +167,8 @@ contract BuzzVaultExponential is BuzzVault {
         ); 
 
         uint256 baseSurplus = baseBalance - info.initialBase;
-        if (baseSurplus < baseAmountSell) baseAmountSell = baseSurplus;
+        if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();
+        if (baseAmountSell > baseSurplus) baseAmountSell = baseSurplus;
         if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
 
         // Update balances

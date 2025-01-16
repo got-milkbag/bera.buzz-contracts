@@ -187,6 +187,9 @@ describe("BuzzVaultExponential Tests", () => {
             });
             await expect(expVault.quote(token.address, ethers.utils.parseEther("1"), true)).to.be.revertedWithCustomError(expVault, "BuzzVault_BexListed");
         });
+        it("should revert if quote amount is 0", async () => {
+            await expect(expVault.quote(token.address, BigNumber.from("1"), false)).to.be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
+        });
         it("should return the quote for a given amount of tokens (buy)", async () => {
             const amount = ethers.utils.parseEther("1");
 

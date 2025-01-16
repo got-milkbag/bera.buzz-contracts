@@ -135,6 +135,7 @@ contract BuzzProperties is Base {
         require(success);
     }*/
 
+    /*
     function claimReferralReward(uint256 randToken) public {
         User user = users[randToken % users.length];
 
@@ -172,7 +173,7 @@ contract BuzzProperties is Base {
             )
         );
         require(success);
-    }
+    }*/
 
     /*
     function highlightsQuote(uint256 randDuration) public {

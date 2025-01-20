@@ -11,7 +11,6 @@ import {IBexLiquidityManager} from "./interfaces/IBexLiquidityManager.sol";
 /**
  * @title BexLiquidityManager
  * @notice This contract migrated bonding curve liquidity to BEX
- * @author nexusflip, Zacharias Mitzelos
  * @author nexusflip, 0xMitzie
  */
 contract BexLiquidityManager is Ownable, IBexLiquidityManager {

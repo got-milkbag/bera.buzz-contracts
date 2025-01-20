@@ -9,7 +9,7 @@
   8 |     | /**
   9 |     |  * @title BuzzToken
  10 |     |  * @notice This contract is the ERC20 token wrapper for bera.buzz
- 11 |     |  * @author nexusflip, Zacharias Mitzelos
+ 11 |     |  * @author nexusflip, 0xMitzie
  12 |     |  */
  13 | *   | contract BuzzToken is ERC20, AccessControl, IBuzzToken {
  14 |     |     /// @dev access control minter role.
@@ -67,7 +67,7 @@
   13 |     | /**
   14 |     |  * @title BuzzTokenFactory
   15 |     |  * @notice This contract is the factory for deploying new tokens
-  16 |     |  * @author nexusflip, Zacharias Mitzelos
+  16 |     |  * @author nexusflip, 0xMitzie
   17 |     |  */
   18 | *   | contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
   19 |     |     using SafeERC20 for IERC20;
@@ -389,7 +389,7 @@
   14 |     | /**
   15 |     |  * @title BuzzVault contract
   16 |     |  * @notice An abstract contract holding logic for bonding curve operations
-  17 |     |  * @author nexusflip, Zacharias Mitzelos
+  17 |     |  * @author nexusflip, 0xMitzie
   18 |     |  */
   19 |     | abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
   20 |     |     using SafeERC20 for IERC20;
@@ -903,7 +903,7 @@
    6 |     | /**
    7 |     |  * @title BuzzVaultExponential contract
    8 |     |  * @notice A contract implementing an exponential bonding curve
-   9 |     |  * @author nexusflip, Zacharias Mitzelos
+   9 |     |  * @author nexusflip, 0xMitzie
   10 |     |  */
   11 | *   | contract BuzzVaultExponential is BuzzVault {
   12 |     |     using SafeERC20 for IERC20;
@@ -1160,7 +1160,7 @@
    8 |     | /**
    9 |     |  * @title FeeManager
   10 |     |  * @notice This contract collects and forwards to the treasury the different types of fees in the protocol
-  11 |     |  * @author nexusflip, Zacharias Mitzelos
+  11 |     |  * @author nexusflip, 0xMitzie
   12 |     |  */
   13 | *   | contract FeeManager is Ownable, IFeeManager {
   14 |     |     using SafeERC20 for IERC20;
@@ -1353,7 +1353,7 @@
    7 |     | /**
    8 |     |  * @title HighlightsManager
    9 |     |  * @notice This contract manages the highlighting of tokens
-  10 |     |  * @author nexusflip, Zacharias Mitzelos
+  10 |     |  * @author nexusflip, 0xMitzie
   11 |     |  */
   12 | *   | contract HighlightsManager is Ownable, Pausable {
   13 |     |     /// @notice Event emitted when a token is highlighted
@@ -1569,7 +1569,7 @@
    8 |     | /**
    9 |     |  * @title ReferralManager
   10 |     |  * @notice This contract manages the referral system for the protocol
-  11 |     |  * @author nexusflip, Zacharias Mitzelos
+  11 |     |  * @author nexusflip, 0xMitzie
   12 |     |  */
   13 | *   | contract ReferralManager is Ownable, IReferralManager {
   14 |     |     using SafeERC20 for IERC20;

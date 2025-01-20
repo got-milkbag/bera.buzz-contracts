@@ -294,8 +294,30 @@ describe("BuzzVaultExponential Tests", () => {
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_QuoteAmountZero");
         });
         it("should revert if base token is not WBera", async () => {
+            // whitelist token
+            await factory.setAllowedBaseToken(token.address, ethers.utils.parseEther("0.001"), ethers.utils.parseEther("0.1"), true);
+
+             // Create a token
+            const newTx = await factory.createToken(
+                ["TEST", "TST"],
+                [token.address, expVault.address],
+                [ethers.utils.parseEther("100"), ethers.utils.parseEther("1000")],
+                0,
+                formatBytes32String("123456"),
+                {
+                    value: listingFee,
+                }
+            );
+            const newReceipt = await newTx.wait();
+            const newTokenCreatedEvent = newReceipt.events?.find((x: any) => x.event === "TokenCreated");
+
+            // Get token contract
+            const newToken = await ethers.getContractAt("BuzzToken", newTokenCreatedEvent?.args?.token);
+
+            await factory.setAllowedBaseToken(token.address, ethers.utils.parseEther("0.001"), ethers.utils.parseEther("0.1"), true);
+
             await expect(
-                expVault.buyNative(ownerSigner.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, user1Signer.address, {
+                expVault.buyNative(newToken.address, ethers.utils.parseEther("1"), ethers.constants.AddressZero, user1Signer.address, {
                     value: ethers.utils.parseEther("0.1"),
                 })
             ).to.be.revertedWithCustomError(expVault, "BuzzVault_NativeTradeUnsupported");
@@ -543,7 +565,7 @@ describe("BuzzVaultExponential Tests", () => {
             await token.connect(user1Signer).approve(expVault.address, await token.balanceOf(user1Signer.address));
         });
         it("should revert if the token amount is zero", async () => {
-            await expect(expVault.sell(ownerSigner.address, 0, 0, ethers.constants.AddressZero,  user1Signer.address, false)).to.be.revertedWithCustomError(
+            await expect(expVault.sell(ownerSigner.address, 0, 0, ethers.constants.AddressZero, user1Signer.address, false)).to.be.revertedWithCustomError(
                 expVault,
                 "BuzzVault_QuoteAmountZero"
             );

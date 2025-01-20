@@ -114,19 +114,23 @@ contract HighlightsManager is Ownable, Pausable {
             revert HighlightsManager_SlotOccupied();
         if (tokenCoolDownUntil[token] > block.timestamp)
             revert HighlightsManager_TokenWithinCoolDown();
+
         _verifySuffix(token);
+
         bool success;
         uint256 fee = quote(duration);
         if (msg.value < fee) revert HighlightsManager_InsufficientFee();
+
+        bookedUntil = block.timestamp + duration;
+        tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
+
+        (success, ) = treasury.call{value: fee}("");
+        if (!success) revert HighlightsManager_EthTransferFailed();
+
         if (msg.value > fee) {
             (success, ) = msg.sender.call{value: msg.value - fee}("");
             if (!success) revert HighlightsManager_EthTransferFailed();
         }
-
-        bookedUntil = block.timestamp + duration;
-        tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
-        (success, ) = treasury.call{value: fee}("");
-        if (!success) revert HighlightsManager_EthTransferFailed();
 
         emit TokenHighlighted(token, msg.sender, duration, bookedUntil, fee);
     }
@@ -224,9 +228,18 @@ contract HighlightsManager is Ownable, Pausable {
 
     function _verifySuffix(address token) internal view {
         bytes memory tokenBytes = abi.encodePacked(token);
-        for (uint256 i = 0; i < suffix.length; i++) {
-            if (suffix[i] != tokenBytes[tokenBytes.length - suffix.length + i]) {
+        bytes memory cachedSuffix = suffix;
+
+        uint256 suffixLength = cachedSuffix.length;
+        uint256 tokenLength = tokenBytes.length;
+
+        for (uint256 i; i < suffixLength; ) {
+            if (cachedSuffix[i] != tokenBytes[tokenLength - suffixLength + i]) {
                 revert HighlightsManager_UnrecognisedToken();
+            }
+
+            unchecked {
+                ++i;
             }
         }
     }

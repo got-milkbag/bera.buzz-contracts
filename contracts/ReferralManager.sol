@@ -92,11 +92,12 @@ contract ReferralManager is Ownable, IReferralManager {
         indirectRefFeeBps = _indirectRefFeeBps;
         validUntil = _validUntil;
 
-        if (tokens.length > 0) {
-            if (tokens.length != _payoutThresholds.length)
+        uint256 tokensLength = tokens.length;
+        if (tokensLength > 0) {
+            if (tokensLength != _payoutThresholds.length)
                 revert ReferralManager_ArrayLengthMismatch();
 
-            for (uint256 i = 0; i < tokens.length; ) {
+            for (uint256 i = 0; i < tokensLength; ) {
                 payoutThreshold[tokens[i]] = _payoutThresholds[i];
                 emit PayoutThresholdSet(tokens[i], _payoutThresholds[i]);
 
@@ -135,6 +136,7 @@ contract ReferralManager is Ownable, IReferralManager {
             _referrerBalances[indirectReferral[user]][
                 token
             ] += indirectReferralAmount;
+
             emit ReferralRewardReceived(
                 indirectReferral[user],
                 token,
@@ -144,6 +146,7 @@ contract ReferralManager is Ownable, IReferralManager {
 
             uint256 directReferralAmount = amount - indirectReferralAmount;
             _referrerBalances[referrer][token] += directReferralAmount;
+
             emit ReferralRewardReceived(
                 referrer,
                 token,
@@ -282,10 +285,11 @@ contract ReferralManager is Ownable, IReferralManager {
         address[] calldata tokens,
         uint256[] calldata thresholds
     ) external onlyOwner {
-        if (tokens.length != thresholds.length)
+        uint256 tokensLength = tokens.length;
+        if (tokensLength != thresholds.length)
             revert ReferralManager_ArrayLengthMismatch();
 
-        for (uint256 i; i < tokens.length; ) {
+        for (uint256 i; i < tokensLength; ) {
             if (tokens[i] == address(0)) revert ReferralManager_AddressZero();
 
             payoutThreshold[tokens[i]] = thresholds[i];

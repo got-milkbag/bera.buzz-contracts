@@ -60,9 +60,13 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     /// @notice Error code emitted when the final reserves are invalid
     error BuzzToken_InvalidFinalReserves();
     /// @notice Error code emitted when the token name is invalid
-    error BuzzToken_InvalidTokenName();
+    error BuzzToken_EmptyTokenName();
     /// @notice Error code emitted when the token symbol is invalid
-    error BuzzToken_InvalidTokenSymbol();
+    error BuzzToken_EmptyTokenSymbol();
+    /// @notice Error code emitted when the token name is too long
+    error BuzzToken_TokenNameTooLong();
+    /// @notice Error code emitted when the token symbol is too long
+    error BuzzToken_TokenSymbolTooLong();
 
     /**
      * @notice Struct containing the minimum reserve and raise amounts for a base token
@@ -130,9 +134,13 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         if (!allowTokenCreation) revert BuzzToken_TokenCreationDisabled();
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
-        if (bytes(metadata[0]).length == 0) revert BuzzToken_InvalidTokenName();
+        if (bytes(metadata[0]).length == 0) revert BuzzToken_EmptyTokenName();
         if (bytes(metadata[1]).length == 0)
-            revert BuzzToken_InvalidTokenSymbol();
+            revert BuzzToken_EmptyTokenSymbol();
+        if (bytes(metadata[0]).length > 16)
+            revert BuzzToken_TokenNameTooLong();
+        if (bytes(metadata[1]).length > 10)
+            revert BuzzToken_TokenSymbolTooLong();
         if (!whitelistedBaseTokens[addr[0]])
             revert BuzzToken_BaseTokenNotWhitelisted();
         if (raiseData[0] < raiseAmounts[addr[0]].minReserveAmount)
@@ -154,6 +162,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             salt,
             raiseData
         );
+
         emit TokenCreated(
             token,
             addr[0],
@@ -164,14 +173,14 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         );
 
         if (baseAmount > 0) {
-            if ((msg.value - listingFee) > 0) {
+            uint256 remainingValue = msg.value - listingFee;
+            if (remainingValue > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
-                uint256 remainingValue = msg.value - listingFee;
                 if (remainingValue != baseAmount)
                     revert BuzzToken_BaseAmountNotEnough();
                 IBuzzVault(addr[1]).buyNative{value: remainingValue}(
                     token,
-                    1e15,
+                    0,
                     address(0),
                     msg.sender
                 );
@@ -186,7 +195,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                 IBuzzVault(addr[1]).buy(
                     token,
                     baseAmount,
-                    1e15,
+                    0,
                     address(0),
                     msg.sender
                 );
@@ -217,7 +226,6 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         bool allowTokenCreation_
     ) external onlyRole(OWNER_ROLE) {
         allowTokenCreation = allowTokenCreation_;
-
         emit TokenCreationSet(allowTokenCreation);
     }
 

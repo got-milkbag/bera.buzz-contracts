@@ -75,8 +75,10 @@ contract BuzzVaultExponential is BuzzVault {
                 baseBalance,
                 info.k
             );
-            if (amountOut > baseBalance - info.initialBase)
-                amountOut = baseBalance - info.initialBase;
+
+            uint256 finalBase = baseBalance - info.initialBase;
+            if (amountOut > finalBase)
+                amountOut = finalBase;
             amountOut -= FEE_MANAGER.quoteTradingFee(amountOut);
         }
     }
@@ -107,13 +109,16 @@ contract BuzzVaultExponential is BuzzVault {
             info.quoteThreshold,
             info.k
         );
+
+        if (tokenAmountBuy == 0) revert BuzzVault_QuoteAmountZero();
         if (tokenAmountBuy < minTokensOut) revert BuzzVault_SlippageExceeded();
 
         uint256 baseSurplus;
         if (exceeded) {
             uint256 basePlusNet = baseBalance + netBaseAmount;
-            if (basePlusNet > info.baseThreshold) {
-                baseSurplus = basePlusNet - info.baseThreshold;
+            uint256 baseThreshold = info.baseThreshold;
+            if (basePlusNet > baseThreshold) {
+                baseSurplus = basePlusNet - baseThreshold;
                 netBaseAmount -= baseSurplus;
             }
         }
@@ -159,14 +164,14 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 baseAmountSell = _calculateSellPrice(
             tokenAmount,
             info.tokenBalance,
-            info.baseBalance,
+            baseBalance,
             info.k
         );
 
-        if (baseBalance - info.initialBase < baseAmountSell)
-            revert BuzzVault_InvalidReserves();
-        if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
+        uint256 baseSurplus = baseBalance - info.initialBase;
         if (baseAmountSell == 0) revert BuzzVault_QuoteAmountZero();
+        if (baseAmountSell > baseSurplus) baseAmountSell = baseSurplus;
+        if (baseAmountSell < minAmountOut) revert BuzzVault_SlippageExceeded();
 
         // Update balances
         info.baseBalance -= baseAmountSell;

@@ -285,10 +285,9 @@ contract ReferralManager is Ownable, IReferralManager {
         address[] calldata tokens,
         uint256[] calldata thresholds
     ) external onlyOwner {
-        if (tokens.length != thresholds.length)
-            revert ReferralManager_ArrayLengthMismatch();
-
         uint256 tokensLength = tokens.length;
+        if (tokensLength != thresholds.length)
+            revert ReferralManager_ArrayLengthMismatch();
 
         for (uint256 i; i < tokensLength; ) {
             if (tokens[i] == address(0)) revert ReferralManager_AddressZero();

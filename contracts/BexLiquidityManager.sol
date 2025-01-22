@@ -42,6 +42,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
     /// @notice The pool fee tier
     uint256 public constant POOL_FEE = 10000000000000000;
+    /// @notice The 50/50 weight
+    uint256 public constant WEIGHT_50_50 = 500000000000000000;
 
     /// @notice The WeightedPoolFactory contract
     IWeightedPoolTokensFactory public immutable POOL_FACTORY;
@@ -103,12 +105,12 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         tokens[1] = IERC20(quote);
 
         uint256[] memory weights = new uint256[](2);
-        weights[0] = 500000000000000000;
-        weights[1] = 500000000000000000;
+        weights[0] = WEIGHT_50_50;
+        weights[1] = weights[0];
 
         IRateProvider[] memory rateProviders = new IRateProvider[](2);
         rateProviders[0] = IRateProvider(address(0));
-        rateProviders[1] = IRateProvider(address(0));
+        rateProviders[1] = rateProviders[0];
 
         uint256[] memory amounts = new uint256[](2);
         amounts[0] = baseAmount;

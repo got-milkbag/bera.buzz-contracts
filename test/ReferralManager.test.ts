@@ -30,7 +30,8 @@ describe("ReferralManager Tests", () => {
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.02");
     const payoutThreshold = 0;
-    const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
+    const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+    const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -52,7 +53,7 @@ describe("ReferralManager Tests", () => {
 
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
-        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(bexWeightedPoolFactory, bexVault);
         await bexLiquidityManager.addVaults([ownerSigner.address]);
 
         //Deploy WBera Mock

@@ -4,7 +4,8 @@ import { Contract } from "ethers";
 import { expect } from "chai";
 
 describe("BexLiquidityManager Tests", () => {
-    const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
+    const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+    const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
@@ -22,7 +23,7 @@ describe("BexLiquidityManager Tests", () => {
 
         // Deploy BexLiquidityManager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
-        bexLiquidityManager = await BexLiquidityManager.deploy(crocSwapDex);
+        bexLiquidityManager = await BexLiquidityManager.deploy(bexWeightedPoolFactory, bexVault);
         await bexLiquidityManager.addVaults([beraWhale.address]);
 
         // Deploy token

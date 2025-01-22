@@ -1,12 +1,16 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
-import {SqrtMath} from "./libraries/SqrtMath.sol";
-import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
-import {ICrocSwapDex} from "./interfaces/bex/ICrocSwapDex.sol";
 import {IBexLiquidityManager} from "./interfaces/IBexLiquidityManager.sol";
+import {IWeightedPoolTokensFactory} from "./interfaces/bex/IWeightedPoolTokensFactory.sol";
+import {IWeightedPoolTokens} from "./interfaces/bex/IWeightedPoolTokens.sol";
+import {IVault} from "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
+import {IAsset} from "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
+import {IRateProvider} from "./interfaces/bex/IRateProvider.sol";
 
 /**
  * @title BexLiquidityManager
@@ -19,9 +23,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     /// @notice Event emitted when liquidity is migrated to BEX
     event BexListed(
         address indexed token,
-        uint256 beraAmount,
-        uint256 initPrice,
-        address lpConduit
+        uint256 amount,
+        uint256 baseAmount
     );
     /// @notice Event emitted when a vault is added to the whitelist
     event VaultAdded(address indexed vault);
@@ -35,26 +38,25 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     /// @notice Error emitted when the vault is not in the whitelist
     error BexLiquidityManager_VaultNotInWhitelist();
 
-    /// @notice The address of the CrocSwap DEX
-    ICrocSwapDex private immutable CROC_SWAP_DEX;
+    /// @notice The pool fee tier
+    uint256 public constant POOL_FEE = 10000000000000000;
 
-    /// @notice The pool index to use when creating a pool (1% fee)
-    uint256 private constant POOL_IDX = 36002;
-    /// @notice The amount of tokens to burn when adding liquidity
-    uint256 private constant BURN_AMOUNT = 1e7;
-    /// @notice The init code hash of the LP conduit
-    bytes private constant LP_CONDUIT_INIT_CODE_HASH =
-        hex"f8fb854b80d71035cc709012ce23accad9a804fcf7b90ac0c663e12c58a9c446";
-
-    /// @notice The Vault address whitelist
+    /// @notice The WeightedPoolFactory contract
+    IWeightedPoolTokensFactory public immutable POOL_FACTORY;
+    /// @notice The Balancer Vault interface
+    IVault public immutable VAULT;
+    
+    /// @notice The Vault address whitelist 
     mapping(address => bool) private vaults;
 
     /**
      * @notice Constructor a new BexLiquidityManager
-     * @param _crocSwapDex The address of the CrocSwap DEX
+     * @param _weightedPoolFactory The address of the WeightedPoolFactory contract
+     * @param _vault The address of the Balancer Vault contract
      */
-    constructor(address _crocSwapDex) {
-        CROC_SWAP_DEX = ICrocSwapDex(_crocSwapDex);
+    constructor(address _weightedPoolFactory, address _vault) {
+        POOL_FACTORY = IWeightedPoolTokensFactory(_weightedPoolFactory);
+        VAULT = IVault(_vault);
     }
 
     /**
@@ -73,8 +75,6 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     ) external {
         if (!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
-        address crocSwapAddress = address(CROC_SWAP_DEX);
-
         // Transfer and approve tokens
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);
         IERC20(baseToken).safeTransferFrom(
@@ -82,66 +82,77 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             address(this),
             baseAmount
         );
-        IERC20(token).safeApprove(crocSwapAddress, amount);
-        IERC20(baseToken).safeApprove(crocSwapAddress, baseAmount);
+        IERC20(token).safeApprove(address(VAULT), amount);
+        IERC20(baseToken).safeApprove(address(VAULT), baseAmount);
 
         address base;
         address quote;
-        uint8 liqCode;
 
         if (baseToken < token) {
             base = baseToken;
             quote = token;
-            liqCode = 31; // Fixed liquidity based on base tokens
         } else {
             base = token;
             quote = baseToken;
-            liqCode = 32; // Fixed liquidity based on quote tokens
         }
 
-        // Price should be in quote tokens per base token
-        uint128 _initPrice = SqrtMath.encodePriceSqrt(amount, baseAmount);
-        uint128 liquidity = uint128(baseAmount);
+        IERC20[] memory tokens = new IERC20[](2);
+        tokens[0] = IERC20(base);
+        tokens[1] = IERC20(quote);
 
-        address lpConduit = _predictConduitAddress(base, quote);
+        uint256[] memory weights = new uint256[](2);
+        weights[0] = 500000000000000000;
+        weights[1] = 500000000000000000;
 
-        // Create pool
-        // initPool subcode, base, quote, poolIdx, price ins q64.64
-        bytes memory cmd1 = abi.encode(71, base, quote, POOL_IDX, _initPrice);
+        IRateProvider[] memory rateProviders = new IRateProvider[](2);
+        rateProviders[0] = IRateProvider(address(0));
+        rateProviders[1] = IRateProvider(address(0));
 
-        // Add liquidity
-        // liquidity subcode (fixed in base tokens, fill-range liquidity)
-        // liq subcode, base, quote, poolIdx, bid tick, ask tick, liquidity, lower limit, upper limit, flags, lpConduit
-        // because Bex burns a small insignificant amount of tokens, we reduce the liquidity by BURN_AMOUNT
-        // TBA: lp tokens will be sent to Berabator if whitelisted, rest is burned
-        bytes memory cmd2 = abi.encode(
-            liqCode,
-            base,
-            quote,
-            POOL_IDX,
-            0,
-            0,
-            liquidity - BURN_AMOUNT,
-            _initPrice,
-            _initPrice,
-            0,
-            lpConduit
+        uint256[] memory amounts = new uint256[](2);
+        amounts[0] = baseAmount;
+        amounts[1] = amount;
+
+        IAsset[] memory assets = new IAsset[](2);
+        assets[0] = IAsset(base);
+        assets[1] = IAsset(quote);
+
+        // Create the pool
+        address pool = POOL_FACTORY.create(
+            string(abi.encodePacked("BEX 50 ", ERC20(base).symbol(), " 50 ", ERC20(quote).symbol())),
+            string(abi.encodePacked("BEX-50", ERC20(base).symbol(), "-50", ERC20(quote).symbol())),
+            tokens,
+            weights,
+            rateProviders,
+            POOL_FEE,
+            address(this),
+            keccak256(abi.encodePacked(base, quote))
         );
 
-        // Encode commands into a multipath call
-        bytes memory encodedCmd = abi.encode(2, 3, cmd1, 128, cmd2);
+        bytes32 poolId = IWeightedPoolTokens(pool).getPoolId();
 
-        // Execute multipath call
-        CROC_SWAP_DEX.userCmd(6, encodedCmd);
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest(
+            assets,
+            amounts,
+            abi.encode(amounts),
+            false
+        );
+
+        // Deposit in the pool
+        VAULT.joinPool(
+            poolId,
+            pool,
+            address(this),
+            request
+        );
 
         // burn LP tokens - will use the conduit in the future for partnerships
-        IERC20(lpConduit).safeTransfer(
+        IERC20(pool).safeTransfer(
             address(0xdead),
-            IERC20(lpConduit).balanceOf(address(this))
+            IERC20(pool).balanceOf(address(this))
         );
 
         // Emit event
-        emit BexListed(token, baseAmount, _initPrice, lpConduit);
+        emit BexListed(pool, amount, baseAmount);
     }
 
     /**
@@ -150,16 +161,12 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function addVaults(address[] memory vault) external onlyOwner {
         uint256 vaultLength = vault.length;
-        for (uint256 i; i < vaultLength; ) {
+        for (uint256 i; i < vaultLength; ++i) {
             if (vaults[vault[i]])
                 revert BexLiquidityManager_VaultAlreadyInWhitelist();
 
             vaults[vault[i]] = true;
             emit VaultAdded(vault[i]);
-
-            unchecked {
-                ++i;
-            }
         }
     }
 
@@ -169,43 +176,12 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function removeVaults(address[] calldata vault) external onlyOwner {
         uint256 vaultLength = vault.length;
-        for (uint256 i; i < vaultLength; ) {
+        for (uint256 i; i < vaultLength; ++i) {
             if (!vaults[vault[i]])
                 revert BexLiquidityManager_VaultNotInWhitelist();
 
             vaults[vault[i]] = false;
             emit VaultRemoved(vault[i]);
-
-            unchecked {
-                ++i;
-            }
         }
-    }
-
-    /**
-     * @notice Predict the address of the LP conduit for a given pair of tokens
-     * @param base The address of the base token
-     * @param quote The address of the quote token
-     * @return lpConduit The address of the LP conduit
-     */
-    function _predictConduitAddress(
-        address base,
-        address quote
-    ) internal view returns (address lpConduit) {
-        bytes32 salt = keccak256(abi.encodePacked(base, quote));
-        lpConduit = address(
-            uint160(
-                uint256(
-                    keccak256(
-                        abi.encodePacked(
-                            bytes1(0xff),
-                            address(CROC_SWAP_DEX),
-                            salt,
-                            LP_CONDUIT_INIT_CODE_HASH
-                        )
-                    )
-                )
-            )
-        );
     }
 }

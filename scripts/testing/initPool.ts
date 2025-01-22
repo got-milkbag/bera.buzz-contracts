@@ -3,8 +3,8 @@ const hre = require("hardhat");
 import {BigNumber, Contract} from "ethers";
 
 let bexLiquidityManager: Contract;
-const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
-const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
 
 async function main() {
     //TODO: Update script

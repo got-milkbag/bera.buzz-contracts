@@ -16,7 +16,6 @@ describe("BuzzTokenFactory Tests", () => {
     let token: Contract;
     let referralManager: Contract;
     let expVault: Contract;
-    let bexLpToken: Contract;
     let create3Factory: Contract;
     let bexLiquidityManager: Contract;
     let treasuryBalanceBefore: BigNumber;
@@ -28,8 +27,8 @@ describe("BuzzTokenFactory Tests", () => {
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
-    const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
-    const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+    const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+    const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -40,10 +39,6 @@ describe("BuzzTokenFactory Tests", () => {
         // Deploy mock create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
         create3Factory = await Create3Factory.connect(ownerSigner).deploy();
-
-        // Deploy mock BexLpToken
-        const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
-        bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
 
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");

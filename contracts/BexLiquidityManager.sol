@@ -6,8 +6,8 @@ import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {SafeERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {IBexLiquidityManager} from "./interfaces/IBexLiquidityManager.sol";
-import {IWeightedPoolTokensFactory} from "./interfaces/bex/IWeightedPoolTokensFactory.sol";
-import {IWeightedPoolTokens} from "./interfaces/bex/IWeightedPoolTokens.sol";
+import {IWeightedPoolFactory} from "./interfaces/bex/IWeightedPoolFactory.sol";
+import {IWeightedPool} from "./interfaces/bex/IWeightedPool.sol";
 import {IVault} from "@balancer-labs/v2-interfaces/contracts/vault/IVault.sol";
 import {IAsset} from "@balancer-labs/v2-interfaces/contracts/vault/IAsset.sol";
 import {IRateProvider} from "./interfaces/bex/IRateProvider.sol";
@@ -40,13 +40,13 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     /// @notice Error emitted when the vault is not in the whitelist
     error BexLiquidityManager_VaultNotInWhitelist();
 
-    /// @notice The pool fee tier
+    /// @notice The pool fee tier (1%)
     uint256 public constant POOL_FEE = 10000000000000000;
     /// @notice The 50/50 weight
     uint256 public constant WEIGHT_50_50 = 500000000000000000;
 
     /// @notice The WeightedPoolFactory contract
-    IWeightedPoolTokensFactory public immutable POOL_FACTORY;
+    IWeightedPoolFactory public immutable POOL_FACTORY;
     /// @notice The Balancer Vault interface
     IVault public immutable VAULT;
     
@@ -59,7 +59,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param _vault The address of the Balancer Vault contract
      */
     constructor(address _weightedPoolFactory, address _vault) {
-        POOL_FACTORY = IWeightedPoolTokensFactory(_weightedPoolFactory);
+        POOL_FACTORY = IWeightedPoolFactory(_weightedPoolFactory);
         VAULT = IVault(_vault);
     }
 
@@ -88,6 +88,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         );
         IERC20(token).safeApprove(address(VAULT), amount);
         IERC20(baseToken).safeApprove(address(VAULT), baseAmount);
+        IERC20(token).safeApprove(address(POOL_FACTORY), amount);
+        IERC20(baseToken).safeApprove(address(POOL_FACTORY), baseAmount);
 
         address base;
         address quote;
@@ -100,51 +102,38 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             quote = baseToken;
         }
 
-        IERC20[] memory tokens = new IERC20[](2);
-        tokens[0] = IERC20(base);
-        tokens[1] = IERC20(quote);
-
-        uint256[] memory weights = new uint256[](2);
-        weights[0] = WEIGHT_50_50;
-        weights[1] = weights[0];
-
-        IRateProvider[] memory rateProviders = new IRateProvider[](2);
-        rateProviders[0] = IRateProvider(address(0));
-        rateProviders[1] = rateProviders[0];
-
-        uint256[] memory amounts = new uint256[](2);
-        amounts[0] = baseAmount;
-        amounts[1] = amount;
-
-        IAsset[] memory assets = new IAsset[](2);
-        assets[0] = IAsset(base);
-        assets[1] = IAsset(quote);
+        // Get memory params
+        (
+            IERC20[] memory tokens,
+            uint256[] memory weights,
+            IRateProvider[] memory rateProviders,
+            uint256[] memory amounts,
+            IAsset[] memory assets
+        ) = _getMemoryParams(token, baseToken, baseAmount, amount);
 
         // Create the pool
         address pool = POOL_FACTORY.create(
-            string(abi.encodePacked("BEX 50 ", ERC20(base).symbol(), " 50 ", ERC20(quote).symbol())),
-            string(abi.encodePacked("BEX-50", ERC20(base).symbol(), "-50", ERC20(quote).symbol())),
+            string(abi.encodePacked("BEX 50 ", ERC20(quote).symbol(), " 50 ", ERC20(base).symbol())),
+            string(abi.encodePacked("BEX-50", ERC20(quote).symbol(), "-50", ERC20(base).symbol())),
             tokens,
             weights,
             rateProviders,
             POOL_FEE,
             address(this),
-            keccak256(abi.encodePacked(base, quote))
+            keccak256(bytes(ERC20(quote).symbol()))
         );
-
-        bytes32 poolId = IWeightedPoolTokens(pool).getPoolId();
 
         IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest(
             assets,
             amounts,
-            abi.encode(amounts),
+            abi.encode(0, amounts),
             false
         );
 
         // Deposit in the pool
         VAULT.joinPool(
-            poolId,
-            pool,
+            IWeightedPool(pool).getPoolId(),
+            address(this),
             address(this),
             request
         );
@@ -187,5 +176,54 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             vaults[vault[i]] = false;
             emit VaultRemoved(vault[i]);
         }
+    }
+
+    /**
+     * @notice Get the memory params
+     * @param token The address of the token to add
+     * @param baseToken The address of the base token
+     * @param baseAmount The amount of base tokens to add
+     * @param amount The amount of tokens to add
+     * @return tokens The array of IERC20 tokens
+     * @return weights The array of weights
+     * @return rateProviders The array of rate providers
+     * @return amounts The array of amounts
+     * @return assets The array of IAssets
+     */
+    function _getMemoryParams(
+        address token,
+        address baseToken,
+        uint256 baseAmount,
+        uint256 amount
+    )
+        private
+        pure
+        returns (
+            IERC20[] memory tokens,
+            uint256[] memory weights,
+            IRateProvider[] memory rateProviders,
+            uint256[] memory amounts,
+            IAsset[] memory assets
+        )
+    {
+        tokens = new IERC20[](2);
+        tokens[0] = IERC20(token);
+        tokens[1] = IERC20(baseToken);
+
+        weights = new uint256[](2);
+        weights[0] = WEIGHT_50_50;
+        weights[1] = weights[0];
+
+        rateProviders = new IRateProvider[](2);
+        rateProviders[0] = IRateProvider(address(0));
+        rateProviders[1] = rateProviders[0];
+
+        amounts = new uint256[](2);
+        amounts[0] = amount;
+        amounts[1] = baseAmount;
+
+        assets = new IAsset[](2);
+        assets[0] = IAsset(token);
+        assets[1] = IAsset(baseToken);
     }
 }

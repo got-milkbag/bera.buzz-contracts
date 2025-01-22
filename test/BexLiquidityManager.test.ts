@@ -5,8 +5,8 @@ import { expect } from "chai";
 import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("BexLiquidityManager Tests", () => {
-    const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
-    const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+    const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+    const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
 
     let ownerSigner: SignerWithAddress;
     let user1Signer: SignerWithAddress;
@@ -19,8 +19,9 @@ describe("BexLiquidityManager Tests", () => {
         [ownerSigner, user1Signer] = await ethers.getSigners();
         beraWhale = await ethers.getImpersonatedSigner("0x8a73D1380345942F1cb32541F1b19C40D8e6C94B");
 
-        // Load WBERA contract
-        wbera = await ethers.getContractAt("WBERA", "0x6969696969696969696969696969696969696969");
+        //Deploy WBera Mock
+        const WBera = await ethers.getContractFactory("WBERA");
+        wbera = await WBera.connect(ownerSigner).deploy();
 
         // Deploy BexLiquidityManager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
@@ -50,9 +51,9 @@ describe("BexLiquidityManager Tests", () => {
             // NOTE: baseAmount (2nd argument) is equivelant of 69k USD if 1 Bera = 30 USD
             expect(await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"))
+                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000")))
             .to.emit(bexLiquidityManager, "BexListed")
-            .withArgs(anyValue, wbera.address, token.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000")));
+            .withArgs(anyValue, wbera.address, token.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"));
             console.log("Bera balance in pool after transition to Bex: ", await ethers.provider.getBalance(bexLiquidityManager.address));
             console.log("WBERA balance in pool after transition to Bex: ", await wbera.balanceOf(bexLiquidityManager.address));
             console.log("Token balance in pool after transition to Bex: ", await token.balanceOf(bexLiquidityManager.address));

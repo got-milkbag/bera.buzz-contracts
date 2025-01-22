@@ -4,7 +4,7 @@ pragma solidity >=0.7.0 <0.9.0;
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
 import {IRateProvider} from "./IRateProvider.sol";
 
-interface IWeightedPoolTokensFactory {
+interface IWeightedPoolFactory {
     function create(
         string memory name,
         string memory symbol,

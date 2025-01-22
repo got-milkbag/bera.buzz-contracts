@@ -4,8 +4,8 @@ import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTok
 
 //CONFIG - bArtio
 const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
-const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
 const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
 const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
 const wberaAddress = "0x6969696969696969696969696969696969696969";

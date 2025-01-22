@@ -32,14 +32,13 @@ describe("BuzzVaultExponential Tests", () => {
     let bexLiquidityManager: Contract;
     let wBera: Contract;
     let feeManager: Contract;
-    let totalMintedSupply: BigNumber;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
-    const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
-    const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
+    const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+    const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -88,8 +87,6 @@ describe("BuzzVaultExponential Tests", () => {
         );
 
         await bexLiquidityManager.connect(ownerSigner).addVaults([expVault.address]);
-
-        totalMintedSupply = ethers.utils.parseEther("1000000000");
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);

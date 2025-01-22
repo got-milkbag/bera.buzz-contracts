@@ -50,10 +50,6 @@ describe("BuzzVaultLinear Tests", () => {
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
         create3Factory = await Create3Factory.connect(ownerSigner).deploy();
 
-        // Deploy mock BexLpToken
-        const BexLpToken = await ethers.getContractFactory("BexLPTokenMock");
-        bexLpToken = await BexLpToken.connect(ownerSigner).deploy(36000, ethers.constants.AddressZero, ethers.constants.AddressZero);
-
         //Deploy mock ICrocQuery
         const ICrocQuery = await ethers.getContractFactory("CrocQueryMock");
         crocQuery = await ICrocQuery.connect(ownerSigner).deploy(ethers.BigNumber.from("83238796252293901415"));

@@ -19,7 +19,7 @@ describe("BexLiquidityManager Tests", () => {
         beraWhale = await ethers.getImpersonatedSigner("0x8a73D1380345942F1cb32541F1b19C40D8e6C94B");
 
         // Load WBERA contract
-        wbera = await ethers.getContractAt("WBERA", "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8");
+        wbera = await ethers.getContractAt("WBERA", "0x6969696969696969696969696969696969696969");
 
         // Deploy BexLiquidityManager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");

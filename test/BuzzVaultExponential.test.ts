@@ -51,9 +51,6 @@ describe("BuzzVaultExponential Tests", () => {
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
         create3Factory = await Create3Factory.connect(ownerSigner).deploy();
 
-        const bexLpTokenAddress = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
-        const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
-
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
         wBera = await WBera.connect(ownerSigner).deploy();

@@ -8,7 +8,7 @@ const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
 const bexVault = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
 const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
 const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
-const wberaAddress = "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8";
+const wberaAddress = "0x6969696969696969696969696969696969696969";
 
 const highlightsSuffix = ethers.utils.arrayify("0x1bee");
 

@@ -5,7 +5,6 @@ import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 import {BigNumber, Contract} from "ethers";
 import {formatBytes32String} from "ethers/lib/utils";
 import {anyValue} from "@nomicfoundation/hardhat-chai-matchers/withArgs";
-import { bex } from "../typechain-types/contracts/interfaces";
 
 describe("BuzzTokenFactory Tests", () => {
     const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;

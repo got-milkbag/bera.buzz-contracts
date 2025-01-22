@@ -2,6 +2,7 @@ import { ethers } from "hardhat";
 import { SignerWithAddress } from "@nomiclabs/hardhat-ethers/signers";
 import { Contract } from "ethers";
 import { expect } from "chai";
+import { anyValue } from "@nomicfoundation/hardhat-chai-matchers/withArgs";
 
 describe("BexLiquidityManager Tests", () => {
     const bexWeightedPoolFactory = "0x0f4f2ac550a1b4e2280d04c21cea7ebd822934b5";
@@ -47,9 +48,11 @@ describe("BexLiquidityManager Tests", () => {
     describe("createPoolAndAdd", () => {
         it("should create a pool and add liquidity", async () => {
             // NOTE: baseAmount (2nd argument) is equivelant of 69k USD if 1 Bera = 30 USD
-            await bexLiquidityManager
+            expect(await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"));
+                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"))
+            .to.emit(bexLiquidityManager, "BexListed")
+            .withArgs(anyValue, wbera.address, token.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000")));
             console.log("Bera balance in pool after transition to Bex: ", await ethers.provider.getBalance(bexLiquidityManager.address));
             console.log("WBERA balance in pool after transition to Bex: ", await wbera.balanceOf(bexLiquidityManager.address));
             console.log("Token balance in pool after transition to Bex: ", await token.balanceOf(bexLiquidityManager.address));

@@ -22,9 +22,11 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
     /// @notice Event emitted when liquidity is migrated to BEX
     event BexListed(
+        address indexed pool,
+        address indexed baseToken,
         address indexed token,
-        uint256 amount,
-        uint256 baseAmount
+        uint256 baseAmount,
+        uint256 amount
     );
     /// @notice Event emitted when a vault is added to the whitelist
     event VaultAdded(address indexed vault);
@@ -152,7 +154,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         );
 
         // Emit event
-        emit BexListed(pool, amount, baseAmount);
+        emit BexListed(pool, base, quote, baseAmount, amount);
     }
 
     /**

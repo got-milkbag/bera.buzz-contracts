@@ -24,6 +24,7 @@ contract ReferralManager is Ownable, IReferralManager {
     /// @notice Event emitted when a referral reward is received
     event ReferralRewardReceived(
         address indexed referrer,
+        address indexed referredUser,
         address indexed token,
         uint256 reward,
         bool isDirect
@@ -139,6 +140,7 @@ contract ReferralManager is Ownable, IReferralManager {
 
             emit ReferralRewardReceived(
                 indirectReferral[user],
+                user,
                 token,
                 indirectReferralAmount,
                 false
@@ -149,13 +151,14 @@ contract ReferralManager is Ownable, IReferralManager {
 
             emit ReferralRewardReceived(
                 referrer,
+                user,
                 token,
                 directReferralAmount,
                 true
             );
         } else {
             _referrerBalances[referrer][token] += amount;
-            emit ReferralRewardReceived(referrer, token, amount, true);
+            emit ReferralRewardReceived(referrer, user, token, amount, true);
         }
 
         IERC20(token).safeTransferFrom(msg.sender, address(this), amount);

@@ -77,8 +77,7 @@ contract BuzzVaultExponential is BuzzVault {
             );
 
             uint256 finalBase = baseBalance - info.initialBase;
-            if (amountOut > finalBase)
-                amountOut = finalBase;
+            if (amountOut > finalBase) amountOut = finalBase;
             amountOut -= FEE_MANAGER.quoteTradingFee(amountOut);
         }
     }

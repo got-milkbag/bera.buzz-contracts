@@ -49,8 +49,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     IWeightedPoolFactory public immutable POOL_FACTORY;
     /// @notice The Balancer Vault interface
     IVault public immutable VAULT;
-    
-    /// @notice The Vault address whitelist 
+
+    /// @notice The Vault address whitelist
     mapping(address => bool) private vaults;
 
     /**
@@ -113,8 +113,22 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
         // Create the pool
         address pool = POOL_FACTORY.create(
-            string(abi.encodePacked("BEX 50 ", ERC20(quote).symbol(), " 50 ", ERC20(base).symbol())),
-            string(abi.encodePacked("BEX-50", ERC20(quote).symbol(), "-50", ERC20(base).symbol())),
+            string(
+                abi.encodePacked(
+                    "BEX 50 ",
+                    ERC20(quote).symbol(),
+                    " 50 ",
+                    ERC20(base).symbol()
+                )
+            ),
+            string(
+                abi.encodePacked(
+                    "BEX-50",
+                    ERC20(quote).symbol(),
+                    "-50",
+                    ERC20(base).symbol()
+                )
+            ),
             tokens,
             weights,
             rateProviders,

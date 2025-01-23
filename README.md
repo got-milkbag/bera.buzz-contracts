@@ -20,4 +20,4 @@ The following contracts have been deployed on the **Berachain cArtio Testnet**:
 
 ## Graphql URL
 
-- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/eventTrackerSimpleFAED-berachain-bartio/1/gn](https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/BeraBuzzSubgraph/1.0.11/gn`
+- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/BeraBuzzSubgraph/1.0.11/gn`

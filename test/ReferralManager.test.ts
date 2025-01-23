@@ -258,14 +258,14 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
             await expect(referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
                 .to.emit(referralManager, "ReferralRewardReceived")
-                .withArgs(ownerSigner.address, wBera.address, ethers.utils.parseEther("0.01"), true);
+                .withArgs(ownerSigner.address, user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"), true);
         });
         it("should emit a ReferralReceived event for the indirect referral", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
             await expect(referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
                 .to.emit(referralManager, "ReferralRewardReceived")
-                .withArgs(ownerSigner.address, wBera.address, ethers.utils.parseEther("0.0001"), false);
+                .withArgs(ownerSigner.address, user2Signer.address, wBera.address, ethers.utils.parseEther("0.0001"), false);
         });
     });
 

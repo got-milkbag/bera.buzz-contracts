@@ -240,7 +240,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             convertedQuoteAmount = baseAmount;
         }
     }
-    
+
     /**
      * @notice Create a new pool with two erc20 tokens (base and quote tokens) in Bex and add liquidity to it.
      * @param tokens The array of token addresses to add

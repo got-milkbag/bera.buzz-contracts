@@ -2,7 +2,7 @@ import {ethers} from "hardhat";
 const hre = require("hardhat");
 import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTokenFactory__factory";
 
-const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
+const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
 const linearVault = "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae";
 const expVault = "0x8a8BF2feF202127A9B957c0F376d25A68344Be2b";
 const eventTracker = "0xE394411B1fD404112a510c8a80126c5e089aF236";

@@ -4,12 +4,11 @@ import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTok
 
 //CONFIG - bArtio
 const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
 const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
-const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
-const wberaHoneyLpToken = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
-const create3Address = "0x93FEC2C00BfE902F733B57c5a6CeeD7CD1384AE1";
-const crocSwapDex = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
-const wberaAddress = "0x7507c1dc16935B82698e4C63f2746A2fCf994dF8";
+const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
+const wberaAddress = "0x6969696969696969696969696969696969696969";
 
 const highlightsSuffix = ethers.utils.arrayify("0x1bee");
 
@@ -79,7 +78,7 @@ async function main() {
 
     // Deploy BexLiquidityManager
     const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
-    const bexLiquidityManager = await BexLiquidityManager.deploy(crocSwapDex);
+    const bexLiquidityManager = await BexLiquidityManager.deploy(bexWeightedPoolFactory, bexVault);
     console.log("BexLiquidityManager deployed to:", bexLiquidityManager.address);
 
     // // Deploy Linear Vault

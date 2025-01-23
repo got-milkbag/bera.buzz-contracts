@@ -32,13 +32,13 @@ describe("BuzzVaultExponential Tests", () => {
     let bexLiquidityManager: Contract;
     let wBera: Contract;
     let feeManager: Contract;
-    let totalMintedSupply: BigNumber;
 
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.002");
     const payoutThreshold = 0;
-    const crocSwapDexAddress = "0xAB827b1Cc3535A9e549EE387A6E9C3F02F481B49";
+    const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+    const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
     let validUntil: number;
 
     beforeEach(async () => {
@@ -49,9 +49,6 @@ describe("BuzzVaultExponential Tests", () => {
         // Deploy create3factory
         const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
         create3Factory = await Create3Factory.connect(ownerSigner).deploy();
-
-        const bexLpTokenAddress = "0xd28d852cbcc68dcec922f6d5c7a8185dbaa104b7";
-        const crocQueryAddress = "0x8685CE9Db06D40CBa73e3d09e6868FE476B5dC89";
 
         //Deploy WBera Mock
         const WBera = await ethers.getContractFactory("WBERA");
@@ -77,7 +74,7 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
-        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(crocSwapDexAddress);
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(bexWeightedPoolFactory, bexVault);
 
         // Deploy Exponential Vault
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponentialMock");
@@ -90,8 +87,6 @@ describe("BuzzVaultExponential Tests", () => {
         );
 
         await bexLiquidityManager.connect(ownerSigner).addVaults([expVault.address]);
-
-        totalMintedSupply = ethers.utils.parseEther("1000000000");
 
         // Admin: Set Vault in the ReferralManager
         await referralManager.connect(ownerSigner).setWhitelistedVault(expVault.address, true);

@@ -423,14 +423,6 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             netBaseAmount,
             tokenBalance
         );
-
-        // burn any rounding excess
-        if (IERC20(token).balanceOf(address(this)) > 0) {
-            IERC20(token).safeTransfer(
-                address(0xdead),
-                IERC20(token).balanceOf(address(this))
-            );
-        }
     }
 
     /**

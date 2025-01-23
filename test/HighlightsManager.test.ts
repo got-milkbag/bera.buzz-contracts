@@ -1,9 +1,8 @@
 import {expect} from "chai";
 import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
-import {Contract, BigNumber} from "ethers";
+import {Contract} from "ethers";
 import {time} from "@nomicfoundation/hardhat-network-helpers";
-import { Bytes } from "ethers";
 
 describe("HighlightsManager Tests", () => {
     let ownerSigner: SignerWithAddress;

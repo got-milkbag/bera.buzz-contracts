@@ -24,15 +24,19 @@ const config: HardhatUserConfig = {
     },
     networks: {
         hardhat: {
-            // chainId: 31337,
             forking: {
-                url: "https://berachain-bartio.g.alchemy.com/v2/vyOEZETX2qPyU9t1aYB5a7mwyTIqEpkQ",
-                blockNumber: 4940400,
+                url: "https://rockbeard-eth-cartio.berachain.com/",
+                blockNumber: 586534,
             },
         },
         berachainTestnet: {
             chainId: 80084,
             url: "https://bartio.rpc.berachain.com/",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+        },
+        cartio: {
+            chainId: 80000,
+            url: "https://rockbeard-eth-cartio.berachain.com/",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         },
     },

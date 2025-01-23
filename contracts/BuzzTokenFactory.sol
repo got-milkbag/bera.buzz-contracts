@@ -135,10 +135,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
         if (bytes(metadata[0]).length == 0) revert BuzzToken_EmptyTokenName();
-        if (bytes(metadata[1]).length == 0)
-            revert BuzzToken_EmptyTokenSymbol();
-        if (bytes(metadata[0]).length > 16)
-            revert BuzzToken_TokenNameTooLong();
+        if (bytes(metadata[1]).length == 0) revert BuzzToken_EmptyTokenSymbol();
+        if (bytes(metadata[0]).length > 16) revert BuzzToken_TokenNameTooLong();
         if (bytes(metadata[1]).length > 10)
             revert BuzzToken_TokenSymbolTooLong();
         if (!whitelistedBaseTokens[addr[0]])

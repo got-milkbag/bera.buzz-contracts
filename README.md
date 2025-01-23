@@ -8,15 +8,16 @@ Create a `.env` file in the root directory of your project with the following va
 
 ## Deployed contracts
 
-The following contracts have been deployed on the **Berachain Testnet**:
+The following contracts have been deployed on the **Berachain cArtio Testnet**:
 
-- **BexPriceDecoder** deployed to: `0x10CF6Aa897B2f1BC8c4f4a91C2c91C318666EF7D`
-- **ReferralManager** deployed to: `0xf29c21854314Bae5db058932AfaD2c12A1e916BE`
-- **EventTracker** deployed to: `0x15003BD3651CddB0cB052608D025Db420EFEfAed`
-- **Factory** deployed to: `0x4A2E15159637A60a147D021BfC0F5FE4e049F22f`
-- **BexLiquidityManager** deployed to: `0x4998b057863cB66f6B7BBA6Fb9A400831B89daaa`
-- **Exponential Vault** deployed to: `0x2f39b10CdDF881E0eE96e4c4e8926D8dD7107307`
+- **BuzzVaultExponential** deployed to: `0xFc871940530F355E49693b7566e9Aae5dE372472`
+- **BuzzTokenFactory** deployed to: `0xe7df0E14cc895B33D224aA908e7fA9737103E3e4`
+- **FeeManager** deployed to: `0x4ba2Da0432E175Cb52D521e617AC7951b9ED2692`
+- **ReferralManager** deployed to: `0xc599a92cD55932317Da6167402229E7663E8FE52`
+- **HighlightsManager** deployed to: `0x3F122Eb2a064A794bC5D8c0274ca4550A623f7cB`
+- **BexLiquidityManager** deployed to: `0x4fF55696aeE57B01fC5e5cF2548B147A35B43266`
+- **CREATE3Factory** deployed to: `0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c`
 
 ## Graphql URL
 
-- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/eventTrackerSimpleFAED-berachain-bartio/1/gn`
+- **Goldsky Graphql**: `https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/eventTrackerSimpleFAED-berachain-bartio/1/gn](https://api.goldsky.com/api/public/project_cm1otowxjygfe01tb4prs2n7o/subgraphs/BeraBuzzSubgraph/1.0.11/gn`

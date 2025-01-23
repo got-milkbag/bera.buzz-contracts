@@ -14,7 +14,7 @@ import {IRateProvider} from "./interfaces/bex/IRateProvider.sol";
 
 /**
  * @title BexLiquidityManager
- * @notice This contract migrated bonding curve liquidity to BEX
+ * @notice This contract migrates bonding curve liquidity to BEX
  * @author nexusflip, 0xMitzie
  */
 contract BexLiquidityManager is Ownable, IBexLiquidityManager {
@@ -32,6 +32,10 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     event VaultAdded(address indexed vault);
     /// @notice Event emitted when a vault is removed from the whitelist
     event VaultRemoved(address indexed vault);
+    /// @notice Event emitted when the Berabator contract address is set
+    event BerabatorAddressSet(address indexed berabatorAddress);
+    /// @notice Event emitted when a token is added to the Berabator whitelist
+    event BerabatorWhitelistAdded(address indexed token);
 
     /// @notice Error emitted when the caller is not authorized to perform the action
     error BexLiquidityManager_Unauthorized();
@@ -39,19 +43,29 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
     error BexLiquidityManager_VaultAlreadyInWhitelist();
     /// @notice Error emitted when the vault is not in the whitelist
     error BexLiquidityManager_VaultNotInWhitelist();
-
-    /// @notice The pool fee tier (1%)
-    uint256 public constant POOL_FEE = 10000000000000000;
-    /// @notice The 50/50 weight
-    uint256 public constant WEIGHT_50_50 = 500000000000000000;
+    /// @notice Error emitted when the Berabator address is not set
+    error BexLiquidityManager_BerabatorAddressNotSet();
+    /// @notice Error emitted when the token address is already whitelisted on Berabator
+    error BexLiquidityManager_TokenAlreadyWhitelisted();
+    /// @notice Error emitted when the address is zero
+    error BexLiquidityManager_AddressZero();
 
     /// @notice The WeightedPoolFactory contract
     IWeightedPoolFactory public immutable POOL_FACTORY;
     /// @notice The Balancer Vault interface
     IVault public immutable VAULT;
 
+    /// @notice The pool fee tier (1%)
+    uint256 public constant POOL_FEE = 10000000000000000;
+    /// @notice The 50/50 weight
+    uint256 public constant WEIGHT_50_50 = 500000000000000000;
+    /// @notice The Berabator contract address
+    address public berabatorAddress;
+
     /// @notice The Vault address whitelist
     mapping(address => bool) private vaults;
+    /// @notice The Berabator whitelist
+    mapping(address => bool) public berabatorWhitelist;
 
     /**
      * @notice Constructor a new BexLiquidityManager
@@ -70,13 +84,14 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @param baseToken The address of the base token
      * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
+     * @return pool The address of the pool
      */
     function createPoolAndAdd(
         address token,
         address baseToken,
         uint256 baseAmount,
         uint256 amount
-    ) external {
+    ) external returns (address pool) {
         if (!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
         // Transfer and approve tokens
@@ -112,7 +127,13 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             );
 
         // Create the pool and join
-        _createPoolAndJoin(tokens, weights, rateProviders, amounts, assets);
+        pool = _createPoolAndJoin(
+            tokens,
+            weights,
+            rateProviders,
+            amounts,
+            assets
+        );
     }
 
     /**
@@ -151,6 +172,32 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
                 ++i;
             }
         }
+    }
+
+    /**
+     * @notice Set the Berabator contract address
+     * @param _berabatorAddress The address of the Berabator contract
+     */
+    function setBerabatorAddress(address _berabatorAddress) external onlyOwner {
+        if (_berabatorAddress == address(0))
+            revert BexLiquidityManager_AddressZero();
+
+        berabatorAddress = _berabatorAddress;
+        emit BerabatorAddressSet(_berabatorAddress);
+    }
+
+    /**
+     * @notice Add a token to the Berabator whitelist
+     * @param token The array of token addresses
+     */
+    function addBerabatorWhitelist(address token) external onlyOwner {
+        if (berabatorAddress == address(0))
+            revert BexLiquidityManager_BerabatorAddressNotSet();
+        if (berabatorWhitelist[token])
+            revert BexLiquidityManager_TokenAlreadyWhitelisted();
+
+        berabatorWhitelist[token] = true;
+        emit BerabatorWhitelistAdded(token);
     }
 
     /**
@@ -298,11 +345,17 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             request
         );
 
-        // burn LP tokens - will use the conduit in the future for partnerships
-        IERC20(pool).safeTransfer(
-            address(0xdead),
-            IERC20(pool).balanceOf(address(this))
-        );
+        if (berabatorAddress != address(0) && (berabatorWhitelist[address(tokens[0])] || berabatorWhitelist[address(tokens[1])])) {
+            IERC20(pool).safeTransfer(
+                berabatorAddress,
+                IERC20(pool).balanceOf(address(this))
+            );
+        } else {
+            IERC20(pool).safeTransfer(
+                address(0xdead),
+                IERC20(pool).balanceOf(address(this))
+            );
+        }
 
         // Emit event
         emit BexListed(

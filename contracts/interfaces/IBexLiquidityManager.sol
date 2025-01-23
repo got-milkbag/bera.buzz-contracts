@@ -7,5 +7,5 @@ interface IBexLiquidityManager {
         address baseToken,
         uint256 baseAmount,
         uint256 amount
-    ) external;
+    ) external returns (address pool);
 }

@@ -88,19 +88,14 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         );
         IERC20(token).safeApprove(address(VAULT), amount);
         IERC20(baseToken).safeApprove(address(VAULT), baseAmount);
-        IERC20(token).safeApprove(address(POOL_FACTORY), amount);
-        IERC20(baseToken).safeApprove(address(POOL_FACTORY), baseAmount);
 
-        address base;
-        address quote;
-
-        if (baseToken < token) {
-            base = baseToken;
-            quote = token;
-        } else {
-            base = token;
-            quote = baseToken;
-        }
+        // Compute base and quote tokens
+        (
+            address base,
+            address quote,
+            uint256 convertedBaseAmount,
+            uint256 convertedQuoteAmount
+        ) = _computeBaseAndQuote(token, baseToken, baseAmount, amount);
 
         // Get memory params
         (
@@ -109,57 +104,15 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             IRateProvider[] memory rateProviders,
             uint256[] memory amounts,
             IAsset[] memory assets
-        ) = _getMemoryParams(token, baseToken, baseAmount, amount);
+        ) = _getMemoryParams(
+                quote,
+                base,
+                convertedBaseAmount,
+                convertedQuoteAmount
+            );
 
-        // Create the pool
-        address pool = POOL_FACTORY.create(
-            string(
-                abi.encodePacked(
-                    "BEX 50 ",
-                    ERC20(quote).symbol(),
-                    " 50 ",
-                    ERC20(base).symbol()
-                )
-            ),
-            string(
-                abi.encodePacked(
-                    "BEX-50",
-                    ERC20(quote).symbol(),
-                    "-50",
-                    ERC20(base).symbol()
-                )
-            ),
-            tokens,
-            weights,
-            rateProviders,
-            POOL_FEE,
-            address(this),
-            keccak256(bytes(ERC20(quote).symbol()))
-        );
-
-        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest(
-            assets,
-            amounts,
-            abi.encode(0, amounts),
-            false
-        );
-
-        // Deposit in the pool
-        VAULT.joinPool(
-            IWeightedPool(pool).getPoolId(),
-            address(this),
-            address(this),
-            request
-        );
-
-        // burn LP tokens - will use the conduit in the future for partnerships
-        IERC20(pool).safeTransfer(
-            address(0xdead),
-            IERC20(pool).balanceOf(address(this))
-        );
-
-        // Emit event
-        emit BexListed(pool, base, quote, baseAmount, amount);
+        // Create the pool and join
+        _createPoolAndJoin(tokens, weights, rateProviders, amounts, assets);
     }
 
     /**
@@ -168,12 +121,16 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function addVaults(address[] memory vault) external onlyOwner {
         uint256 vaultLength = vault.length;
-        for (uint256 i; i < vaultLength; ++i) {
+        for (uint256 i; i < vaultLength; ) {
             if (vaults[vault[i]])
                 revert BexLiquidityManager_VaultAlreadyInWhitelist();
 
             vaults[vault[i]] = true;
             emit VaultAdded(vault[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -183,12 +140,16 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      */
     function removeVaults(address[] calldata vault) external onlyOwner {
         uint256 vaultLength = vault.length;
-        for (uint256 i; i < vaultLength; ++i) {
+        for (uint256 i; i < vaultLength; ) {
             if (!vaults[vault[i]])
                 revert BexLiquidityManager_VaultNotInWhitelist();
 
             vaults[vault[i]] = false;
             emit VaultRemoved(vault[i]);
+
+            unchecked {
+                ++i;
+            }
         }
     }
 
@@ -221,8 +182,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         )
     {
         tokens = new IERC20[](2);
-        tokens[0] = IERC20(token);
-        tokens[1] = IERC20(baseToken);
+        tokens[0] = IERC20(baseToken);
+        tokens[1] = IERC20(token);
 
         weights = new uint256[](2);
         weights[0] = WEIGHT_50_50;
@@ -233,11 +194,123 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         rateProviders[1] = rateProviders[0];
 
         amounts = new uint256[](2);
-        amounts[0] = amount;
-        amounts[1] = baseAmount;
+        amounts[0] = baseAmount;
+        amounts[1] = amount;
 
         assets = new IAsset[](2);
-        assets[0] = IAsset(token);
-        assets[1] = IAsset(baseToken);
+        assets[0] = IAsset(baseToken);
+        assets[1] = IAsset(token);
+    }
+
+    /**
+     * @notice Compute the base and quote tokens
+     * @param token The address of the token to add
+     * @param baseToken The address of the base token
+     * @param baseAmount The amount of base tokens to add
+     * @param amount The amount of tokens to add
+     * @return base The address of the base token
+     * @return quote The address of the quote token
+     * @return convertedBaseAmount The converted amount of base tokens
+     * @return convertedQuoteAmount The converted amount of quote tokens
+     */
+    function _computeBaseAndQuote(
+        address token,
+        address baseToken,
+        uint256 baseAmount,
+        uint256 amount
+    )
+        private
+        pure
+        returns (
+            address base,
+            address quote,
+            uint256 convertedBaseAmount,
+            uint256 convertedQuoteAmount
+        )
+    {
+        if (baseToken < token) {
+            base = baseToken;
+            quote = token;
+            convertedBaseAmount = baseAmount;
+            convertedQuoteAmount = amount;
+        } else {
+            base = token;
+            quote = baseToken;
+            convertedBaseAmount = amount;
+            convertedQuoteAmount = baseAmount;
+        }
+    }
+    
+    /**
+     * @notice Create a new pool with two erc20 tokens (base and quote tokens) in Bex and add liquidity to it.
+     * @param tokens The array of token addresses to add
+     * @param weights The array of weights
+     * @param rateProviders The array of rate providers
+     * @param amounts The array of amounts
+     * @param assets The array of IAssets
+     * @return pool The address of the pool
+     */
+    function _createPoolAndJoin(
+        IERC20[] memory tokens,
+        uint256[] memory weights,
+        IRateProvider[] memory rateProviders,
+        uint256[] memory amounts,
+        IAsset[] memory assets
+    ) private returns (address pool) {
+        // Create the pool
+        pool = POOL_FACTORY.create(
+            string(
+                abi.encodePacked(
+                    "BEX 50 ",
+                    ERC20(address(tokens[0])).symbol(),
+                    " 50 ",
+                    ERC20(address(tokens[1])).symbol()
+                )
+            ),
+            string(
+                abi.encodePacked(
+                    "BEX-50",
+                    ERC20(address(tokens[0])).symbol(),
+                    "-50",
+                    ERC20(address(tokens[1])).symbol()
+                )
+            ),
+            tokens,
+            weights,
+            rateProviders,
+            POOL_FEE,
+            address(this),
+            keccak256(abi.encodePacked(address(tokens[0]), address(tokens[1])))
+        );
+
+        IVault.JoinPoolRequest memory request = IVault.JoinPoolRequest(
+            assets,
+            amounts,
+            abi.encode(0, amounts),
+            false
+        );
+
+        // Deposit in the pool
+        VAULT.joinPool(
+            IWeightedPool(pool).getPoolId(),
+            address(this),
+            address(this),
+            request
+        );
+
+        // burn LP tokens - will use the conduit in the future for partnerships
+        IERC20(pool).safeTransfer(
+            address(0xdead),
+            IERC20(pool).balanceOf(address(this))
+        );
+
+        // Emit event
+        emit BexListed(
+            pool,
+            address(tokens[0]),
+            address(tokens[1]),
+            amounts[0],
+            amounts[1]
+        );
     }
 }

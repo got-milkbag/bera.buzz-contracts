@@ -34,6 +34,11 @@ const config: HardhatUserConfig = {
             url: "https://bartio.rpc.berachain.com/",
             accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
         },
+        cartio: {
+            chainId: 80000,
+            url: "https://rockbeard-eth-cartio.berachain.com/",
+            accounts: process.env.PRIVATE_KEY ? [process.env.PRIVATE_KEY] : [],
+        },
     },
 };
 

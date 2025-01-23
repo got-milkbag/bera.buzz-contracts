@@ -178,7 +178,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     revert BuzzToken_BaseAmountNotEnough();
                 IBuzzVault(addr[1]).buyNative{value: remainingValue}(
                     token,
-                    0,
+                    1,
                     address(0),
                     msg.sender
                 );
@@ -193,7 +193,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                 IBuzzVault(addr[1]).buy(
                     token,
                     baseAmount,
-                    0,
+                    1,
                     address(0),
                     msg.sender
                 );

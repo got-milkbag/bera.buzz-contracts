@@ -42,6 +42,8 @@ contract Helper is Test {
     address internal constant CHARLIE = address(4);
     address payable internal constant TREASURY = payable(address(0x5));
     address payable internal constant FEE_RECIPIENT = TREASURY;
+    string internal constant BERACHAIN_RPC =
+        "https://rockbeard-eth-cartio.berachain.com/";
 
     BuzzTokenFactory internal buzzTokenFactory;
     BuzzVaultExponential internal buzzVaultExponential;
@@ -59,6 +61,10 @@ contract Helper is Test {
     address[] internal quoteTokens;
 
     function setUp() public {
+        uint256 beraId = vm.createFork(BERACHAIN_RPC);
+        vm.selectFork(beraId);
+        vm.rollFork(586534);
+
         vm.startPrank(ADMIN);
 
         _deployBaseTokens();

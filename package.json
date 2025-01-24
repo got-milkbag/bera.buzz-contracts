@@ -29,6 +29,7 @@
     "@openzeppelin/contracts": "^4.9.6",
     "@prb/math": "^4.1.0",
     "dotenv": "^16.4.5",
+    "forge-std": "^1.1.2",
     "solady": "^0.0.256",
     "solmate": "^6.8.0"
   }

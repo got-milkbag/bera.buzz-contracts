@@ -345,7 +345,11 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             request
         );
 
-        if (berabatorAddress != address(0) && (berabatorWhitelist[address(tokens[0])] || berabatorWhitelist[address(tokens[1])])) {
+        if (
+            berabatorAddress != address(0) &&
+            (berabatorWhitelist[address(tokens[0])] ||
+                berabatorWhitelist[address(tokens[1])])
+        ) {
             IERC20(pool).safeTransfer(
                 berabatorAddress,
                 IERC20(pool).balanceOf(address(this))

@@ -35,6 +35,7 @@ contract Base is Test {
     address internal immutable _BEX_VAULT = 0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33;
     address internal immutable _TREASURY = makeAddr("_TREASURY");
     address internal immutable _OWNER = makeAddr("_OWNER");
+    address internal immutable _USER = makeAddr("_USER");
     address internal immutable _ALICE = makeAddr("_ALICE");
     address internal immutable _BOB = makeAddr("_BOB");
     address internal immutable _ATTACKER = makeAddr("_ATTACKER");
@@ -73,7 +74,7 @@ contract Base is Test {
 
     function _deployProtocol() private prank(_OWNER) {
         // Deploy the fee manager contract.
-        feeManager = new FeeManager(_OWNER, _TRADING_FEE_BPS, _LISTING_FEE, _MIGRATION_FEE_BPS);
+        feeManager = new FeeManager(_TREASURY, _TRADING_FEE_BPS, _LISTING_FEE, _MIGRATION_FEE_BPS);
 
         // Deploy the token factory contract.
         buzzTokenFactory = new BuzzTokenFactory(_OWNER, _CREATE3_DEPLOYER, address(feeManager));

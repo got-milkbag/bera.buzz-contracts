@@ -34,9 +34,12 @@ contract Base is Test {
     uint256 internal immutable _PAYOUT_THRESHOLD_IBGT = 0;
     uint256 internal immutable _PAYOUT_THRESHOLD_NECT = 0;
 
-    address internal immutable _CREATE3_DEPLOYER = 0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c;
-    address internal immutable _BEX_POOL_FACTORY = 0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf;
-    address internal immutable _BEX_VAULT = 0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33;
+    address internal immutable _CREATE3_DEPLOYER =
+        0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c;
+    address internal immutable _BEX_POOL_FACTORY =
+        0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf;
+    address internal immutable _BEX_VAULT =
+        0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33;
     address internal immutable _TREASURY = makeAddr("_TREASURY");
     address internal immutable _OWNER = makeAddr("_OWNER");
     address internal immutable _USER = makeAddr("_USER");
@@ -78,10 +81,19 @@ contract Base is Test {
 
     function _deployProtocol() private prank(_OWNER) {
         // Deploy the fee manager contract.
-        feeManager = new FeeManager(_TREASURY, _TRADING_FEE_BPS, _LISTING_FEE, _MIGRATION_FEE_BPS);
+        feeManager = new FeeManager(
+            _TREASURY,
+            _TRADING_FEE_BPS,
+            _LISTING_FEE,
+            _MIGRATION_FEE_BPS
+        );
 
         // Deploy the token factory contract.
-        buzzTokenFactory = new BuzzTokenFactory(_OWNER, _CREATE3_DEPLOYER, address(feeManager));
+        buzzTokenFactory = new BuzzTokenFactory(
+            _OWNER,
+            _CREATE3_DEPLOYER,
+            address(feeManager)
+        );
 
         // Deploy the referral manager contract.
         address[] memory baseTokens = new address[](3);
@@ -92,11 +104,19 @@ contract Base is Test {
         baseTokenPayouts[0] = _PAYOUT_THRESHOLD_WBERA;
         baseTokenPayouts[1] = _PAYOUT_THRESHOLD_IBGT;
         baseTokenPayouts[2] = _PAYOUT_THRESHOLD_NECT;
-        referralManager =
-            new ReferralManager(_DIRECT_REF_FEE_BPS, _INDIRECT_REF_FEE_BPS, _VALID_UNTIL, baseTokens, baseTokenPayouts);
+        referralManager = new ReferralManager(
+            _DIRECT_REF_FEE_BPS,
+            _INDIRECT_REF_FEE_BPS,
+            _VALID_UNTIL,
+            baseTokens,
+            baseTokenPayouts
+        );
 
         // Deploy the bex liquidity manager contract.
-        bexLiquidityManager = new BexLiquidityManager(_BEX_POOL_FACTORY, _BEX_VAULT);
+        bexLiquidityManager = new BexLiquidityManager(
+            _BEX_POOL_FACTORY,
+            _BEX_VAULT
+        );
 
         // Deploy the exponential curve vault contract.
         buzzVaultExponential = new BuzzVaultExponential(
@@ -108,8 +128,13 @@ contract Base is Test {
         );
 
         // Deploy the highlights manager contract.
-        highlightsManager =
-            new HighlightsManager(payable(_OWNER), _HARD_CAP, _HIGHLIGHTS_BASE_FEE, _COOL_DOWN_PERIOD, "0x1bee");
+        highlightsManager = new HighlightsManager(
+            payable(_OWNER),
+            _HARD_CAP,
+            _HIGHLIGHTS_BASE_FEE,
+            _COOL_DOWN_PERIOD,
+            "0x1bee"
+        );
 
         // Deploy the token vesting contract.
         tokenVesting = new TokenVesting();
@@ -117,21 +142,33 @@ contract Base is Test {
 
     function _configProtocol() private prank(_OWNER) {
         // Set the vault as whitelisted to allow the protocol to interact with the referral manager.
-        referralManager.setWhitelistedVault(address(buzzVaultExponential), true);
+        referralManager.setWhitelistedVault(
+            address(buzzVaultExponential),
+            true
+        );
 
         // Set wBERA as an allowed base token to be used as a reserve token.
         buzzTokenFactory.setAllowedBaseToken(
-            address(wBERA), _BASE_TOKEN_MIN_RESERVE_AMOUNT, _BASE_TOKEN_MIN_RAISE_AMOUNT, true
+            address(wBERA),
+            _BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            _BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
         );
 
         // Set iBGT as an allowed base token to be used as a reserve token.
         buzzTokenFactory.setAllowedBaseToken(
-            address(iBGT), _BASE_TOKEN_MIN_RESERVE_AMOUNT, _BASE_TOKEN_MIN_RAISE_AMOUNT, true
+            address(iBGT),
+            _BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            _BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
         );
 
         // Set NECT as an allowed base token to be used as a reserve token.
         buzzTokenFactory.setAllowedBaseToken(
-            address(NECT), _BASE_TOKEN_MIN_RESERVE_AMOUNT, _BASE_TOKEN_MIN_RAISE_AMOUNT, true
+            address(NECT),
+            _BASE_TOKEN_MIN_RESERVE_AMOUNT,
+            _BASE_TOKEN_MIN_RAISE_AMOUNT,
+            true
         );
 
         // Set the exponential vault as whitelisted to allow the factory to create tokensfor specific bonding curves (vaults).

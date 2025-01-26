@@ -4,6 +4,7 @@ pragma solidity ^0.8.19;
 import {Test} from "../../lib/forge-std/src/Test.sol";
 
 import {BexLiquidityManager} from "../../contracts/BexLiquidityManager.sol";
+import {BuzzToken} from "../../contracts/BuzzToken.sol";
 import {BuzzTokenFactory} from "../../contracts/BuzzTokenFactory.sol";
 import {BuzzVaultExponential} from "../../contracts/BuzzVaultExponential.sol";
 import {FeeManager} from "../../contracts/FeeManager.sol";
@@ -13,6 +14,9 @@ import {TokenVesting} from "../../contracts/TokenVesting.sol";
 
 import {ERC20Mock} from "../../test/invariant/mocks/ERC20Mock.sol";
 import {WBERA} from "../../contracts/mock/WBERA.sol";
+
+import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ICREATE3Factory} from "../../contracts/interfaces/create3/ICREATE3Factory.sol";
 
 contract Base is Test {
     uint256 internal immutable _LISTING_FEE = 2e15;

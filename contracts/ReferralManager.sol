@@ -238,7 +238,7 @@ contract ReferralManager is Ownable, IReferralManager {
         if (token == address(0)) revert ReferralManager_AddressZero();
         uint256 reward = _referrerBalances[msg.sender][token];
 
-        if (reward < payoutThreshold[token])
+        if (reward < payoutThreshold[token] && validUntil >= block.timestamp)
             revert ReferralManager_PayoutBelowThreshold();
         if (reward == 0) revert ReferralManager_ZeroPayout();
 

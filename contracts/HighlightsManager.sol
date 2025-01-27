@@ -40,7 +40,7 @@ contract HighlightsManager is Ownable, Pausable {
     /// @notice Error thrown when the treasury is the zero address
     error HighlightsManager_TreasuryAddressZero();
     /// @notice Error thrown when the transfer in native currency fails
-    error HighlightsManager_EthTransferFailed();
+    error HighlightsManager_BeraTransferFailed();
     /// @notice Error thrown when the slot is already occupied
     error HighlightsManager_SlotOccupied();
     /// @notice Error thrown when the token is within the cool down period
@@ -125,11 +125,11 @@ contract HighlightsManager is Ownable, Pausable {
         tokenCoolDownUntil[token] = block.timestamp + coolDownPeriod;
 
         (success, ) = treasury.call{value: fee}("");
-        if (!success) revert HighlightsManager_EthTransferFailed();
+        if (!success) revert HighlightsManager_BeraTransferFailed();
 
         if (msg.value > fee) {
             (success, ) = msg.sender.call{value: msg.value - fee}("");
-            if (!success) revert HighlightsManager_EthTransferFailed();
+            if (!success) revert HighlightsManager_BeraTransferFailed();
         }
 
         emit TokenHighlighted(token, msg.sender, duration, bookedUntil, fee);

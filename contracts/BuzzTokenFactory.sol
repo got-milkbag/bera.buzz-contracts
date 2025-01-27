@@ -67,6 +67,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     error BuzzToken_TokenNameTooLong();
     /// @notice Error code emitted when the token symbol is too long
     error BuzzToken_TokenSymbolTooLong();
+    /// @notice Error code emitted when the native transfer fails
+    error BuzzTokenFactory_BeraTransferFailed();
 
     /**
      * @notice Struct containing the minimum reserve and raise amounts for a base token
@@ -170,8 +172,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             metadata[1]
         );
 
+        uint256 remainingValue = msg.value - listingFee;
         if (baseAmount > 0) {
-            uint256 remainingValue = msg.value - listingFee;
             if (remainingValue > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 if (remainingValue != baseAmount)
@@ -197,6 +199,11 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(0),
                     msg.sender
                 );
+            }
+        } else {
+            if (remainingValue > 0) {
+                (bool success, ) = msg.sender.call{value: remainingValue}("");
+                if (!success) revert BuzzTokenFactory_BeraTransferFailed();
             }
         }
     }

@@ -132,7 +132,9 @@ contract ReferralManager is Ownable, IReferralManager {
 
         if (indirectReferral[user] != address(0)) {
             // If there is an indirect referral
-            uint256 indirectReferralAmount = (amount * indirectRefFeeBps) /
+            uint256 indirectRefFeeShareBps = (indirectRefFeeBps * MAX_FEE_BPS) /
+                (directRefFeeBps + indirectRefFeeBps);
+            uint256 indirectReferralAmount = (amount * indirectRefFeeShareBps) /
                 MAX_FEE_BPS;
             _referrerBalances[indirectReferral[user]][
                 token

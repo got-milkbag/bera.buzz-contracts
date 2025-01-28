@@ -319,6 +319,24 @@ describe("BuzzTokenFactory Tests", () => {
                 ethers.utils.parseEther("1000")
             );
         });
+        it("should refund the user for excess msg.sender", async () => {
+            const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("1"));
+            const balanceBefore = await ethers.provider.getBalance(ownerSigner.address);
+            const tx = await factory.createToken(
+                ["TEST", "TST"],
+                [wBera.address, expVault.address],
+                [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                0,
+                formatBytes32String("12345"),
+                {
+                    value: listingFeeAndBuyAmount,
+                }
+            );
+            const receipt = await tx.wait();
+            const balanceAfter = await ethers.provider.getBalance(ownerSigner.address);
+            const gasUsed = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+            expect(balanceAfter.add(gasUsed)).to.be.eq(balanceBefore.sub(listingFee));
+        });
         describe("_deployToken", () => {
             beforeEach(async () => {
                 treasuryBalanceBefore = await ethers.provider.getBalance(treasury.address);

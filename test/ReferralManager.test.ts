@@ -249,10 +249,10 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
             await referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
             const referrerBalance = await referralManager.getReferralRewardFor(user1Signer.address, wBera.address);
-            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.0099"));
+            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.009375"));
 
             const indirectReferrerInfo = await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address);
-            expect(indirectReferrerInfo).to.be.equal(ethers.utils.parseEther("0.0001"));
+            expect(indirectReferrerInfo).to.be.equal(ethers.utils.parseEther("0.000625"));
         });
         it("should emit a ReferralReceived event for the direct referral", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
@@ -265,7 +265,7 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
             await expect(referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
                 .to.emit(referralManager, "ReferralRewardReceived")
-                .withArgs(ownerSigner.address, user2Signer.address, wBera.address, ethers.utils.parseEther("0.0001"), false);
+                .withArgs(ownerSigner.address, user2Signer.address, wBera.address, ethers.utils.parseEther("0.000625"), false);
         });
     });
 

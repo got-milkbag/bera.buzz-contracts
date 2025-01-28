@@ -106,7 +106,7 @@ async function main() {
 
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-    const highlightsManager = await HighlightsManager.deploy(feeRecipient, hardCap, highlightsBaseFee, coolDownPeriod, highlightsSuffix);
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, deployedAddress, hardCap, highlightsBaseFee, coolDownPeriod, highlightsSuffix);
     console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager

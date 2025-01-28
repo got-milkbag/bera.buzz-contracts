@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
 import {Pausable} from "@openzeppelin/contracts/security/Pausable.sol";
+import {IBuzzTokenFactory} from "./interfaces/IBuzzTokenFactory.sol";
 
 /**
  * @title HighlightsManager
@@ -47,6 +48,11 @@ contract HighlightsManager is Ownable, Pausable {
     error HighlightsManager_TokenWithinCoolDown();
     /// @notice Error thrown when the token suffix does not match the contract suffix
     error HighlightsManager_UnrecognisedToken();
+    /// @notice Error thrown when the token has not been deployed through the factory
+    error HighlightsManager_NotFromTokenFactory();
+
+    /// @notice The interface for the BuzzTokenFactory
+    IBuzzTokenFactory public tokenFactory;
 
     /// @notice The minimum duration allowed in seconds
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
@@ -73,6 +79,7 @@ contract HighlightsManager is Ownable, Pausable {
     /**
      * @notice Constructor
      * @param _treasury The treasury address where fees are sent
+     * @param _tokenFactory The address of the token factory
      * @param _hardCap The maximum duration allowed in seconds
      * @param _baseFeePerSecond The base fee per second to charge in wei
      * @param _coolDownPeriod The cool down period for a token in seconds
@@ -80,6 +87,7 @@ contract HighlightsManager is Ownable, Pausable {
      */
     constructor(
         address payable _treasury,
+        address _tokenFactory,
         uint256 _hardCap,
         uint256 _baseFeePerSecond,
         uint256 _coolDownPeriod,
@@ -89,6 +97,7 @@ contract HighlightsManager is Ownable, Pausable {
             revert HighlightsManager_HardCapBelowMinimumDuration();
 
         treasury = _treasury;
+        tokenFactory = IBuzzTokenFactory(_tokenFactory);
         hardCap = _hardCap;
         baseFeePerSecond = _baseFeePerSecond;
         coolDownPeriod = _coolDownPeriod;
@@ -114,6 +123,8 @@ contract HighlightsManager is Ownable, Pausable {
             revert HighlightsManager_SlotOccupied();
         if (tokenCoolDownUntil[token] > block.timestamp)
             revert HighlightsManager_TokenWithinCoolDown();
+        if (!tokenFactory.isDeployed(token))
+            revert HighlightsManager_NotFromTokenFactory();
 
         _verifySuffix(token);
 

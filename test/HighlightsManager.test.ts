@@ -3,13 +3,24 @@ import {ethers} from "hardhat";
 import {SignerWithAddress} from "@nomiclabs/hardhat-ethers/signers";
 import {Contract} from "ethers";
 import {time} from "@nomicfoundation/hardhat-network-helpers";
+import { formatBytes32String } from "ethers/lib/utils";
+import * as helpers from "@nomicfoundation/hardhat-network-helpers";
 
 describe("HighlightsManager Tests", () => {
+    const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
+
     let ownerSigner: SignerWithAddress;
     let treasury: SignerWithAddress;
 
+    let create3Factory: Contract;
+    let feeManager: Contract;
     let highlightsManager: Contract;
     let token: Contract;
+    let tokenFactory: Contract;
+    let wBera: Contract;
+    let bexLiquidityManager: Contract;
+    let expVault: Contract;
+    let referralManager: Contract;
 
     let duration: number;
     let suffix: any;
@@ -17,13 +28,82 @@ describe("HighlightsManager Tests", () => {
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
     const coolDownPeriod = 12 * 60 * 60; // 12 hours in seconds
+    const directRefFeeBps = 1500; // 15% of protocol fee
+    const indirectRefFeeBps = 100; // fixed 1%
+    const listingFee = ethers.utils.parseEther("0.002");
+    const payoutThreshold = 0;
+    const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
+    const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
+    let validUntil: number;
 
     beforeEach(async () => {
         [ownerSigner, treasury] = await ethers.getSigners();
 
-        // Deploy mock token
-        const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
-        token = await SimpleERC20.connect(ownerSigner).deploy();
+        validUntil = (await helpers.time.latest()) + ONE_YEAR_IN_SECS;
+
+        // Deploy create3factory
+        const Create3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
+        create3Factory = await Create3Factory.connect(ownerSigner).deploy();
+
+        //Deploy WBera Mock
+        const WBera = await ethers.getContractFactory("WBERA");
+        wBera = await WBera.connect(ownerSigner).deploy();
+
+        // Deploy FeeManager
+        const FeeManager = await ethers.getContractFactory("FeeManager");
+        feeManager = await FeeManager.connect(ownerSigner).deploy(treasury.address, 100, listingFee, 420);
+
+        // Deploy Token Factory
+        const TokenFactory = await ethers.getContractFactory("BuzzTokenFactory");
+        tokenFactory = await TokenFactory.deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+
+        // Deploy ReferralManager
+        const ReferralManager = await ethers.getContractFactory("ReferralManager");
+        referralManager = await ReferralManager.connect(ownerSigner).deploy(
+            directRefFeeBps,
+            indirectRefFeeBps,
+            validUntil,
+            [wBera.address],
+            [payoutThreshold]
+        );
+
+        // Deploy liquidity manager
+        const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
+        bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(bexWeightedPoolFactory, bexVault);
+
+        // Deploy Exponential Vault
+        const ExpVault = await ethers.getContractFactory("BuzzVaultExponentialMock");
+        expVault = await ExpVault.connect(ownerSigner).deploy(
+            feeManager.address,
+            tokenFactory.address,
+            referralManager.address,
+            bexLiquidityManager.address,
+            wBera.address
+        );
+
+        // Admin: Whitelist base token in Factory
+        await tokenFactory.connect(ownerSigner).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("0.001"), ethers.utils.parseEther("0.1"), true);
+
+        // Admin: Set Vault as the factory's vault & enable token creation
+        await tokenFactory.connect(ownerSigner).setVault(expVault.address, true);
+        await tokenFactory.connect(ownerSigner).setAllowTokenCreation(true);
+
+        // Create a token
+        const tx = await tokenFactory.createToken(
+            ["TEST", "TST"],
+            [wBera.address, expVault.address],
+            [ethers.utils.parseEther("100"), ethers.utils.parseEther("1000")],
+            0,
+            formatBytes32String("12345"),
+            {
+                value: listingFee,
+            }
+        );
+        const receipt = await tx.wait();
+        const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
+
+        // Get token contract
+        token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
 
         // get last 4 characters from contract address and add it as the suffix in HighlightsManager
         let suffixString = token.address.slice(-4);
@@ -33,12 +113,13 @@ describe("HighlightsManager Tests", () => {
 
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-        highlightsManager = await HighlightsManager.deploy(treasury.address, hardcap, baseFeePerSecond, coolDownPeriod, suffix);
+        highlightsManager = await HighlightsManager.deploy(treasury.address, tokenFactory.address, hardcap, baseFeePerSecond, coolDownPeriod, suffix);
+
     });
     describe("constructor", () => {
         it("should revert if hardCap is less than MIN_DURATION", async () => {
             const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(HighlightsManager.deploy(treasury.address, 59, baseFeePerSecond, coolDownPeriod, suffix)).to.be.revertedWithCustomError(
+            await expect(HighlightsManager.deploy(treasury.address, tokenFactory.address, 59, baseFeePerSecond, coolDownPeriod, suffix)).to.be.revertedWithCustomError(
                 highlightsManager,
                 "HighlightsManager_HardCapBelowMinimumDuration"
             );
@@ -131,13 +212,36 @@ describe("HighlightsManager Tests", () => {
         });
         it("should revert if the token address doesn't contain the right suffix", async () => {
             // Redeploy token contract to get a different suffix
+            const tx = await tokenFactory.createToken(
+                ["TEST1", "TS1T"],
+                [wBera.address, expVault.address],
+                [ethers.utils.parseEther("100"), ethers.utils.parseEther("1000")],
+                0,
+                formatBytes32String("123455"),
+                {
+                    value: listingFee,
+                }
+            );
+            const receipt = await tx.wait();
+            const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
+
+            // Get token contract
+            token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
+
+            const quotedFee = await highlightsManager.quote(duration);
+            await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
+                highlightsManager,
+                "HighlightsManager_UnrecognisedToken"
+            );
+        });
+        it("should revert if the token address has not been deployed by the factory", async () => {
             const SimpleERC20 = await ethers.getContractFactory("SimpleERC20");
             token = await SimpleERC20.connect(ownerSigner).deploy();
 
             const quotedFee = await highlightsManager.quote(duration);
-            await expect(highlightsManager.highlightToken(ownerSigner.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
+            await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
                 highlightsManager,
-                "HighlightsManager_UnrecognisedToken"
+                "HighlightsManager_NotFromTokenFactory"
             );
         });
         it("should collect and redirect the fee to the treasury", async () => {

@@ -191,7 +191,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(this),
                     baseAmount
                 );
-                IERC20(addr[0]).safeApprove(addr[1], baseAmount);
+                IERC20(addr[0]).forceApprove(addr[1], baseAmount);
                 IBuzzVault(addr[1]).buy(
                     token,
                     baseAmount,
@@ -319,7 +319,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
 
         ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).safeApprove(vault, initialSupply);
+        IERC20(token).forceApprove(vault, initialSupply);
         IBuzzVault(vault).registerToken(
             token,
             baseToken,

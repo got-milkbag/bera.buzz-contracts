@@ -101,8 +101,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             address(this),
             baseAmount
         );
-        IERC20(token).safeApprove(address(VAULT), amount);
-        IERC20(baseToken).safeApprove(address(VAULT), baseAmount);
+        IERC20(token).forceApprove(address(VAULT), amount);
+        IERC20(baseToken).forceApprove(address(VAULT), baseAmount);
 
         // Compute base and quote tokens
         (

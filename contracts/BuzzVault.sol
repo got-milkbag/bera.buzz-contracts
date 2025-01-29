@@ -407,12 +407,12 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
 
         // collect fee
         uint256 dexFee = FEE_MANAGER.quoteMigrationFee(baseBalance);
-        IERC20(baseToken).safeApprove(address(FEE_MANAGER), dexFee);
+        IERC20(baseToken).forceApprove(address(FEE_MANAGER), dexFee);
         FEE_MANAGER.collectMigrationFee(baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
-        IERC20(token).safeApprove(address(LIQUIDITY_MANAGER), tokenBalance);
-        IERC20(baseToken).safeApprove(
+        IERC20(token).forceApprove(address(LIQUIDITY_MANAGER), tokenBalance);
+        IERC20(baseToken).forceApprove(
             address(LIQUIDITY_MANAGER),
             netBaseAmount
         );
@@ -492,7 +492,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
 
         if (bps > 0) {
             referralFee = (amount * bps) / 1e4;
-            IERC20(token).safeApprove(address(REFERRAL_MANAGER), referralFee);
+            IERC20(token).forceApprove(address(REFERRAL_MANAGER), referralFee);
             REFERRAL_MANAGER.receiveReferral(user, token, referralFee);
         }
     }
@@ -504,7 +504,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
      */
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
-        IERC20(address(WBERA)).safeApprove(address(WBERA), amount);
+        IERC20(address(WBERA)).forceApprove(address(WBERA), amount);
 
         WBERA.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;

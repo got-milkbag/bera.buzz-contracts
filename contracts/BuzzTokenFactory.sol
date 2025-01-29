@@ -67,6 +67,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     error BuzzToken_TokenNameTooLong();
     /// @notice Error code emitted when the token symbol is too long
     error BuzzToken_TokenSymbolTooLong();
+    /// @notice Error code emitted when the native transfer fails
+    error BuzzTokenFactory_BeraTransferFailed();
 
     /**
      * @notice Struct containing the minimum reserve and raise amounts for a base token
@@ -135,10 +137,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         if (addr[0] == address(0)) revert BuzzToken_AddressZero();
         if (!vaults[addr[1]]) revert BuzzToken_VaultNotRegistered();
         if (bytes(metadata[0]).length == 0) revert BuzzToken_EmptyTokenName();
-        if (bytes(metadata[1]).length == 0)
-            revert BuzzToken_EmptyTokenSymbol();
-        if (bytes(metadata[0]).length > 16)
-            revert BuzzToken_TokenNameTooLong();
+        if (bytes(metadata[1]).length == 0) revert BuzzToken_EmptyTokenSymbol();
+        if (bytes(metadata[0]).length > 16) revert BuzzToken_TokenNameTooLong();
         if (bytes(metadata[1]).length > 10)
             revert BuzzToken_TokenSymbolTooLong();
         if (!whitelistedBaseTokens[addr[0]])
@@ -172,8 +172,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             metadata[1]
         );
 
+        uint256 remainingValue = msg.value - listingFee;
         if (baseAmount > 0) {
-            uint256 remainingValue = msg.value - listingFee;
             if (remainingValue > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 if (remainingValue != baseAmount)
@@ -191,7 +191,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(this),
                     baseAmount
                 );
-                IERC20(addr[0]).safeApprove(addr[1], baseAmount);
+                IERC20(addr[0]).forceApprove(addr[1], baseAmount);
                 IBuzzVault(addr[1]).buy(
                     token,
                     baseAmount,
@@ -199,6 +199,11 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(0),
                     msg.sender
                 );
+            }
+        } else {
+            if (remainingValue > 0) {
+                (bool success, ) = msg.sender.call{value: remainingValue}("");
+                if (!success) revert BuzzTokenFactory_BeraTransferFailed();
             }
         }
     }
@@ -314,7 +319,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
 
         ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).safeApprove(vault, initialSupply);
+        IERC20(token).forceApprove(vault, initialSupply);
         IBuzzVault(vault).registerToken(
             token,
             baseToken,

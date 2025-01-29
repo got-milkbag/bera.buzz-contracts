@@ -77,8 +77,7 @@ contract BuzzVaultExponential is BuzzVault {
             );
 
             uint256 finalBase = baseBalance - info.initialBase;
-            if (amountOut > finalBase)
-                amountOut = finalBase;
+            if (amountOut > finalBase) amountOut = finalBase;
             amountOut -= FEE_MANAGER.quoteTradingFee(amountOut);
         }
     }
@@ -249,7 +248,7 @@ contract BuzzVaultExponential is BuzzVault {
             // will never underflow because ref fee is a % of trading fee
             uint256 tradingMinusRef = tradingFee - referralFee;
 
-            IERC20(token).safeApprove(address(FEE_MANAGER), tradingMinusRef);
+            IERC20(token).forceApprove(address(FEE_MANAGER), tradingMinusRef);
             FEE_MANAGER.collectTradingFee(token, tradingMinusRef);
             _collectReferralFee(user, token, tradingFee);
         }

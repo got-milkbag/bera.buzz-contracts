@@ -82,8 +82,8 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             address(this),
             baseAmount
         );
-        IERC20(token).safeApprove(crocSwapAddress, amount);
-        IERC20(baseToken).safeApprove(crocSwapAddress, baseAmount);
+        IERC20(token).forceApprove(crocSwapAddress, amount);
+        IERC20(baseToken).forceApprove(crocSwapAddress, baseAmount);
 
         address base;
         address quote;

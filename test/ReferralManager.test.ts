@@ -258,10 +258,10 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
             await referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
             const referrerBalance = await referralManager.getReferralRewardFor(user1Signer.address, wBera.address);
-            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.0099"));
+            expect(referrerBalance).to.be.equal(ethers.utils.parseEther("0.009375"));
 
             const indirectReferrerInfo = await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address);
-            expect(indirectReferrerInfo).to.be.equal(ethers.utils.parseEther("0.0001"));
+            expect(indirectReferrerInfo).to.be.equal(ethers.utils.parseEther("0.000625"));
         });
         it("should emit a ReferralReceived event for the direct referral", async () => {
             await referralManager.connect(ownerSigner).setReferral(ownerSigner.address, user1Signer.address);
@@ -274,10 +274,9 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).setReferral(user1Signer.address, user2Signer.address);
             await expect(referralManager.connect(ownerSigner).receiveReferral(user2Signer.address, wBera.address, ethers.utils.parseEther("0.01")))
                 .to.emit(referralManager, "ReferralRewardReceived")
-                .withArgs(ownerSigner.address, user2Signer.address, wBera.address, ethers.utils.parseEther("0.0001"), false);
+                .withArgs(ownerSigner.address, user2Signer.address, wBera.address, ethers.utils.parseEther("0.000625"), false);
         });
     });
-
     describe("claimReferralReward", () => {
         beforeEach(async () => {
             await referralManager.connect(ownerSigner).setWhitelistedVault(ownerSigner.address, true);
@@ -321,6 +320,17 @@ describe("ReferralManager Tests", () => {
             await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
 
             expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
+        });
+        it("should allow user to claim under minimum threshold if the claim deadline has expired", async () => {
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            await referralManager.connect(ownerSigner).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.02")]);
+            await helpers.time.increase(ONE_YEAR_IN_SECS + 3600);
+            const referralAmount = ethers.utils.parseEther("0.01");
+            const userBalanceBefore = await wBera.balanceOf(ownerSigner.address);
+            const tx = await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
+
+            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, wBera.address, referralAmount);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
         });
     });
     describe("setDirectRefFeeBps", () => {

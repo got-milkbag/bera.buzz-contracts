@@ -313,6 +313,17 @@ describe("ReferralManager Tests", () => {
 
             expect(await referralManager.getReferralRewardFor(ownerSigner.address, wBera.address)).to.be.equal(0);
         });
+        it("should allow user to claim under minimum threshold if the claim deadline has expired", async () => {
+            await referralManager.connect(ownerSigner).receiveReferral(user1Signer.address, wBera.address, ethers.utils.parseEther("0.01"));
+            await referralManager.connect(ownerSigner).setPayoutThreshold([wBera.address], [ethers.utils.parseEther("0.02")]);
+            await helpers.time.increase(ONE_YEAR_IN_SECS + 3600);
+            const referralAmount = ethers.utils.parseEther("0.01");
+            const userBalanceBefore = await wBera.balanceOf(ownerSigner.address);
+            const tx = await referralManager.connect(ownerSigner).claimReferralReward(wBera.address);
+
+            expect(tx).to.emit(referralManager, "ReferralPaidOut").withArgs(ownerSigner.address, wBera.address, referralAmount);
+            expect(await wBera.balanceOf(ownerSigner.address)).to.be.equal(userBalanceBefore.add(referralAmount));
+        });
     });
     describe("setDirectRefFeeBps", () => {
         it("should revert if caller is not owner", async () => {

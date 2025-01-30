@@ -112,7 +112,12 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
      * @param _feeManager The address of the feeManager contract
      * @param _suffix The contract suffix that is checked against the token address
      */
-    constructor(address _owner, address _createDeployer, address _feeManager, bytes memory _suffix) {
+    constructor(
+        address _owner,
+        address _createDeployer,
+        address _feeManager,
+        bytes memory _suffix
+    ) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
 
@@ -337,21 +342,25 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         );
     }
 
+    /**
+     * @notice Verifies if the suffix of the token address matches the factory suffix
+     * @param token The address of the token
+     */
     function _verifySuffix(address token) internal view {
         bytes memory tokenBytes = abi.encodePacked(token);
         bytes memory cachedSuffix = suffix;
-   
+
         uint256 suffixLength = cachedSuffix.length;
         uint256 tokenLength = tokenBytes.length;
-   
+
         for (uint256 i; i < suffixLength; ) {
             if (cachedSuffix[i] != tokenBytes[tokenLength - suffixLength + i]) {
                 revert BuzzTokenFactory_InvalidSuffix();
             }
-   
+
             unchecked {
                 ++i;
             }
-        }    
+        }
     }
 }

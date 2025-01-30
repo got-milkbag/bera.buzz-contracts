@@ -106,12 +106,6 @@ describe("HighlightsManager Tests", () => {
         // Get token contract
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
 
-        // get last 4 characters from contract address and add it as the suffix in HighlightsManager
-        let suffixString = token.address.slice(-4);
-        // append "0x" at the begginning of the suffix:
-        suffixString = "0x" + suffixString;
-        suffix = ethers.utils.arrayify(suffixString);
-
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
         highlightsManager = await HighlightsManager.deploy(treasury.address, tokenFactory.address, hardcap, baseFeePerSecond, coolDownPeriod);

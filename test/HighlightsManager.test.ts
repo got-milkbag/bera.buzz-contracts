@@ -25,6 +25,7 @@ describe("HighlightsManager Tests", () => {
     let duration: number;
     let suffix: any;
 
+    const highlightsSuffix = ethers.utils.arrayify("0x");
     const hardcap = 3600; // 1 hour
     const baseFeePerSecond = ethers.utils.parseEther("0.0005");
     const coolDownPeriod = 12 * 60 * 60; // 12 hours in seconds
@@ -54,7 +55,7 @@ describe("HighlightsManager Tests", () => {
 
         // Deploy Token Factory
         const TokenFactory = await ethers.getContractFactory("BuzzTokenFactory");
-        tokenFactory = await TokenFactory.deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+        tokenFactory = await TokenFactory.deploy(ownerSigner.address, create3Factory.address, feeManager.address, highlightsSuffix);
 
         // Deploy ReferralManager
         const ReferralManager = await ethers.getContractFactory("ReferralManager");
@@ -104,20 +105,14 @@ describe("HighlightsManager Tests", () => {
         // Get token contract
         token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
 
-        // get last 4 characters from contract address and add it as the suffix in HighlightsManager
-        let suffixString = token.address.slice(-4);
-        // append "0x" at the begginning of the suffix:
-        suffixString = "0x" + suffixString;
-        suffix = ethers.utils.arrayify(suffixString);
-
         // Deploy Highlights Manager
         const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-        highlightsManager = await HighlightsManager.deploy(treasury.address, tokenFactory.address, hardcap, baseFeePerSecond, coolDownPeriod, suffix);
+        highlightsManager = await HighlightsManager.deploy(treasury.address, tokenFactory.address, hardcap, baseFeePerSecond, coolDownPeriod);
     });
     describe("constructor", () => {
         it("should revert if hardCap is less than MIN_DURATION", async () => {
             const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-            await expect(HighlightsManager.deploy(treasury.address, tokenFactory.address, 59, baseFeePerSecond, coolDownPeriod, suffix)).to.be.revertedWithCustomError(
+            await expect(HighlightsManager.deploy(treasury.address, tokenFactory.address, 59, baseFeePerSecond, coolDownPeriod)).to.be.revertedWithCustomError(
                 highlightsManager,
                 "HighlightsManager_HardCapBelowMinimumDuration"
             );
@@ -206,30 +201,6 @@ describe("HighlightsManager Tests", () => {
       
             expect(await ethers.provider.getBalance(ownerSigner.address)).to.be.equal(
               balanceBefore.sub(quotedFee).sub(gasUsed)
-            );
-        });
-        it("should revert if the token address doesn't contain the right suffix", async () => {
-            // Redeploy token contract to get a different suffix
-            const tx = await tokenFactory.createToken(
-                ["TEST1", "TS1T"],
-                [wBera.address, expVault.address],
-                [ethers.utils.parseEther("100"), ethers.utils.parseEther("1000")],
-                0,
-                formatBytes32String("123455"),
-                {
-                    value: listingFee,
-                }
-            );
-            const receipt = await tx.wait();
-            const tokenCreatedEvent = receipt.events?.find((x: any) => x.event === "TokenCreated");
-
-            // Get token contract
-            token = await ethers.getContractAt("BuzzToken", tokenCreatedEvent?.args?.token);
-
-            const quotedFee = await highlightsManager.quote(duration);
-            await expect(highlightsManager.highlightToken(token.address, duration, {value: quotedFee})).to.be.revertedWithCustomError(
-                highlightsManager,
-                "HighlightsManager_UnrecognisedToken"
             );
         });
         it("should revert if the token address has not been deployed by the factory", async () => {

@@ -26,6 +26,7 @@ describe("ReferralManager Tests", () => {
     let wBera: Contract;
     let feeManager: Contract;
 
+    const highlightsSuffix = ethers.utils.arrayify("0x");
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.02");
@@ -75,7 +76,7 @@ describe("ReferralManager Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address, highlightsSuffix);
         // Deploy Linear Vault
         //const Vault = await ethers.getContractFactory("BuzzVaultLinear");
         //vault = await Vault.connect(ownerSigner).deploy(feeRecipient, factory.address, referralManager.address, eventTracker.address, bexPriceDecoder.address, bexLiquidityManager.address);

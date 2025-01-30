@@ -7,6 +7,8 @@ const linearVault = "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae";
 const expVault = "0x8a8BF2feF202127A9B957c0F376d25A68344Be2b";
 const eventTracker = "0xE394411B1fD404112a510c8a80126c5e089aF236";
 
+const highlightsSuffix = ethers.utils.arrayify("0x1bee");
+
 const DEPLOY_ABI = [
     "function deploy (bytes32 salt, bytes memory creationCode) public returns (address deployed)",
     "function getDeployed (address deployer, bytes32 salt) public view returns (address deployed)",
@@ -27,7 +29,7 @@ async function main() {
 
     const packedBytecode = ethers.utils.solidityPack(
         ["bytes", "bytes"],
-        [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address"], [eventTracker, deployer.address, create3Address])]
+        [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address", "bytes"], [eventTracker, deployer.address, create3Address, highlightsSuffix])]
     );
 
     const create3FactoryContract = new ethers.Contract(create3Address, DEPLOY_ABI, deployer);

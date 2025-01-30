@@ -38,8 +38,6 @@ describe("BexLiquidityManager Tests", () => {
             beraWhale.address
         );
 
-        console.log("Token address: ", token.address);
-
         await token.connect(beraWhale).approve(bexLiquidityManager.address, ethers.utils.parseEther("1000000000"));
 
         // Convert Bera to WBera

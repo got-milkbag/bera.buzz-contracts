@@ -33,6 +33,7 @@ describe("BuzzVaultExponential Tests", () => {
     let wBera: Contract;
     let feeManager: Contract;
 
+    const highlightsSuffix = ethers.utils.arrayify("0x");
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.002");
@@ -70,13 +71,13 @@ describe("BuzzVaultExponential Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address, highlightsSuffix);
 
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
         bexLiquidityManager = await BexLiquidityManager.connect(ownerSigner).deploy(bexWeightedPoolFactory, bexVault);
 
-        // Deploy Exponential Vault
+        // Deploy Exponential Vault   
         const ExpVault = await ethers.getContractFactory("BuzzVaultExponentialMock");
         expVault = await ExpVault.connect(ownerSigner).deploy(
             feeManager.address,
@@ -118,7 +119,6 @@ describe("BuzzVaultExponential Tests", () => {
         // Deposit some Bera to WBera contract
         await wBera.deposit({ value: ethers.utils.parseEther("10") });
     });
-
     describe("constructor", () => {
         it("should set the feeManager address", async () => {
             expect(await expVault.FEE_MANAGER()).to.be.equal(feeManager.address);

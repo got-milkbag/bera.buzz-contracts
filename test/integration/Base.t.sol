@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: MIT
 pragma solidity ^0.8.19;
 
-import {Test} from "../../lib/forge-std/src/Test.sol";
+import {Test, console} from "../../lib/forge-std/src/Test.sol";
 
 import {BexLiquidityManager} from "../../contracts/BexLiquidityManager.sol";
 import {BuzzToken} from "../../contracts/BuzzToken.sol";
@@ -16,7 +16,10 @@ import {ERC20Mock} from "../../test/invariant/mocks/ERC20Mock.sol";
 import {WBERA} from "../../contracts/mock/WBERA.sol";
 
 import {IERC20} from "@openzeppelin/contracts/token/ERC20/IERC20.sol";
+import {ERC20} from "@openzeppelin/contracts/token/ERC20/ERC20.sol";
 import {ICREATE3Factory} from "../../contracts/interfaces/create3/ICREATE3Factory.sol";
+import {IWeightedPoolFactory} from "../../contracts/interfaces/bex/IWeightedPoolFactory.sol";
+import {IRateProvider} from "../../contracts/interfaces/bex/IRateProvider.sol";
 
 contract Base is Test {
     uint256 internal immutable _LISTING_FEE = 2e15;
@@ -65,7 +68,7 @@ contract Base is Test {
         vm.stopPrank();
     }
 
-    function setUp() public {
+    function setUp() public virtual {
         vm.createSelectFork("https://rockbeard-eth-cartio.berachain.com/");
 
         _deployBaseTokens();

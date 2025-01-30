@@ -24,6 +24,8 @@
   },
   "dependencies": {
     "@balancer-labs/v2-interfaces": "^0.4.0",
+    "@balancer-labs/v2-pool-utils": "^4.1.1",
+    "@balancer-labs/v2-vault": "^3.0.1",
     "@crytic/properties": "github:crytic/properties",
     "@nomicfoundation/hardhat-toolbox": "^2.0.2",
     "@nomicfoundation/hardhat-verify": "^1.1.1",

@@ -51,6 +51,12 @@ describe("FeeManager Tests", () => {
 
             expect(quote).to.be.equal(0);
         });
+        it("should return 1 wei if the amount would be less than 1 wei", async () => {
+            const amount = 1;
+            const quote = await feeManager.quoteTradingFee(amount);
+
+            expect(quote).to.be.equal(1);
+        });
     });
     describe("quoteMigrationFee", () => {
         beforeEach(async () => { });

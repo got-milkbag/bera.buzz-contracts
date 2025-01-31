@@ -65,16 +65,10 @@ contract BuzzVaultExponential is BuzzVault {
                 amountAfterFee,
                 baseBalance,
                 tokenBalance,
-                info.quoteThreshold,
-                info.k
+                info.quoteThreshold
             );
         } else {
-            amountOut = _calculateSellPrice(
-                amount,
-                tokenBalance,
-                baseBalance,
-                info.k
-            );
+            amountOut = _calculateSellPrice(amount, tokenBalance, baseBalance);
 
             uint256 finalBase = baseBalance - info.initialBase;
             if (amountOut > finalBase) amountOut = finalBase;
@@ -105,8 +99,7 @@ contract BuzzVaultExponential is BuzzVault {
             netBaseAmount,
             baseBalance,
             info.tokenBalance,
-            info.quoteThreshold,
-            info.k
+            info.quoteThreshold
         );
 
         if (tokenAmountBuy == 0) revert BuzzVault_QuoteAmountZero();
@@ -163,8 +156,7 @@ contract BuzzVaultExponential is BuzzVault {
         uint256 baseAmountSell = _calculateSellPrice(
             tokenAmount,
             info.tokenBalance,
-            baseBalance,
-            info.k
+            baseBalance
         );
 
         uint256 baseSurplus = baseBalance - info.initialBase;
@@ -197,17 +189,16 @@ contract BuzzVaultExponential is BuzzVault {
      * @param baseAmountIn The amount of base tokens to buy with
      * @param baseBalance The virtual base token balance in the curve
      * @param quoteBalance The virtual quote token balance in the curve
-     * @param k The k coefficient of the curve
      * @return amountOut The amount of quote tokens that will be bought
      */
     function _calculateBuyPrice(
         uint256 baseAmountIn,
         uint256 baseBalance,
         uint256 quoteBalance,
-        uint256 quoteThreshold,
-        uint256 k
+        uint256 quoteThreshold
     ) internal pure returns (uint256 amountOut, bool exceeded) {
-        uint256 amountAux = quoteBalance - k / (baseBalance + baseAmountIn);
+        uint256 amountAux = (quoteBalance * baseAmountIn) /
+            (baseBalance + baseAmountIn);
         exceeded = amountAux >= quoteBalance - quoteThreshold;
         amountOut = exceeded ? quoteBalance - quoteThreshold : amountAux;
     }
@@ -217,16 +208,16 @@ contract BuzzVaultExponential is BuzzVault {
      * @param quoteAmountIn The amount of quote tokens to sell
      * @param quoteBalance The virtual quote token balance in the curve
      * @param baseBalance The virtual base token balance in the curve
-     * @param k The k coefficient of the curve
      * @return amountOut The amount of base tokens that will be received
      */
     function _calculateSellPrice(
         uint256 quoteAmountIn,
         uint256 quoteBalance,
-        uint256 baseBalance,
-        uint256 k
+        uint256 baseBalance
     ) internal pure returns (uint256 amountOut) {
-        amountOut = baseBalance - k / (quoteBalance + quoteAmountIn);
+        amountOut =
+            (baseBalance * quoteAmountIn) /
+            (quoteBalance + quoteAmountIn);
     }
 
     /**

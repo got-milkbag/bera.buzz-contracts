@@ -614,7 +614,7 @@ describe("BuzzVaultExponential Tests", () => {
 
             // Calculate the expected gross base amount before calling sell
             const tokenInfoPre = await expVault.tokenInfo(token.address);
-            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3], tokenInfoPre[7]);
+            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3]);
 
             await expVault.connect(user1Signer).sell(token.address, sellAmount, ethers.utils.parseEther("0.0000000001"), ethers.constants.AddressZero, user1Signer.address, false);
 
@@ -631,7 +631,7 @@ describe("BuzzVaultExponential Tests", () => {
 
             // Calculate the expected gross base amount before calling sell
             const tokenInfoPre = await expVault.tokenInfo(token.address);
-            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3], tokenInfoPre[7]);
+            const expectedGrossBaseAmount = await expVault.calculateSellPrice_(sellAmount, tokenInfoPre[2], tokenInfoPre[3]);
 
             await expVault.connect(user1Signer).sell(token.address, sellAmount, ethers.utils.parseEther("0.000000001"), ethers.constants.AddressZero, user1Signer.address, false);
 

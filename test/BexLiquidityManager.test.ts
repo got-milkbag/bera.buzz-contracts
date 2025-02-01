@@ -31,7 +31,6 @@ describe("BexLiquidityManager Tests", () => {
             "Test 1",
             "TST1",
             ethers.utils.parseEther("1000000000"),
-            beraWhale.address,
             beraWhale.address
         );
 

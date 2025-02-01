@@ -168,17 +168,17 @@ describe("FeeManager Tests", () => {
     describe("setTradingFeeBps", () => {
         beforeEach(async () => { });
         it("should set the fee", async () => {
-            await feeManager.setTradingFeeBps(500);
-            expect(await feeManager.tradingFeeBps()).to.be.equal(500);
+            await feeManager.setTradingFeeBps(200);
+            expect(await feeManager.tradingFeeBps()).to.be.equal(200);
         });
         it("should emit a TradingFeeSet event", async () => {
-            await expect(feeManager.setTradingFeeBps(500)).to.emit(feeManager, "TradingFeeSet").withArgs(500);
+            await expect(feeManager.setTradingFeeBps(200)).to.emit(feeManager, "TradingFeeSet").withArgs(200);
         });
-        it("should revert if the fee is greater than FEE_DIVISOR", async () => {
-            const FEE_DIVISOR = await feeManager.FEE_DIVISOR();
-            await expect(feeManager.setTradingFeeBps(FEE_DIVISOR.add(1))).to.be.revertedWithCustomError(
+        it("should revert if fee is greater than TRADING_HARDCAP", async () => {
+            const TRADING_HARDCAP = await feeManager.TRADING_HARDCAP();
+            await expect(feeManager.setTradingFeeBps(TRADING_HARDCAP.add(1))).to.be.revertedWithCustomError(
                 feeManager,
-                "FeeManager_AmountAboveFeeDivisor"
+                "FeeManager_AmountAboveHardcap"
             );
         });
         it("should revert if the caller is not the owner", async () => {
@@ -211,11 +211,11 @@ describe("FeeManager Tests", () => {
         it("should emit a MigrationFeeSet event", async () => {
             await expect(feeManager.setMigrationFeeBps(500)).to.emit(feeManager, "MigrationFeeSet").withArgs(500);
         });
-        it("should revert if the fee is greater than FEE_DIVISOR", async () => {
-            const FEE_DIVISOR = await feeManager.FEE_DIVISOR();
-            await expect(feeManager.setMigrationFeeBps(FEE_DIVISOR.add(1))).to.be.revertedWithCustomError(
+        it("should revert if the fee is greater than MIGRATION_HARDCAP", async () => {
+            const MIGRATION_HARDCAP = await feeManager.MIGRATION_HARDCAP();
+            await expect(feeManager.setMigrationFeeBps(MIGRATION_HARDCAP.add(1))).to.be.revertedWithCustomError(
                 feeManager,
-                "FeeManager_AmountAboveFeeDivisor"
+                "FeeManager_AmountAboveHardcap"
             );
         });
         it("should revert if the caller is not the owner", async () => {

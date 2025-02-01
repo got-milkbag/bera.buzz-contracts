@@ -14,11 +14,11 @@ async function main() {
 
     // Deploy token
     const Token = await ethers.getContractFactory("BuzzToken");
-    const token = await Token.deploy("Test 1", "TST1", ethers.utils.parseEther("1000000"), deployer.address, deployer.address);
+    const token = await Token.deploy("Test 1", "TST1", ethers.utils.parseEther("1000000"), deployer.address);
 
     // Deploy token
     const Token1 = await ethers.getContractFactory("BuzzToken");
-    const token1 = await Token.deploy("Test 2", "TST2", ethers.utils.parseEther("1000000"), deployer.address, deployer.address);
+    const token1 = await Token.deploy("Test 2", "TST2", ethers.utils.parseEther("1000000"), deployer.address);
 
     // Deploy BexLiquidityManager
     const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");

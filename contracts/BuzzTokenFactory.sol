@@ -319,7 +319,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
 
         bytes memory bytecode = abi.encodePacked(
             type(BuzzToken).creationCode,
-            abi.encode(name, symbol, initialSupply, address(this), vault)
+            abi.encode(name, symbol, initialSupply, address(this))
         );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).getDeployed(

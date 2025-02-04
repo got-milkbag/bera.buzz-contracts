@@ -49,7 +49,7 @@ describe("BexLiquidityManager Tests", () => {
             const tokenBalanceBefore = await token.balanceOf(beraWhale.address);
             expect(await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000")))
+                .createPoolAndAdd(token.address, wbera.address, beraWhale.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("2300")))
             .to.emit(bexLiquidityManager, "BexListed")
             .withArgs(anyValue, wbera.address, token.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"));
 
@@ -63,7 +63,7 @@ describe("BexLiquidityManager Tests", () => {
         it("should create a pool and add liquidity, and burn LP tokens", async () => {
             const tx = await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"));
+                .createPoolAndAdd(token.address, wbera.address, beraWhale.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("2300"));
 
             const receipt = await tx.wait();
             const bexListedEvent = receipt.events?.find((x: any) => x.event === "BexListed");
@@ -79,7 +79,7 @@ describe("BexLiquidityManager Tests", () => {
             
             const tx = await bexLiquidityManager
                 .connect(beraWhale)
-                .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"));
+                .createPoolAndAdd(token.address, wbera.address, beraWhale.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("2300"));
 
             const receipt = await tx.wait();
             const bexListedEvent = receipt.events?.find((x: any) => x.event === "BexListed");
@@ -92,7 +92,7 @@ describe("BexLiquidityManager Tests", () => {
             await expect(
                 bexLiquidityManager
                     .connect(user1Signer)
-                    .createPoolAndAdd(token.address, wbera.address, ethers.utils.parseEther("2300"), ethers.utils.parseEther("20000000"))
+                    .createPoolAndAdd(token.address, wbera.address, beraWhale.address, ethers.utils.parseEther("20000000"), ethers.utils.parseEther("2300"))
             ).to.be.revertedWithCustomError(bexLiquidityManager, "BexLiquidityManager_Unauthorized");
         });
     });

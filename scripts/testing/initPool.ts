@@ -38,7 +38,7 @@ async function main() {
     await approveTx1.wait();
     console.log(approveTx1);
 
-    const tx = await bexLiquidityManager.createPoolAndAdd(token.address, token1.address, ethers.utils.parseEther("0.001"), ethers.utils.parseEther("1000000"));
+    const tx = await bexLiquidityManager.createPoolAndAdd(token.address, token1.address, deployer.address, ethers.utils.parseEther("1000000"), ethers.utils.parseEther("0.001"));
 
     console.log(tx);
 }

@@ -52,18 +52,20 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
     /**
      * @notice The memory params struct
-     * @param tokens The array of IERC20 tokens
+     * @param amounts The array of amounts to deposit
      * @param weights The array of weights
+     * @param tokens The array of IERC20 tokens
+     * @param assets The array of IAsset token wrappers
      * @param rateProviders The array of rate providers
-     * @param amounts The array of amounts
-     * @param assets The array of IAssets
+     * @param user The address of the user that triggered the migration
      */
     struct MemoryParams {
-        IERC20[] tokens;
-        uint256[] weights;
-        IRateProvider[] rateProviders;
         uint256[] amounts;
+        uint256[] weights;
+        IERC20[] tokens;
         IAsset[] assets;
+        IRateProvider[] rateProviders;
+        address user;
     }
 
     /// @notice The WeightedPoolFactory contract
@@ -98,15 +100,17 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @dev The caller must approve the contract to transfer both tokens.
      * @param token The address of the token to add
      * @param baseToken The address of the base token
-     * @param baseAmount The amount of base tokens to add
+     * @param user The address of the user that triggered the migration
      * @param amount The amount of tokens to add
+     * @param baseAmount The amount of base tokens to add
      * @return pool The address of the pool
      */
     function createPoolAndAdd(
         address token,
         address baseToken,
-        uint256 baseAmount,
-        uint256 amount
+        address user,
+        uint256 amount,
+        uint256 baseAmount
     ) external returns (address pool) {
         if (!vaults[msg.sender]) revert BexLiquidityManager_Unauthorized();
 
@@ -122,18 +126,19 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
 
         // Compute base and quote tokens
         (
-            address base,
             address quote,
-            uint256 convertedBaseAmount,
-            uint256 convertedQuoteAmount
-        ) = _computeBaseAndQuote(token, baseToken, baseAmount, amount);
+            address base,
+            uint256 convertedQuoteAmount,
+            uint256 convertedBaseAmount
+        ) = _computeBaseAndQuote(token, baseToken, amount, baseAmount);
 
         // Get memory params
         MemoryParams memory memoryParams = _getMemoryParams(
             quote,
             base,
-            convertedBaseAmount,
-            convertedQuoteAmount
+            user,
+            convertedQuoteAmount,
+            convertedBaseAmount
         );
 
         // Create the pool and join
@@ -208,15 +213,17 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @notice Get the memory params
      * @param token The address of the token to add
      * @param baseToken The address of the base token
-     * @param baseAmount The amount of base tokens to add
+     * @param user The address of the user that triggered the migration
      * @param amount The amount of tokens to add
+     * @param baseAmount The amount of base tokens to add
      * @return memoryParams The MemoryParams struct
      */
     function _getMemoryParams(
         address token,
         address baseToken,
-        uint256 baseAmount,
-        uint256 amount
+        address user,
+        uint256 amount,
+        uint256 baseAmount
     ) private pure returns (MemoryParams memory memoryParams) {
         IERC20[] memory tokens = new IERC20[](2);
         tokens[0] = IERC20(baseToken);
@@ -239,11 +246,12 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
         assets[1] = IAsset(token);
 
         memoryParams = MemoryParams(
-            tokens,
-            weights,
-            rateProviders,
             amounts,
-            assets
+            weights,
+            tokens,
+            assets,
+            rateProviders,
+            user
         );
     }
 
@@ -251,38 +259,38 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
      * @notice Compute the base and quote tokens
      * @param token The address of the token to add
      * @param baseToken The address of the base token
-     * @param baseAmount The amount of base tokens to add
      * @param amount The amount of tokens to add
-     * @return base The address of the base token
+     * @param baseAmount The amount of base tokens to add
      * @return quote The address of the quote token
-     * @return convertedBaseAmount The converted amount of base tokens
+     * @return base The address of the base token
      * @return convertedQuoteAmount The converted amount of quote tokens
+     * @return convertedBaseAmount The converted amount of base tokens
      */
     function _computeBaseAndQuote(
         address token,
         address baseToken,
-        uint256 baseAmount,
-        uint256 amount
+        uint256 amount,
+        uint256 baseAmount
     )
         private
         pure
         returns (
-            address base,
             address quote,
-            uint256 convertedBaseAmount,
-            uint256 convertedQuoteAmount
+            address base,
+            uint256 convertedQuoteAmount,
+            uint256 convertedBaseAmount
         )
     {
         if (baseToken < token) {
-            base = baseToken;
             quote = token;
-            convertedBaseAmount = baseAmount;
+            base = baseToken;
             convertedQuoteAmount = amount;
+            convertedBaseAmount = baseAmount;
         } else {
-            base = token;
             quote = baseToken;
-            convertedBaseAmount = amount;
+            base = token;
             convertedQuoteAmount = baseAmount;
+            convertedBaseAmount = amount;
         }
     }
 
@@ -319,7 +327,7 @@ contract BexLiquidityManager is Ownable, IBexLiquidityManager {
             address(this),
             keccak256(
                 abi.encodePacked(
-                    msg.sender,
+                    memoryParams.user,
                     block.timestamp,
                     address(memoryParams.tokens[0]),
                     address(memoryParams.tokens[1])

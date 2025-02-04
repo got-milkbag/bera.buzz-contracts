@@ -36,7 +36,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         address indexed baseToken,
         uint256 tokenBalance,
         uint256 initialReserves,
-        uint256 finalReserves
+        uint256 finalReserves,
+        uint256 quoteThreshold
     );
 
     /// @notice Error code emitted when the quote amount in buy/sell is zero
@@ -289,6 +290,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         ) revert BuzzVault_TokenExists();
 
         uint256 k = initialReserves * initialTokenBalance;
+        uint256 quoteThreshold = k / finalReserves;
 
         tokenInfo[token] = TokenInfo(
             baseToken,
@@ -297,7 +299,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             initialReserves,
             initialReserves,
             finalReserves,
-            k / finalReserves,
+            quoteThreshold,
             k,
             block.number
         );
@@ -313,7 +315,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             baseToken,
             initialTokenBalance,
             initialReserves,
-            finalReserves
+            finalReserves,
+            quoteThreshold
         );
     }
 

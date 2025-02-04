@@ -65,6 +65,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     error BuzzVault_AddressZeroRecipient();
     /// @notice Error code emitted when the token is the zero address
     error BuzzVault_AddressZeroToken();
+    /// @notice Error code emitted when the trade is on the same block
+    error BuzzVault_TradeOnSameBlock();
 
     /**
      * @notice Data about a token in the bonding curve
@@ -76,6 +78,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
      * @param baseThreshold The amount of bera on the curve to lock it
      * @param quoteThreshold The amount of tokens on the curve to lock it
      * @param k The k value of the token
+     * @param blockNumber The block number of the token registration
      */
     struct TokenInfo {
         address baseToken;
@@ -86,6 +89,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         uint256 baseThreshold;
         uint256 quoteThreshold;
         uint256 k;
+        uint256 blockNumber;
     }
 
     /// @notice The fee manager contract collecting protocol fees
@@ -146,6 +150,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (msg.sender != address(FACTORY) && block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -188,6 +194,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (msg.sender != address(FACTORY) && block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -226,6 +234,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -288,7 +298,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             initialReserves,
             finalReserves,
             k / finalReserves,
-            k
+            k,
+            block.number
         );
 
         IERC20(token).safeTransferFrom(

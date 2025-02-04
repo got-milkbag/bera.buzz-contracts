@@ -343,7 +343,8 @@ describe("BuzzTokenFactory Tests", () => {
                 wBera.address,
                 ethers.utils.parseEther("1000000000"),
                 ethers.utils.parseEther("1"),
-                ethers.utils.parseEther("1000")
+                ethers.utils.parseEther("1000"),
+                anyValue
             );
         });
         it("should refund the user for excess msg.sender", async () => {

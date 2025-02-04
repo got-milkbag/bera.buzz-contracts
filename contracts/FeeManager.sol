@@ -3,6 +3,7 @@ pragma solidity ^0.8.19;
 
 import {SafeERC20, IERC20} from "@openzeppelin/contracts/token/ERC20/utils/SafeERC20.sol";
 import {Ownable} from "@openzeppelin/contracts/access/Ownable.sol";
+import {Math} from "@openzeppelin/contracts/utils/math/Math.sol";
 import {IFeeManager} from "./interfaces/IFeeManager.sol";
 
 /**
@@ -11,6 +12,7 @@ import {IFeeManager} from "./interfaces/IFeeManager.sol";
  * @author nexusflip, 0xMitzie
  */
 contract FeeManager is Ownable, IFeeManager {
+    using Math for uint256;
     using SafeERC20 for IERC20;
 
     /// @notice Event emitted when an ERC20 fee is received
@@ -28,13 +30,17 @@ contract FeeManager is Ownable, IFeeManager {
 
     /// @notice Error thrown when treasury is the zero address
     error FeeManager_TreasuryAddressZero();
-    /// @notice Error thrown when the amount is above the fee divisor
-    error FeeManager_AmountAboveFeeDivisor();
     /// @notice Error thrown when the fee is insufficient
     error FeeManager_InsufficientFee();
+    /// @notice Error thrown when the amount is above the maximum hardcap
+    error FeeManager_AmountAboveHardcap();
 
     /// @notice The divisor used to calculate fees (one percent equals 100)
     uint256 public constant FEE_DIVISOR = 1e4;
+    /// @notice The maximum trading fee in basis points (one percent equals 100)
+    uint256 public constant TRADING_HARDCAP = 2e2;
+    /// @notice The maximum migration fee in basis points (one percent equals 100)
+    uint256 public constant MIGRATION_HARDCAP = 1e3;
     /// @notice The trading fee in basis points. (one percent equals 100)
     uint256 public tradingFeeBps;
     /// @notice The AMM migration fee in basis points. (one percent equals 100)
@@ -57,8 +63,10 @@ contract FeeManager is Ownable, IFeeManager {
         uint256 _listingFee,
         uint256 _migrationFeeBps
     ) {
-        if ((_tradingFeeBps > FEE_DIVISOR) || (_migrationFeeBps > FEE_DIVISOR))
-            revert FeeManager_AmountAboveFeeDivisor();
+        if (
+            (_tradingFeeBps > TRADING_HARDCAP) ||
+            (_migrationFeeBps > MIGRATION_HARDCAP)
+        ) revert FeeManager_AmountAboveHardcap();
 
         treasury = _treasury;
         tradingFeeBps = _tradingFeeBps;
@@ -116,7 +124,7 @@ contract FeeManager is Ownable, IFeeManager {
     function quoteTradingFee(
         uint256 amount
     ) external view returns (uint256 fee) {
-        fee = (amount * tradingFeeBps) / FEE_DIVISOR;
+        fee = amount.mulDiv(tradingFeeBps, FEE_DIVISOR, Math.Rounding.Up);
     }
 
     /**
@@ -139,7 +147,7 @@ contract FeeManager is Ownable, IFeeManager {
      * @param feeBps_ The trading fee in basis points (one percent equals 100)
      */
     function setTradingFeeBps(uint256 feeBps_) external onlyOwner {
-        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+        if (feeBps_ > TRADING_HARDCAP) revert FeeManager_AmountAboveHardcap();
 
         tradingFeeBps = feeBps_;
         emit TradingFeeSet(feeBps_);
@@ -161,7 +169,7 @@ contract FeeManager is Ownable, IFeeManager {
      * @param feeBps_ The migration fee in basis points (one percent equals 100)
      */
     function setMigrationFeeBps(uint256 feeBps_) external onlyOwner {
-        if (feeBps_ > FEE_DIVISOR) revert FeeManager_AmountAboveFeeDivisor();
+        if (feeBps_ > MIGRATION_HARDCAP) revert FeeManager_AmountAboveHardcap();
 
         migrationFeeBps = feeBps_;
         emit MigrationFeeSet(feeBps_);

@@ -23,6 +23,7 @@ describe("BuzzTokenFactory Tests", () => {
     let wBera: Contract;
     let tokenCreatedEvent: any;
 
+    const highlightsSuffix = ethers.utils.arrayify("0x");
     const directRefFeeBps = 1500; // 15% of protocol fee
     const indirectRefFeeBps = 100; // fixed 1%
     const listingFee = ethers.utils.parseEther("0.002");
@@ -60,7 +61,7 @@ describe("BuzzTokenFactory Tests", () => {
 
         // Deploy factory
         const Factory = await ethers.getContractFactory("BuzzTokenFactory");
-        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address);
+        factory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address, highlightsSuffix);
 
         // Deploy liquidity manager
         const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
@@ -275,6 +276,32 @@ describe("BuzzTokenFactory Tests", () => {
                 )
             ).to.be.revertedWithCustomError(factory, "BuzzToken_TokenSymbolTooLong");
         });
+        it("should revert if the salt does not correspond to an address with the correct suffix", async () => {
+            const salt = formatBytes32String("12345");
+            const suffix = ethers.utils.arrayify("0x1bee");
+            // Deploy factory
+            const Factory = await ethers.getContractFactory("BuzzTokenFactory");
+            const newFactory = await Factory.connect(ownerSigner).deploy(ownerSigner.address, create3Factory.address, feeManager.address, suffix);
+
+            // Admin: Whitelist base token in Factory
+            await newFactory.connect(ownerSigner).setAllowedBaseToken(wBera.address, ethers.utils.parseEther("0.01"), ethers.utils.parseEther("100"), true);
+            // Admin: Set Vault as the factory's vault & enable token creation
+            await newFactory.connect(ownerSigner).setVault(expVault.address, true);
+            await newFactory.connect(ownerSigner).setAllowTokenCreation(true);
+
+            await expect(
+                newFactory.createToken(
+                    ["TEST", "TST"],
+                    [wBera.address, expVault.address],
+                    [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                    0,
+                    salt,
+                    {
+                        value: listingFee,
+                    }
+                )
+            ).to.be.revertedWithCustomError(newFactory, "BuzzTokenFactory_InvalidSuffix");
+        });
         it("should emit a TokenCreated event", async () => {
             const name = "TEST";
             const symbol = "TST";
@@ -318,6 +345,24 @@ describe("BuzzTokenFactory Tests", () => {
                 ethers.utils.parseEther("1"),
                 ethers.utils.parseEther("1000")
             );
+        });
+        it("should refund the user for excess msg.sender", async () => {
+            const listingFeeAndBuyAmount = listingFee.add(ethers.utils.parseEther("1"));
+            const balanceBefore = await ethers.provider.getBalance(ownerSigner.address);
+            const tx = await factory.createToken(
+                ["TEST", "TST"],
+                [wBera.address, expVault.address],
+                [ethers.utils.parseEther("1"), ethers.utils.parseEther("1000")],
+                0,
+                formatBytes32String("12345"),
+                {
+                    value: listingFeeAndBuyAmount,
+                }
+            );
+            const receipt = await tx.wait();
+            const balanceAfter = await ethers.provider.getBalance(ownerSigner.address);
+            const gasUsed = receipt.cumulativeGasUsed.mul(receipt.effectiveGasPrice);
+            expect(balanceAfter.add(gasUsed)).to.be.eq(balanceBefore.sub(listingFee));
         });
         describe("_deployToken", () => {
             beforeEach(async () => {

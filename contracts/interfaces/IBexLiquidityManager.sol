@@ -5,7 +5,8 @@ interface IBexLiquidityManager {
     function createPoolAndAdd(
         address token,
         address baseToken,
-        uint256 baseAmount,
-        uint256 amount
+        address user,
+        uint256 amount,
+        uint256 baseAmount
     ) external returns (address pool);
 }

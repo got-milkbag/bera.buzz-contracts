@@ -67,7 +67,7 @@ async function main() {
     const salt = "0x200000000000000000000000000015fca116f803b9ac9849772f2af2e9f1305d";
     const packedBytecode = ethers.utils.solidityPack(
         ["bytes", "bytes"],
-        [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address"], [deployerAddress, create3Address, feeManager.address])]
+        [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address", "bytes"], [deployerAddress, create3Address, feeManager.address, highlightsSuffix])]
     );
     const create3FactoryContract = new ethers.Contract(create3Address, DEPLOY_ABI, deployer);
     const tx = await create3FactoryContract.deploy(salt, packedBytecode);
@@ -106,7 +106,7 @@ async function main() {
 
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-    const highlightsManager = await HighlightsManager.deploy(feeRecipient, hardCap, highlightsBaseFee, coolDownPeriod, highlightsSuffix);
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, deployedAddress, hardCap, highlightsBaseFee, coolDownPeriod);
     console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager

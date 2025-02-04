@@ -65,6 +65,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
     error BuzzVault_AddressZeroRecipient();
     /// @notice Error code emitted when the token is the zero address
     error BuzzVault_AddressZeroToken();
+    /// @notice Error code emitted when the trade is on the same block
+    error BuzzVault_TradeOnSameBlock();
 
     /**
      * @notice Data about a token in the bonding curve
@@ -76,6 +78,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
      * @param baseThreshold The amount of bera on the curve to lock it
      * @param quoteThreshold The amount of tokens on the curve to lock it
      * @param k The k value of the token
+     * @param blockNumber The block number of the token registration
      */
     struct TokenInfo {
         address baseToken;
@@ -86,6 +89,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         uint256 baseThreshold;
         uint256 quoteThreshold;
         uint256 k;
+        uint256 blockNumber;
     }
 
     /// @notice The fee manager contract collecting protocol fees
@@ -146,6 +150,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (msg.sender != address(FACTORY) && block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -188,6 +194,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (msg.sender != address(FACTORY) && block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -226,6 +234,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         if (token == address(0)) revert BuzzVault_AddressZeroToken();
 
         TokenInfo storage info = tokenInfo[token];
+        if (block.number == info.blockNumber)
+            revert BuzzVault_TradeOnSameBlock();
         if (info.bexListed) revert BuzzVault_BexListed();
         if (info.tokenBalance == 0 && info.baseBalance == 0)
             revert BuzzVault_UnknownToken();
@@ -288,7 +298,8 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
             initialReserves,
             finalReserves,
             k / finalReserves,
-            k
+            k,
+            block.number
         );
 
         IERC20(token).safeTransferFrom(
@@ -407,12 +418,12 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
 
         // collect fee
         uint256 dexFee = FEE_MANAGER.quoteMigrationFee(baseBalance);
-        IERC20(baseToken).safeApprove(address(FEE_MANAGER), dexFee);
+        IERC20(baseToken).forceApprove(address(FEE_MANAGER), dexFee);
         FEE_MANAGER.collectMigrationFee(baseToken, baseBalance);
         uint256 netBaseAmount = baseBalance - dexFee;
 
-        IERC20(token).safeApprove(address(LIQUIDITY_MANAGER), tokenBalance);
-        IERC20(baseToken).safeApprove(
+        IERC20(token).forceApprove(address(LIQUIDITY_MANAGER), tokenBalance);
+        IERC20(baseToken).forceApprove(
             address(LIQUIDITY_MANAGER),
             netBaseAmount
         );
@@ -420,8 +431,9 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
         LIQUIDITY_MANAGER.createPoolAndAdd(
             token,
             baseToken,
-            netBaseAmount,
-            tokenBalance
+            msg.sender,
+            tokenBalance,
+            netBaseAmount
         );
     }
 
@@ -492,7 +504,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
 
         if (bps > 0) {
             referralFee = (amount * bps) / 1e4;
-            IERC20(token).safeApprove(address(REFERRAL_MANAGER), referralFee);
+            IERC20(token).forceApprove(address(REFERRAL_MANAGER), referralFee);
             REFERRAL_MANAGER.receiveReferral(user, token, referralFee);
         }
     }
@@ -504,7 +516,7 @@ abstract contract BuzzVault is Ownable, Pausable, IBuzzVault {
      */
     function _unwrap(address to, uint256 amount) internal {
         uint256 balancePrior = address(this).balance;
-        IERC20(address(WBERA)).safeApprove(address(WBERA), amount);
+        IERC20(address(WBERA)).forceApprove(address(WBERA), amount);
 
         WBERA.withdraw(amount);
         uint256 withdrawal = address(this).balance - balancePrior;

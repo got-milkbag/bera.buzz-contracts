@@ -67,6 +67,10 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     error BuzzToken_TokenNameTooLong();
     /// @notice Error code emitted when the token symbol is too long
     error BuzzToken_TokenSymbolTooLong();
+    /// @notice Error code emitted when the native transfer fails
+    error BuzzTokenFactory_BeraTransferFailed();
+    /// @notice Error code emitted when the token suffix is invalid
+    error BuzzTokenFactory_InvalidSuffix();
 
     /**
      * @notice Struct containing the minimum reserve and raise amounts for a base token
@@ -89,6 +93,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
     address public immutable CREATE_DEPLOYER;
     /// @notice Whether token creation is allowed. Controlled by accounts holding OWNER_ROLE.
     bool public allowTokenCreation;
+    /// @notice The suffix that is checked against the token address
+    bytes public suffix;
 
     /// @notice A mapping of whitelisted vault addresses that can be used as vaults
     mapping(address => bool) public vaults;
@@ -104,13 +110,20 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
      * @param _owner The owner of the contract
      * @param _createDeployer The address of the CREATE3 deployer
      * @param _feeManager The address of the feeManager contract
+     * @param _suffix The contract suffix that is checked against the token address
      */
-    constructor(address _owner, address _createDeployer, address _feeManager) {
+    constructor(
+        address _owner,
+        address _createDeployer,
+        address _feeManager,
+        bytes memory _suffix
+    ) {
         OWNER_ROLE = keccak256("OWNER_ROLE");
         _grantRole(OWNER_ROLE, _owner);
 
         CREATE_DEPLOYER = _createDeployer;
         feeManager = IFeeManager(_feeManager);
+        suffix = _suffix;
 
         emit FeeManagerSet(_feeManager);
     }
@@ -170,8 +183,8 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             metadata[1]
         );
 
+        uint256 remainingValue = msg.value - listingFee;
         if (baseAmount > 0) {
-            uint256 remainingValue = msg.value - listingFee;
             if (remainingValue > 0) {
                 // Buy tokens using excess msg.value. baseToken == wbera check occurs in Vault contract
                 if (remainingValue != baseAmount)
@@ -189,7 +202,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(this),
                     baseAmount
                 );
-                IERC20(addr[0]).safeApprove(addr[1], baseAmount);
+                IERC20(addr[0]).forceApprove(addr[1], baseAmount);
                 IBuzzVault(addr[1]).buy(
                     token,
                     baseAmount,
@@ -197,6 +210,11 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
                     address(0),
                     msg.sender
                 );
+            }
+        } else {
+            if (remainingValue > 0) {
+                (bool success, ) = msg.sender.call{value: remainingValue}("");
+                if (!success) revert BuzzTokenFactory_BeraTransferFailed();
             }
         }
     }
@@ -301,7 +319,7 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
 
         bytes memory bytecode = abi.encodePacked(
             type(BuzzToken).creationCode,
-            abi.encode(name, symbol, initialSupply, address(this), vault)
+            abi.encode(name, symbol, initialSupply, address(this))
         );
 
         token = ICREATE3Factory(CREATE_DEPLOYER).getDeployed(
@@ -310,9 +328,11 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
         );
         isDeployed[token] = true;
 
+        _verifySuffix(token);
+
         ICREATE3Factory(CREATE_DEPLOYER).deploy(salt, bytecode);
 
-        IERC20(token).safeApprove(vault, initialSupply);
+        IERC20(token).forceApprove(vault, initialSupply);
         IBuzzVault(vault).registerToken(
             token,
             baseToken,
@@ -320,5 +340,27 @@ contract BuzzTokenFactory is AccessControl, IBuzzTokenFactory {
             initialReserves,
             finalReserves
         );
+    }
+
+    /**
+     * @notice Verifies if the suffix of the token address matches the factory suffix
+     * @param token The address of the token
+     */
+    function _verifySuffix(address token) internal view {
+        bytes memory tokenBytes = abi.encodePacked(token);
+        bytes memory cachedSuffix = suffix;
+
+        uint256 suffixLength = cachedSuffix.length;
+        uint256 tokenLength = tokenBytes.length;
+
+        for (uint256 i; i < suffixLength; ) {
+            if (cachedSuffix[i] != tokenBytes[tokenLength - suffixLength + i]) {
+                revert BuzzTokenFactory_InvalidSuffix();
+            }
+
+            unchecked {
+                ++i;
+            }
+        }
     }
 }

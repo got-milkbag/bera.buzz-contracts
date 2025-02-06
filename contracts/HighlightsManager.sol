@@ -56,8 +56,8 @@ contract HighlightsManager is Ownable, Pausable {
     uint256 public constant MIN_DURATION = 60; // 60 = 1 minute
     /// @notice The threshold after which the fee increases exponentially
     uint256 public constant EXP_THRESHOLD = 600; // 600 = 10 minutes
-    /// @notice Growth rate for 50x fee on 1 hour vs 10 minutes
-    uint256 public constant GROWTH_FACTOR = 98;
+    /// @notice Growth rate for 25x fee on 1 hour vs 10 minutes
+    uint256 public constant GROWTH_FACTOR = 49;
     /// @notice The maximum duration allowed in seconds
     uint256 public hardCap;
     /// @notice The cool down period for a token in seconds

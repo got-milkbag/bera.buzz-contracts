@@ -14,7 +14,6 @@ const ibgtAddress = "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b";
 
 const highlightsSuffix = ethers.utils.arrayify("0x1bee");
 
-
 // protocol fee is hardcoded in vaults
 
 // Factory config
@@ -32,7 +31,7 @@ const payoutThreshold = 0;
 const validUntil = Math.floor(Date.now() / 1000) + ONE_YEAR_IN_SECS;
 
 // HighlightsManager config
-const highlightsBaseFee = ethers.utils.parseEther("0.0005"); // base fee per second for highlighting
+const highlightsBaseFee = ethers.utils.parseEther("0.0087684210526316"); // base fee per second for highlighting
 const hardCap = 3600; // 1 hour in seconds
 const coolDownPeriod = 60 * 60 * 24; // 1 day
 
@@ -51,7 +50,7 @@ async function main() {
     console.log(`Deployer's address (owner): `, deployerAddress);
 
     // Deploy CREATE3Factory
-    const CREATE3Factory = await ethers.getContractFactory("CREATE3Factory");
+    const CREATE3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
     const create3Factory = await CREATE3Factory.deploy();
     console.log("CREATE3Factory deployed to:", create3Factory.address);
 

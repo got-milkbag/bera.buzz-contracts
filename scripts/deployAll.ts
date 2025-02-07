@@ -1,17 +1,18 @@
 import {ethers} from "hardhat";
 const hre = require("hardhat");
-import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTokenFactory__factory";
+import * as TokenFactory from "../typechain-types/factories/contracts/BuzzTokenFactory__factory";
 
 //CONFIG - bArtio
 const ONE_YEAR_IN_SECS = 365 * 24 * 60 * 60;
-const bexWeightedPoolFactory = "0x09836Ff4aa44C9b8ddD2f85683aC6846E139fFBf";
-const bexVault = "0x9C8a5c82e797e074Fe3f121B326b140CEC4bcb33";
-const feeRecipient = "0x964757D7aB4C84ef2e477e6DA6757FBA03dDB4C7"; // Address the protocol receives fees at
-const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
+const bexWeightedPoolFactory = "0xa966fA8F2d5B087FFFA499C0C1240589371Af409";
+const bexVault = "0x4Be03f781C497A489E3cB0287833452cA9B9E80B";
+const feeRecipient = "0xa5eb0f07d8496bce1cd7e215e9b37f9ab66c46b2"; // Address the protocol receives fees at
+//const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
 const wberaAddress = "0x6969696969696969696969696969696969696969";
+const nectAddress = "0x1cE0a25D13CE4d52071aE7e02Cf1F6606F4C79d3";
+const ibgtAddress = "0xac03CABA51e17c86c921E1f6CBFBdC91F8BB2E6b";
 
 const highlightsSuffix = ethers.utils.arrayify("0x1bee");
-
 
 // protocol fee is hardcoded in vaults
 
@@ -23,14 +24,14 @@ const baseTokenMinRaiseAmount = ethers.utils.parseEther("0.1");
 // ReferralManager config
 const directRefFeeBps = 1500; // 15% of protocol fee
 const indirectRefFeeBps = 100; // fixed 1%
-const listingFee = ethers.utils.parseEther("0.002");
+const listingFee = ethers.utils.parseEther("0.2");
 const tradingFeeBps = 100; // 1% trading fee
 const migrationFeeBps = 420; // 4.2% migration fee
 const payoutThreshold = 0;
 const validUntil = Math.floor(Date.now() / 1000) + ONE_YEAR_IN_SECS;
 
 // HighlightsManager config
-const highlightsBaseFee = ethers.utils.parseEther("0.0005"); // base fee per second for highlighting
+const highlightsBaseFee = ethers.utils.parseEther("0.0087684210526316"); // base fee per second for highlighting
 const hardCap = 3600; // 1 hour in seconds
 const coolDownPeriod = 60 * 60 * 24; // 1 day
 
@@ -48,6 +49,11 @@ async function main() {
     const deployerAddress = await deployer.getAddress();
     console.log(`Deployer's address (owner): `, deployerAddress);
 
+    // Deploy CREATE3Factory
+    const CREATE3Factory = await ethers.getContractFactory("CREATE3FactoryMock");
+    const create3Factory = await CREATE3Factory.deploy();
+    console.log("CREATE3Factory deployed to:", create3Factory.address);
+
     // Deploy FeeManager
     const FeeManager = await ethers.getContractFactory("FeeManager");
     const feeManager = await FeeManager.deploy(feeRecipient, tradingFeeBps, listingFee, migrationFeeBps);
@@ -58,38 +64,15 @@ async function main() {
     const referralManager = await ReferralManager.deploy(directRefFeeBps, indirectRefFeeBps, validUntil, [wberaAddress], [payoutThreshold]);
     console.log("ReferralManager deployed to:", referralManager.address);
 
-    // Deploy Factory via Create3
-    const abi = TokenFactory.BuzzTokenFactory__factory.abi;
-    const factoryBytecode = TokenFactory.BuzzTokenFactory__factory.bytecode;
-    const factory = new ethers.ContractFactory(abi, factoryBytecode);
-    const creationCode = factory.bytecode;
-    // change salt for each new deployment
-    const salt = "0x200000000000000000000000000015fca116f803b9ac9849772f2af2e9f1305d";
-    const packedBytecode = ethers.utils.solidityPack(
-        ["bytes", "bytes"],
-        [creationCode, ethers.utils.defaultAbiCoder.encode(["address", "address", "address", "bytes"], [deployerAddress, create3Address, feeManager.address, highlightsSuffix])]
-    );
-    const create3FactoryContract = new ethers.Contract(create3Address, DEPLOY_ABI, deployer);
-    const tx = await create3FactoryContract.deploy(salt, packedBytecode);
-    const deployedAddress = await create3FactoryContract.getDeployed(deployer.address, salt);
-    console.log("Factory deployed to:", deployedAddress);
-    await tx.wait();
-    const factoryInstance = await ethers.getContractAt("BuzzTokenFactory", deployedAddress);
+    // Deploy Factory
+    const Factory = await ethers.getContractFactory("BuzzTokenFactory");
+    const factoryInstance = await Factory.deploy(deployerAddress, create3Factory.address, feeManager.address, highlightsSuffix);
+    console.log("Factory deployed to:", factoryInstance.address);
 
     // Deploy BexLiquidityManager
     const BexLiquidityManager = await ethers.getContractFactory("BexLiquidityManager");
     const bexLiquidityManager = await BexLiquidityManager.deploy(bexWeightedPoolFactory, bexVault);
     console.log("BexLiquidityManager deployed to:", bexLiquidityManager.address);
-
-    // // Deploy Linear Vault
-    // const Vault = await ethers.getContractFactory("BuzzVaultLinear");
-    // const vault = await Vault.deploy(
-    //     feeRecipient,
-    //     factoryInstance.address,
-    //     referralManager.address,
-    //     bexLiquidityManager.address
-    // );
-    // console.log("Linear Vault deployed to:", vault.address);
 
     // Deploy Exponential Vault
     const ExpVault = await ethers.getContractFactory("BuzzVaultExponential");
@@ -106,7 +89,7 @@ async function main() {
 
     // Deploy HighlighstManager
     const HighlightsManager = await ethers.getContractFactory("HighlightsManager");
-    const highlightsManager = await HighlightsManager.deploy(feeRecipient, deployedAddress, hardCap, highlightsBaseFee, coolDownPeriod);
+    const highlightsManager = await HighlightsManager.deploy(feeRecipient, factoryInstance.address, hardCap, highlightsBaseFee, coolDownPeriod);
     console.log("HighlightsManager deployed to:", highlightsManager.address);
 
     // Admin: Set Vault in the ReferralManager
@@ -115,6 +98,12 @@ async function main() {
 
     // Admin: Whitelist base token in Factory
     await factoryInstance.setAllowedBaseToken(wberaAddress, baseTokenMinReserveAmount, baseTokenMinRaiseAmount, true);
+
+    // Admin: Whitelist base token in Factory
+    await factoryInstance.setAllowedBaseToken(nectAddress, baseTokenMinReserveAmount, baseTokenMinRaiseAmount, true);
+
+    // Admin: Whitelist base token in Factory
+    await factoryInstance.setAllowedBaseToken(ibgtAddress, baseTokenMinReserveAmount, baseTokenMinRaiseAmount, true);
 
     // Admin: Set Vault as the factory's vault & enable token creation
     // await factoryInstance.setVault(vault.address, true);

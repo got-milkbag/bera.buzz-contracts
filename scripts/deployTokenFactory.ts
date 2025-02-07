@@ -1,6 +1,6 @@
 import {ethers} from "hardhat";
 const hre = require("hardhat");
-import * as TokenFactory from "../../typechain-types/factories/contracts/BuzzTokenFactory__factory";
+import * as TokenFactory from "../typechain-types/factories/contracts/BuzzTokenFactory__factory";
 
 const create3Address = "0xE088cf94c8C0200022E15e86fc4F9f3A4B2F6e5c";
 const linearVault = "0x09E8bfbCF8852Ce3286f1a612B77E7C8CCF6C6ae";
